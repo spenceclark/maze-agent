@@ -2,6 +2,7 @@
 
 import asyncio
 import random
+import sqlite3
 from pathlib import Path
 from typing import Any
 
@@ -10,7 +11,7 @@ from pydantic import ValidationError
 
 from maze_lab.agent_contracts import AGENT_IDS
 from maze_lab.analysis import analyse, bootstrap_mean, render_markdown
-from maze_lab.batch import Cell, ExperimentSpec, SpecMismatchError, cells, run_batch, run_config
+from maze_lab.batch import Cell, ExperimentSpec, SpecMismatchError, cell_run_id, cells, run_batch, run_config
 from maze_lab.persistence.store import RunStore
 
 BASE: dict[str, Any] = {
@@ -102,3 +103,37 @@ def test_bootstrap_is_exact_for_constant_values_and_reproducible():
     assert first == bootstrap_mean(values, 500, random.Random(3))
     assert first.ci_low is not None and first.ci_high is not None
     assert first.ci_low <= 0.6 <= first.ci_high
+
+
+def test_concurrent_batches_never_duplicate_runs(tmp_path: Path):
+    store = RunStore(tmp_path / "race.db")
+    spec = make_spec(seeds=[1], replicates=1)
+
+    async def two_processes() -> None:
+        await asyncio.gather(run_batch(store, spec, parallel=2), run_batch(store, spec, parallel=2))
+
+    asyncio.run(two_processes())
+    runs = store.experiment_runs(spec.name)
+    assert set(runs.values()) == {cell_run_id(spec, Cell(c, 1, 0), 0) for c in ("dfs", "random")}
+    assert len(store.summaries()) == 2  # no orphaned duplicates
+    store.close()
+
+
+def test_rerun_invalid_gives_failed_cells_a_fresh_attempt(tmp_path: Path):
+    store = RunStore(tmp_path / "rerun.db")
+    spec = make_spec(seeds=[1], replicates=1)
+    asyncio.run(run_batch(store, spec))
+    before = store.experiment_runs(spec.name)
+    broken = before[("random", 1, 0)]
+    with sqlite3.connect(tmp_path / "rerun.db") as db:  # simulate a crashed, recovered run
+        db.execute("UPDATE runs SET recovered_incomplete_tick = 1 WHERE run_id = ?", (broken,))
+
+    asyncio.run(run_batch(store, spec))  # plain resume leaves it alone
+    assert store.experiment_runs(spec.name) == before
+    asyncio.run(run_batch(store, spec, rerun_invalid=True))
+    after = store.experiment_runs(spec.name)
+    assert after[("dfs", 1, 0)] == before[("dfs", 1, 0)]
+    assert after[("random", 1, 0)] == cell_run_id(spec, Cell("random", 1, 0), 1) != broken
+    assert store.summary(broken) is not None  # old attempt kept for audit
+    assert analyse(store, spec, n_boot=50).runs_valid == {"dfs": 1, "random": 1}
+    store.close()

@@ -15,7 +15,7 @@ from statistics import fmean
 from pydantic import BaseModel
 
 from maze_lab.agent_contracts import Contract
-from maze_lab.batch import ExperimentSpec
+from maze_lab.batch import ExperimentSpec, is_valid
 from maze_lab.persistence.store import RunStore
 from maze_lab.transcript import build_transcripts
 
@@ -98,7 +98,7 @@ def collect_outcomes(store: RunStore, spec: ExperimentSpec) -> list[RunOutcome]:
                 seed=seed,
                 replicate=replicate,
                 status=summary.status,
-                valid=summary.status == "completed" and not summary.recovered_incomplete_tick,
+                valid=is_valid(summary),
                 success=m.objective_met_tick is not None,
                 agents_exited=sum(a.first_exit_tick is not None for a in agents),
                 completion_tick=m.objective_met_tick,

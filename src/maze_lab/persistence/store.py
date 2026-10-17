@@ -289,10 +289,12 @@ class RunStore:
             )
             return None
 
-    def add_experiment_run(self, name: str, condition: str, seed: int, replicate: int, run_id: str) -> None:
+    def set_experiment_run(self, name: str, condition: str, seed: int, replicate: int, run_id: str) -> None:
+        """Point a cell at a run (replacing any earlier attempt, which stays in the store)."""
         with self._tx() as db:
             db.execute(
-                "INSERT INTO experiment_runs VALUES (?,?,?,?,?)", (name, condition, seed, replicate, run_id)
+                "INSERT OR REPLACE INTO experiment_runs VALUES (?,?,?,?,?)",
+                (name, condition, seed, replicate, run_id),
             )
 
     @staticmethod

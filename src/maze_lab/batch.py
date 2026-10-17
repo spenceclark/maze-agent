@@ -7,7 +7,10 @@ few at a time, and an interrupted batch resumes where it stopped.
 """
 
 import asyncio
+import contextlib
+import hashlib
 import json
+import sqlite3
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -103,10 +106,41 @@ class SpecMismatchError(ValueError):
 Progress = Callable[[Cell, RunSummary | None, str | None], None]
 
 
+def is_valid(summary: RunSummary) -> bool:
+    """Counts toward results: finished normally, never recovered from a crashed or contested tick."""
+    return summary.status == "completed" and not summary.recovered_incomplete_tick
+
+
+def cell_run_id(spec: ExperimentSpec, cell: Cell, attempt: int) -> str:
+    """Deterministic, so two batch processes on one experiment converge on the same run."""
+    key = f"{spec.name}|{cell.condition}|{cell.seed}|{cell.replicate}|{attempt}"
+    return hashlib.sha256(key.encode()).hexdigest()[:12]
+
+
+def _claim_run(store: RunStore, spec: ExperimentSpec, cell: Cell, attempt: int) -> str:
+    run_id = cell_run_id(spec, cell, attempt)
+    if store.summary(run_id) is None:
+        with contextlib.suppress(sqlite3.IntegrityError):  # created concurrently by another batch process
+            create_run(store, run_config(spec, cell), run_id=run_id)
+    return run_id
+
+
 async def run_batch(
-    store: RunStore, spec: ExperimentSpec, parallel: int = 1, progress: Progress | None = None
+    store: RunStore,
+    spec: ExperimentSpec,
+    parallel: int = 1,
+    progress: Progress | None = None,
+    rerun_invalid: bool = False,
 ) -> None:
-    """Run every cell not yet finished. Safe to call again after an interruption."""
+    """Run every cell not yet finished. Safe to call again after an interruption.
+
+    With `rerun_invalid`, a cell whose run failed, was cancelled, or recovered from a
+    crashed tick gets a fresh attempt; the old run stays in the store for audit. Only
+    use it when no other process is driving this experiment.
+    """
+    # ponytail: one batch process per experiment. A second process never duplicates or corrupts
+    # runs (deterministic run ids, fenced coordinators), but runs both touched end up recovered and
+    # excluded. Add a lease on the experiment row if batches ever span machines.
     spec_json = spec.model_dump_json()
     existing_hash = store.save_experiment(spec.name, spec_json, content_hash(spec), datetime.now(UTC))
     if existing_hash is not None and existing_hash != content_hash(spec):
@@ -118,10 +152,16 @@ async def run_batch(
         async with gate:
             try:
                 run_id = known.get((cell.condition, cell.seed, cell.replicate))
-                if run_id is None:
-                    run_id = create_run(store, run_config(spec, cell)).run_id
-                    store.add_experiment_run(spec.name, cell.condition, cell.seed, cell.replicate, run_id)
-                summary = store.summary(run_id)
+                summary = store.summary(run_id) if run_id else None
+                if run_id is None or (rerun_invalid and summary is not None and not _resumable(summary)):
+                    attempt = 0
+                    while (existing := store.summary(cell_run_id(spec, cell, attempt))) is not None and (
+                        rerun_invalid and not _resumable(existing)
+                    ):
+                        attempt += 1
+                    run_id = _claim_run(store, spec, cell, attempt)
+                    store.set_experiment_run(spec.name, cell.condition, cell.seed, cell.replicate, run_id)
+                    summary = store.summary(run_id)
                 if summary is not None and summary.status not in TERMINAL:
                     policies = build_policies(store.config(run_id))
                     summary = await Coordinator(store, run_id, policies).run()
@@ -132,3 +172,8 @@ async def run_batch(
                     progress(cell, None, f"{type(e).__name__}: {e}")
 
     await asyncio.gather(*(run_cell(c) for c in cells(spec)))
+
+
+def _resumable(summary: RunSummary) -> bool:
+    """Valid, or still in progress (resuming it is the normal path)."""
+    return is_valid(summary) or (summary.status not in TERMINAL and not summary.recovered_incomplete_tick)

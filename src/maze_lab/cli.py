@@ -97,6 +97,11 @@ def main(argv: list[str] | None = None) -> int:
     batch.add_argument("spec", type=Path)
     batch.add_argument("--parallel", type=int, default=2, help="runs at a time (default 2)")
     batch.add_argument("--dry-run", action="store_true", help="validate and list the cells without running")
+    batch.add_argument(
+        "--rerun-invalid",
+        action="store_true",
+        help="give failed/recovered cells a fresh attempt (single process only)",
+    )
     report = sub.add_parser("report", help="paired bootstrap comparison of an experiment's conditions")
     report.add_argument("experiment", help="experiment name")
     report.add_argument("--baseline", help="condition to compare against (default: the first)")
@@ -173,7 +178,15 @@ def main(argv: list[str] | None = None) -> int:
                             file=sys.stderr,
                         )
 
-                asyncio.run(run_batch(store, spec, parallel=args.parallel, progress=progress))
+                asyncio.run(
+                    run_batch(
+                        store,
+                        spec,
+                        parallel=args.parallel,
+                        progress=progress,
+                        rerun_invalid=args.rerun_invalid,
+                    )
+                )
             case "report":
                 stored = store.experiment_spec(args.experiment)
                 if stored is None:
