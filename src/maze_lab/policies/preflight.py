@@ -101,7 +101,9 @@ def preflight(config: RunConfig) -> None:
         if agent.kind != "llm":
             continue
         observation = _worst_case_observation(rules, agent.id, config.horizon_ticks)
-        problem = check_prompt(agent, system_instruction(rules, agent.id), user_blocks(observation))
+        problem = check_prompt(
+            agent, system_instruction(rules, agent.id, config.prompt_version), user_blocks(observation)
+        )
         if problem is not None:
             raise ValueError(
                 f"agent {agent.id} ({agent.model}): worst-case {problem}. Lower notebook_cap_bytes, "

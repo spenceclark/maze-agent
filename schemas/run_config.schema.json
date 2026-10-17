@@ -461,7 +461,7 @@
       "type": "integer"
     },
     "prompt_version": {
-      "default": "maze_agent_v3",
+      "default": "maze_agent_v4",
       "title": "Prompt Version",
       "type": "string"
     },

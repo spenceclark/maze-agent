@@ -29,7 +29,7 @@ from maze_lab.domain.state import initial_state
 from maze_lab.observation import observe, public_rules
 from maze_lab.policies.base import DecisionAttempt
 from maze_lab.policies.preflight import preflight
-from maze_lab.policies.prompt import system_instruction, user_blocks
+from maze_lab.policies.prompt import PROMPT_MEMORY_NOTES, system_instruction, user_blocks
 from maze_lab.policies.pydantic_ai_adapter import PydanticAiPolicy
 
 MAZE = grid(3, 3, P(2, 2), [P(0, 0), P(1, 0), P(0, 1)])
@@ -223,3 +223,21 @@ def test_truncated_output_is_reported_as_truncation():
     attempt, recorder = decide(respond, output_mode="native")
     assert attempt.failure == "invalid_action" and attempt.error_detail == "output truncated at max_tokens"
     assert len(recorder.calls) == 1
+
+
+def test_prompt_versions_differ_only_by_the_junction_sentence():
+    v3 = system_instruction(AGENT_RULES, "A", "maze_agent_v3")
+    v4 = system_instruction(AGENT_RULES, "A", "maze_agent_v4")
+    assert "junction" not in v3 and "untried exit" in v4
+    assert v4.replace(PROMPT_MEMORY_NOTES["maze_agent_v4"], "") == v3
+    with pytest.raises(ValueError, match="unsupported prompt_version"):
+        system_instruction(AGENT_RULES, "A", "maze_agent_v1")
+
+
+def test_policy_sends_its_configured_prompt_version():
+    recorder = Recorder(tool_call(valid_args()))
+    policy = PydanticAiPolicy(
+        llm_config(), timeout_s=5, prompt_version="maze_agent_v3", model=FunctionModel(recorder)
+    )
+    attempt = asyncio.run(policy.decide(OBS, AGENT_RULES))
+    assert "junction" not in json.loads(attempt.request_text or "")["system"]

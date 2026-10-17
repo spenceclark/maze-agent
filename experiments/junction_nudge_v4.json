@@ -1,0 +1,15 @@
+{
+  "name": "junction_nudge_v4",
+  "experiment_seed": 2,
+  "base_config_file": "../configs/pilot_haiku.json",
+  "base_config": {
+    "maze": {"width": 12, "height": 12},
+    "horizon_ticks": 80
+  },
+  "seeds": [202611017, 101, 102],
+  "replicates": 2,
+  "conditions": {
+    "v3": {"prompt_version": "maze_agent_v3"},
+    "v4": {"prompt_version": "maze_agent_v4"}
+  }
+}

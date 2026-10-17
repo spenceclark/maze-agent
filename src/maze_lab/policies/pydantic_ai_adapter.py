@@ -34,7 +34,7 @@ from maze_lab.agent_contracts import (
 from maze_lab.config import LlmAgentConfig
 from maze_lab.policies.base import DecisionAttempt, Usage
 from maze_lab.policies.preflight import check_prompt
-from maze_lab.policies.prompt import system_instruction, user_blocks
+from maze_lab.policies.prompt import PROMPT_VERSION, system_instruction, user_blocks
 
 ADAPTER_VERSION = "pydantic_ai_adapter_v1"
 
@@ -106,8 +106,15 @@ def _cost(responses: list[ModelResponse]) -> float | None:
 
 
 class PydanticAiPolicy:
-    def __init__(self, config: LlmAgentConfig, timeout_s: float, model: Model | None = None) -> None:
+    def __init__(
+        self,
+        config: LlmAgentConfig,
+        timeout_s: float,
+        prompt_version: str = PROMPT_VERSION,
+        model: Model | None = None,
+    ) -> None:
         self.config = config
+        self.prompt_version = prompt_version
         self.model = model or build_model(config)  # reusable client: allowed, holds no memory
         self.output = _output_spec(config)
         settings: AnthropicModelSettings = {"max_tokens": config.max_output_tokens, "timeout": timeout_s}
@@ -138,7 +145,7 @@ class PydanticAiPolicy:
         )
 
     async def decide(self, observation: Observation, rules: AgentRules) -> DecisionAttempt:
-        system = system_instruction(rules, observation.agent_id)
+        system = system_instruction(rules, observation.agent_id, self.prompt_version)
         blocks = user_blocks(observation)
         request_text = self.request_text(system, blocks)
         if (too_big := check_prompt(self.config, system, blocks)) is not None:

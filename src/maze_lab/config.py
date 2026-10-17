@@ -126,7 +126,7 @@ class RunConfig(Contract):
     rules: RulesConfig = RulesConfig()
     timing: TimingConfig = TimingConfig()
     horizon_ticks: int = Field(default=500, gt=0)  # when omitted, resolved from maze size
-    prompt_version: str = "maze_agent_v3"
+    prompt_version: str = "maze_agent_v4"
     max_provider_requests_per_turn: Literal[1] = 1
     snapshot_interval_ticks: int = Field(default=25, gt=0)
 

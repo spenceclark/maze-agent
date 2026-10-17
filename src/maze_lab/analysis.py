@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from maze_lab.agent_contracts import Contract
 from maze_lab.batch import ExperimentSpec
 from maze_lab.persistence.store import RunStore
+from maze_lab.transcript import build_transcripts
 
 CI_LEVEL = 0.95
 
@@ -40,6 +41,36 @@ class RunOutcome(Contract):
     cost_usd: float | None
     input_tokens: int | None
     output_tokens: int | None
+    # Stall measures (spec §15.2 is silent on these; they track the dominant failure seen in pilots)
+    mean_progress: float  # per agent: fraction of its spawn-to-exit path distance closed at its best
+    ticks_since_new_cell: float | None  # agents that never exited: ticks since they last entered a new cell
+    stays_before_exit: int  # deliberate STAYs taken before each agent's first exit (whole run if none)
+
+
+def _agent_trajectory_measures(store: RunStore, run_id: str) -> tuple[float, float | None, int]:
+    maze = store.maze(run_id)
+    dist = maze.path_lengths_from(maze.exit)
+    progress: list[float] = []
+    stalled: list[float] = []
+    stays = 0
+    for entries in build_transcripts(store, run_id).values():
+        if not entries:
+            continue
+        start = dist[entries[0].spectator.position_before]
+        best = min([start] + [dist[e.spectator.position_after] for e in entries])
+        progress.append(1.0 if start == 0 else (start - best) / start)
+        seen = {entries[0].spectator.position_before}
+        last_new = 0
+        for e in entries:
+            if e.spectator.position_after not in seen:
+                seen.add(e.spectator.position_after)
+                last_new = e.tick
+            exited_before = e.spectator.first_exit_tick is not None and e.spectator.first_exit_tick < e.tick
+            if e.outcome.movement.outcome == "stayed" and not exited_before:
+                stays += 1
+        if entries[-1].spectator.first_exit_tick is None:
+            stalled.append(float(entries[-1].tick - last_new))
+    return fmean(progress), (fmean(stalled) if stalled else None), stays
 
 
 def _mean_or_none(values: list[float | None]) -> float | None:
@@ -59,6 +90,7 @@ def collect_outcomes(store: RunStore, spec: ExperimentSpec) -> list[RunOutcome]:
         m = commit.metrics
         agents = list(m.agents.values())
         costs = [a.estimated_cost_usd for a in agents]
+        progress, stalled, stays = _agent_trajectory_measures(store, run_id)
         outcomes.append(
             RunOutcome(
                 run_id=run_id,
@@ -81,6 +113,9 @@ def collect_outcomes(store: RunStore, spec: ExperimentSpec) -> list[RunOutcome]:
                 else None,
                 input_tokens=sum(a.input_tokens or 0 for a in agents),
                 output_tokens=sum(a.output_tokens or 0 for a in agents),
+                mean_progress=progress,
+                ticks_since_new_cell=stalled,
+                stays_before_exit=stays,
             )
         )
     return outcomes
@@ -95,6 +130,9 @@ METRICS: dict[str, MetricFn] = {
         None if o.completion_tick is None else float(o.completion_tick)
     ),
     "path_efficiency (exited agents)": lambda o: o.mean_path_efficiency,
+    "progress_to_exit": lambda o: o.mean_progress,
+    "ticks_since_new_cell (non-exited)": lambda o: o.ticks_since_new_cell,
+    "stays_before_exit": lambda o: float(o.stays_before_exit),
     "coverage": lambda o: o.coverage,
     "revisit_fraction": lambda o: o.mean_revisit_fraction,
     "blocked_moves": lambda o: float(o.blocked_moves),

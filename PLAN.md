@@ -13,6 +13,8 @@ Decisions recorded:
 - Prompt `maze_agent_v3`: rules add that straight-line distance ignores walls, so a local minimum can be a dead
   end. An omitted `horizon_ticks` now scales with maze area (500 for 15×15, 320 for 12×12, 109 for 7×7), and run
   creation warns when the horizon is below the omniscient minimum for that maze.
+- Prompt `maze_agent_v4` (default): rules add a junction-tracking habit. v3 and v4 are both runnable, so
+  batches can compare prompt versions as conditions.
 - Deferred to phase 6 (config rejects non-default values until then): landmarks, checkpoints, distance-sensor variants.
 
 ## Phase 1 — Contracts and pure engine

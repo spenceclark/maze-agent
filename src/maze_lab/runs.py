@@ -28,7 +28,7 @@ from maze_lab.persistence.store import RunStore
 from maze_lab.policies.base import AgentPolicy
 from maze_lab.policies.baselines import make_baseline
 from maze_lab.policies.preflight import preflight
-from maze_lab.policies.prompt import PROMPT_VERSION
+from maze_lab.policies.prompt import PROMPT_MEMORY_NOTES
 from maze_lab.policies.pydantic_ai_adapter import ADAPTER_VERSION, PydanticAiPolicy
 
 log = logging.getLogger(__name__)
@@ -56,8 +56,11 @@ def _lock_hash() -> str | None:
 
 def create_run(store: RunStore, config: RunConfig, run_id: str | None = None) -> RunSummary:
     """Validate the config and fixture, then journal `run.created` and tick 0."""
-    if config.prompt_version != PROMPT_VERSION:
-        raise ValueError(f"unknown prompt_version {config.prompt_version!r}")
+    if config.prompt_version not in PROMPT_MEMORY_NOTES:
+        raise ValueError(
+            f"prompt_version {config.prompt_version!r} is not runnable; "
+            f"use one of {sorted(PROMPT_MEMORY_NOTES)}"
+        )
     preflight(config)
     run_id = run_id or uuid.uuid4().hex[:12]
     now = datetime.now(UTC)
@@ -152,5 +155,7 @@ def build_policies(config: RunConfig) -> dict[AgentId, AgentPolicy]:
         if agent.kind == "baseline":
             policies[agent.id] = make_baseline(agent.policy, baseline_sampler(config.root_seed, agent.id))
         else:
-            policies[agent.id] = PydanticAiPolicy(agent, timeout_s=config.timing.decision_window_ms / 1000)
+            policies[agent.id] = PydanticAiPolicy(
+                agent, timeout_s=config.timing.decision_window_ms / 1000, prompt_version=config.prompt_version
+            )
     return policies
