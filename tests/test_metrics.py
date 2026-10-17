@@ -76,11 +76,17 @@ def test_path_efficiency_only_for_finishers():
 
 
 def test_meeting_episodes():
-    # A walks onto staying B, leaves, comes back: two episodes, two co-located ticks.
-    # Tick 4: A and B swap cells, which is not a meeting.
-    ticks = [*moves("A", "E", "W", "E"), {"A": act(4, "W"), "B": act(4, "E")}]
+    # Tick 1: adjacent A and B swap cells, which is not a meeting.
+    # Tick 2: B walks onto staying A (meet); tick 3 A leaves; tick 4 A comes back (meet).
+    ticks: list[Tick] = [
+        {"A": act(1, "E"), "B": act(1, "W")},
+        {"B": act(2, "E")},
+        {"A": act(3, "E")},
+        {"A": act(4, "W")},
+    ]
     tracker, results = play(OPEN, ticks)
-    assert results[-1].state.agent("A").position == P(0, 0)
+    assert results[0].state.agent("A").position == P(1, 0) and results[0].state.meetings == []
+    assert results[-1].state.agent("A").position == P(1, 0)
     m = tracker.snapshot().meetings
     assert (m["A-B"].colocated_ticks, m["A-B"].episodes) == (2, 2)
     assert (m["A-C"].colocated_ticks, m["B-C"].episodes) == (0, 0)
