@@ -391,6 +391,10 @@ export interface components {
             provider_requests: number;
             /** Estimated Cost Usd */
             estimated_cost_usd: number | null;
+            /** Cache Read Tokens */
+            cache_read_tokens?: number | null;
+            /** Cache Write Tokens */
+            cache_write_tokens?: number | null;
         };
         /**
          * AgentRules
@@ -426,6 +430,11 @@ export interface components {
             checkpoint_labels: string[];
             /** Max Provider Requests Per Turn */
             max_provider_requests_per_turn: number;
+            /**
+             * Landmarks Enabled
+             * @default false
+             */
+            landmarks_enabled: boolean;
         };
         /** AgentState */
         AgentState: {
@@ -704,6 +713,15 @@ export interface components {
             /** Duration Ms */
             duration_ms: number | null;
         };
+        /**
+         * Landmark
+         * @description A fixed label on one cell, visible only to an agent standing there (spec §4.4).
+         */
+        Landmark: {
+            position: components["schemas"]["Position"];
+            /** Label */
+            label: string;
+        };
         /** LlmAgentConfig */
         LlmAgentConfig: {
             /**
@@ -742,6 +760,11 @@ export interface components {
             output_mode: "tool" | "native" | "prompted";
             /** Context Window Tokens */
             context_window_tokens: number;
+            /**
+             * Context Bytes Per Token
+             * @default 1.5
+             */
+            context_bytes_per_token: number;
             /** @default {} */
             sampling: components["schemas"]["Sampling"];
             /**
@@ -797,6 +820,8 @@ export interface components {
             /** Spawns */
             spawns: components["schemas"]["Position"][];
             generator: components["schemas"]["GeneratorInfo"];
+            /** Landmarks */
+            landmarks?: components["schemas"]["Landmark"][];
             /** Maze Hash */
             maze_hash: string;
         };
@@ -838,9 +863,8 @@ export interface components {
             /**
              * Landmark Count
              * @default 0
-             * @constant
              */
-            landmark_count: 0;
+            landmark_count: number;
             /**
              * Checkpoint Count
              * @default 0
@@ -1296,7 +1320,7 @@ export interface components {
             horizon_ticks: number;
             /**
              * Prompt Version
-             * @default maze_agent_v1
+             * @default maze_agent_v4
              */
             prompt_version: string;
             /**
@@ -1547,6 +1571,10 @@ export interface components {
             output_tokens?: number | null;
             /** Reasoning Tokens */
             reasoning_tokens?: number | null;
+            /** Cache Read Tokens */
+            cache_read_tokens?: number | null;
+            /** Cache Write Tokens */
+            cache_write_tokens?: number | null;
             /**
              * Requests
              * @default 0

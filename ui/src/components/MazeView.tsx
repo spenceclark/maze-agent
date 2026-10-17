@@ -46,12 +46,14 @@ export function MazeView({ maze, state, trails }: Props) {
     state.agents.filter((a) => a.position.x === x && a.position.y === y).map((a) => a.agent_id);
 
   const isExit = (c: { x: number; y: number }) => c.x === maze.exit.x && c.y === maze.exit.y;
+  const landmarks = new Map((maze.landmarks ?? []).map((l) => [`${l.position.x},${l.position.y}`, l.label]));
 
   const label = (cell: CellDef) => {
     const edges = SIDES.map((s) => `${s} ${cell[s].replace("_", " ")}`).join(", ");
     const agents = agentsAt(cell.x, cell.y);
     const who = agents.length ? `agents ${agents.join(", ")}` : "no agents";
-    return `x ${cell.x}, y ${cell.y}${isExit(cell) ? ", exit" : ""}: ${edges}; ${who}`;
+    const landmark = landmarks.get(`${cell.x},${cell.y}`);
+    return `x ${cell.x}, y ${cell.y}${isExit(cell) ? ", exit" : ""}${landmark ? `, landmark ${landmark}` : ""}: ${edges}; ${who}`;
   };
 
   const onKeyDown = (e: KeyboardEvent) => {
@@ -116,6 +118,17 @@ export function MazeView({ maze, state, trails }: Props) {
         <text className="exit-label" x={center(maze.exit.x)} y={center(maze.exit.y) + CELL / 2 - 5} aria-hidden>
           EXIT
         </text>
+
+        <g aria-hidden>
+          {[...landmarks].map(([key, name]) => {
+            const [x, y] = key.split(",").map(Number);
+            return (
+              <text key={key} className="landmark-label" x={center(x)} y={PAD + y * CELL + 9}>
+                {"◆ " + name}
+              </text>
+            );
+          })}
+        </g>
 
         <g aria-hidden>
           {maze.cells.flatMap((cell) =>

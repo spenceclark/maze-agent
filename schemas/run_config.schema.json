@@ -216,8 +216,8 @@
           "type": "string"
         },
         "landmark_count": {
-          "const": 0,
           "default": 0,
+          "minimum": 0,
           "title": "Landmark Count",
           "type": "integer"
         },

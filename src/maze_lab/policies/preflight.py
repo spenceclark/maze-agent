@@ -96,7 +96,7 @@ def _worst_case_observation(rules: AgentRules, agent_id: AgentId, horizon: int) 
 
 def preflight(config: RunConfig) -> None:
     """Raise ValueError if any LLM agent's context cannot hold the worst-case turn."""
-    rules = public_rules(config.rules)
+    rules = public_rules(config.rules, config.maze.landmark_count > 0)
     for agent in config.agents:
         if agent.kind != "llm":
             continue

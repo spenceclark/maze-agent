@@ -207,6 +207,7 @@ class AgentRules(Contract):
     meeting_notebooks_enabled: bool
     checkpoint_labels: list[str]
     max_provider_requests_per_turn: int = Field(ge=1)
+    landmarks_enabled: bool = False  # positions and labels are never public
 
 
 class InvalidActionError(ValueError):

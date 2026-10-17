@@ -7,18 +7,24 @@ Algorithm, fixed for this version:
    listed row-major with E before S for each cell.
 3. `exit` stream: uniform perimeter cell, row-major order.
 4. `spawns` stream: three distinct non-exit cells, row-major order, assigned A, B, C.
+5. `landmarks` stream: distinct cells (any cell, row-major order); `landmark-labels` stream:
+   distinct labels from the fixed vocabulary. Separate streams, so turning landmarks on
+   changes nothing else about the maze.
 """
 
 from maze_lab.agent_contracts import OPPOSITE, Direction
+from maze_lab.config import LANDMARK_LABELS
 from maze_lab.domain.geometry import DIRECTIONS, Position
-from maze_lab.domain.maze import GeneratorInfo, MazeDefinition, build_maze
+from maze_lab.domain.maze import GeneratorInfo, Landmark, MazeDefinition, build_maze
 from maze_lab.domain.rng import PRNG_VERSION, SeededStream
 
 GENERATOR_NAME = "dfs_v1"
 FORWARD: tuple[Direction, ...] = ("E", "S")  # lists each interior edge once
 
 
-def generate_maze(root_seed: int, width: int, height: int, extra_open_edges: int = 0) -> MazeDefinition:
+def generate_maze(
+    root_seed: int, width: int, height: int, extra_open_edges: int = 0, landmark_count: int = 0
+) -> MazeDefinition:
     cells = [Position(x=x, y=y) for y in range(height) for x in range(width)]
 
     def in_bounds(p: Position) -> bool:
@@ -61,7 +67,10 @@ def generate_maze(root_seed: int, width: int, height: int, extra_open_edges: int
         root_seed=root_seed,
         extra_open_edges=sorted(loops, key=_edge_key),
     )
-    return build_maze(width, height, [*tree, *loops], exit, spawns, info)
+    spots = SeededStream(root_seed, "landmarks").sample(cells, landmark_count)
+    labels = SeededStream(root_seed, "landmark-labels").sample(LANDMARK_LABELS, landmark_count)
+    landmarks = [Landmark(position=p, label=label) for p, label in zip(spots, labels, strict=True)]
+    return build_maze(width, height, [*tree, *loops], exit, spawns, info, landmarks)
 
 
 def _edge_key(edge: tuple[Position, Direction]) -> tuple[int, int, str]:

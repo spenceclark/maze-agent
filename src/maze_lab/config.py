@@ -14,6 +14,15 @@ LlmOutputMode = Literal["tool", "native", "prompted"]
 TimingMode = Literal["fixed_deadline", "barrier", "manual"]
 
 
+# Landmark labels: neutral, unique object names with no order or position meaning (spec §4.4).
+LANDMARK_LABELS: tuple[str, ...] = (
+    "anchor", "anvil", "barrel", "basket", "bell", "bench", "cactus", "candle", "clock", "dice",
+    "drum", "easel", "feather", "flag", "fountain", "globe", "guitar", "harp", "helmet", "kettle",
+    "key", "ladder", "lamp", "lantern", "map", "mask", "mirror", "owl", "piano", "picture",
+    "quilt", "rope", "shield", "statue", "teapot", "tree", "umbrella", "vase", "violin", "wheel",
+)  # fmt: skip
+
+
 class MazeSettings(Contract):
     width: int = Field(default=15, ge=2)
     height: int = Field(default=15, ge=2)
@@ -21,13 +30,15 @@ class MazeSettings(Contract):
     extra_open_edges: int = Field(default=0, ge=0)
     exit_policy: Literal["uniform_perimeter_cell"] = "uniform_perimeter_cell"
     spawn_policy: Literal["uniform_distinct_non_exit"] = "uniform_distinct_non_exit"
-    landmark_count: Literal[0] = 0  # landmarks: phase 6
+    landmark_count: int = Field(default=0, ge=0)
     checkpoint_count: Literal[0] = 0  # checkpoints: phase 6
 
     @model_validator(mode="after")
     def _room_for_spawns(self) -> Self:
         if self.width * self.height < 4:
             raise ValueError("need at least four cells for three distinct non-exit spawns")
+        if self.landmark_count > min(self.width * self.height, len(LANDMARK_LABELS)):
+            raise ValueError(f"landmark_count must be at most {len(LANDMARK_LABELS)} and the number of cells")
         return self
 
 

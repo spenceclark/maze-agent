@@ -31,6 +31,13 @@ class GeneratorInfo(Contract):
     extra_open_edges: list[tuple[Position, Direction]]
 
 
+class Landmark(Contract):
+    """A fixed label on one cell, visible only to an agent standing there (spec §4.4)."""
+
+    position: Position
+    label: str
+
+
 class MazeDefinition(Contract):
     version: Literal["1.0"] = "1.0"
     width: int = Field(ge=2)
@@ -39,7 +46,11 @@ class MazeDefinition(Contract):
     exit: Position
     spawns: list[Position] = Field(min_length=3, max_length=3)  # A, B, C
     generator: GeneratorInfo
+    landmarks: list[Landmark] = Field(default_factory=list)  # sorted by position; distinct cells, labels
     maze_hash: str
+
+    def landmarks_at(self, p: Position) -> list[str]:
+        return sorted(lm.label for lm in self.landmarks if lm.position == p)
 
     def in_bounds(self, p: Position) -> bool:
         return 0 <= p.x < self.width and 0 <= p.y < self.height
@@ -89,13 +100,21 @@ class MazeDefinition(Contract):
         reachable = self.path_lengths_from(self.exit)
         if not all(s in reachable for s in self.spawns):
             raise ValueError("exit must be reachable from every spawn")
+        spots = [lm.position for lm in self.landmarks]
+        labels = [lm.label for lm in self.landmarks]
+        if len(set(spots)) != len(spots) or len(set(labels)) != len(labels):
+            raise ValueError("landmarks must sit on distinct cells with distinct labels")
+        if not all(self.in_bounds(p) for p in spots):
+            raise ValueError("landmarks must be in bounds")
         if self.maze_hash != _hash_body(self):
             raise ValueError("maze_hash does not match content")
         return self
 
 
 def _hash_body(maze: MazeDefinition) -> str:
-    return content_hash(maze.model_dump(mode="json", exclude={"maze_hash"}))
+    # An empty landmark list is left out so mazes stored before landmarks existed keep their hashes.
+    excluded = {"maze_hash"} | (set() if maze.landmarks else {"landmarks"})
+    return content_hash(maze.model_dump(mode="json", exclude=excluded))
 
 
 def build_maze(
@@ -105,6 +124,7 @@ def build_maze(
     exit: Position,
     spawns: list[Position],
     generator: GeneratorInfo,
+    landmarks: list[Landmark] | None = None,
 ) -> MazeDefinition:
     """Assemble a validated maze from the set of open interior edges."""
     opened: set[tuple[Position, Direction]] = set()
@@ -134,6 +154,7 @@ def build_maze(
         "exit": exit,
         "spawns": spawns,
         "generator": generator,
+        "landmarks": sorted(landmarks or [], key=lambda lm: (lm.position.y, lm.position.x)),
     }
     draft = MazeDefinition.model_construct(**body, maze_hash="")
     return MazeDefinition(**body, maze_hash=_hash_body(draft))

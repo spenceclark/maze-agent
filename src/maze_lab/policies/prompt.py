@@ -27,6 +27,11 @@ PROMPT_MEMORY_NOTES: dict[str, str] = {
         " you come back."
     ),
 }
+_LANDMARK_NOTE = (
+    '\n- Some cells carry a landmark: local.landmarks lists the label (for example "clock") of any'
+    " landmark on your cell. Each label is unique and fixed to one cell, and you see it only while"
+    " standing there."
+)
 _NOTEBOOKS = TypeAdapter(list[Notebook])
 
 _SYSTEM = """\
@@ -41,7 +46,7 @@ WORLD
 - Each turn you see the four edges of your current cell: "open" (you can move through), \
 "interior_wall" (an internal wall), or "outer_brick" (the maze's outer boundary; brick appears only \
 there).
-- local.is_exit tells you whether you are standing on the exit.
+- local.is_exit tells you whether you are standing on the exit.{landmark_note}
 - exit_distance_tenths and peer_ranges give straight-line (Euclidean) distances in tenths of a cell, \
 ignoring walls. They are not path lengths and carry no direction. Because walls are ignored, a cell \
 where every move raises the reading can be a dead end, and the path to the exit may first lead away from it.
@@ -89,6 +94,7 @@ def system_instruction(rules: AgentRules, agent_id: str, version: str = PROMPT_V
         cooldown=rules.radio_cooldown_ticks,
         radio_note="" if rules.radio_enabled else " Radio is disabled in this condition.",
         memory_note=PROMPT_MEMORY_NOTES[version],
+        landmark_note=_LANDMARK_NOTE if rules.landmarks_enabled else "",
     )
 
 

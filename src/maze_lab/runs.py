@@ -64,9 +64,8 @@ def create_run(store: RunStore, config: RunConfig, run_id: str | None = None) ->
     preflight(config)
     run_id = run_id or uuid.uuid4().hex[:12]
     now = datetime.now(UTC)
-    maze = generate_maze(
-        config.root_seed, config.maze.width, config.maze.height, config.maze.extra_open_edges
-    )
+    m = config.maze
+    maze = generate_maze(config.root_seed, m.width, m.height, m.extra_open_edges, m.landmark_count)
     state = initial_state(maze)
     state_hash = content_hash(state)
     metrics = MetricsTracker(maze, state, config.rules).snapshot()

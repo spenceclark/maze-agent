@@ -20,7 +20,7 @@ from maze_lab.domain.radio import next_eligible_tick
 from maze_lab.domain.state import WorldState
 
 
-def public_rules(rules: RulesConfig) -> AgentRules:
+def public_rules(rules: RulesConfig, landmarks_enabled: bool = False) -> AgentRules:
     return AgentRules(
         version=rules.version,
         agent_ids=list(AGENT_IDS),
@@ -35,6 +35,7 @@ def public_rules(rules: RulesConfig) -> AgentRules:
         meeting_notebooks_enabled=rules.meeting_notebooks_enabled,
         checkpoint_labels=[],
         max_provider_requests_per_turn=1,
+        landmarks_enabled=landmarks_enabled,
     )
 
 
@@ -59,7 +60,7 @@ def observe(maze: MazeDefinition, rules: RulesConfig, state: WorldState, agent_i
             south=cell.south,
             west=cell.west,
             is_exit=me.position == maze.exit,
-            landmarks=[],
+            landmarks=maze.landmarks_at(me.position),
             checkpoints=[],
         ),
         exit_distance_tenths=distance_tenths(me.position, maze.exit),

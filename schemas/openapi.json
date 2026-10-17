@@ -1604,6 +1604,11 @@
             "type": "integer",
             "minimum": 1.0,
             "title": "Max Provider Requests Per Turn"
+          },
+          "landmarks_enabled": {
+            "type": "boolean",
+            "title": "Landmarks Enabled",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -2433,6 +2438,25 @@
         "title": "InvocationRecord",
         "description": "Ledger entry for one policy invocation. Written outside the tick transaction."
       },
+      "Landmark": {
+        "properties": {
+          "position": {
+            "$ref": "#/components/schemas/Position"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "position",
+          "label"
+        ],
+        "title": "Landmark",
+        "description": "A fixed label on one cell, visible only to an agent standing there (spec \u00a74.4)."
+      },
       "LlmAgentConfig": {
         "properties": {
           "id": {
@@ -2650,6 +2674,13 @@
           "generator": {
             "$ref": "#/components/schemas/GeneratorInfo"
           },
+          "landmarks": {
+            "items": {
+              "$ref": "#/components/schemas/Landmark"
+            },
+            "type": "array",
+            "title": "Landmarks"
+          },
           "maze_hash": {
             "type": "string",
             "title": "Maze Hash"
@@ -2708,7 +2739,7 @@
           },
           "landmark_count": {
             "type": "integer",
-            "const": 0,
+            "minimum": 0.0,
             "title": "Landmark Count",
             "default": 0
           },

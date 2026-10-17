@@ -84,7 +84,7 @@ class Coordinator:
         self.on_commit = on_commit
         self.config = store.config(run_id)
         self.maze = store.maze(run_id)
-        self.agent_rules = public_rules(self.config.rules)
+        self.agent_rules = public_rules(self.config.rules, self.config.maze.landmark_count > 0)
         self.generation = 0
         self.sequence = 0
         self.status: RunStatus = "created"

@@ -74,6 +74,11 @@
       "minimum": 1,
       "title": "Max Provider Requests Per Turn",
       "type": "integer"
+    },
+    "landmarks_enabled": {
+      "default": false,
+      "title": "Landmarks Enabled",
+      "type": "boolean"
     }
   },
   "required": [

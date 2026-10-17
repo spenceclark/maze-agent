@@ -15,7 +15,7 @@ Decisions recorded:
   creation warns when the horizon is below the omniscient minimum for that maze.
 - Prompt `maze_agent_v4` (default): rules add a junction-tracking habit. v3 and v4 are both runnable, so
   batches can compare prompt versions as conditions.
-- Deferred to phase 6 (config rejects non-default values until then): landmarks, checkpoints, distance-sensor variants.
+- Deferred to phase 6 (config rejects non-default values until then): checkpoints, distance-sensor variants.
 
 ## Phase 1 — Contracts and pure engine
 - [x] uv project scaffold, ruff config
@@ -77,7 +77,9 @@ operator pause/step/resume). 11 vitest tests cover live follow, seek, duplicate 
   spec-hash guard (`maze-lab batch`); bootstrap report by seed with paired differences (`maze-lab report`)
 - [ ] LangChain adapter
 - [ ] Cooperative / frontier baselines
-- [ ] Remaining ablation variants (landmarks, checkpoints, sensor variants)
+- [x] Landmarks: `maze.landmark_count`, seeded placement on a separate stream (maze unchanged), unique labels,
+  visible on the current cell only, rules sentence when enabled, drawn in the viewer
+- [ ] Remaining ablation variants (checkpoints, sensor variants)
 
 ## Next (not started)
 - Phase 7: PostgreSQL / separate coordinator, retention jobs, remote auth hardening.

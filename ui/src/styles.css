@@ -377,3 +377,11 @@ td.message {
 .events li.error {
   color: #b91c1c;
 }
+
+.landmark-label {
+  font-size: 7px;
+  text-anchor: middle;
+  fill: #6b4fa0;
+  font-weight: 600;
+  pointer-events: none;
+}
