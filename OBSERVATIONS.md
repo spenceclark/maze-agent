@@ -16,7 +16,8 @@ Batches use 3 seeds, so intervals are wide.
 | 5 | Cells all look alike, and routes told "from my spawn" are useless to anyone else | Landmarks: 10 unique labels on fixed cells | Used as place names ("north corridor above mirror is exhausted"). Best progress toward the exit +6.5 points | **No more agents exited.** Landmarks were rarely shared (10 of 155 radio messages) |
 | 6 | All of the above | **Swap model:** Sonnet 5.5 with no prompt changes (1 single run, then a 6-run batch) | Teams met the objective in **3 of 6** batch runs, against 0 of 12 for Haiku. 85% of agents reached the exit, against 36%. Far fewer back-and-forth moves (1.8 vs 4.3 per agent) and no waiting | Cost ~16–20×. **Landmarks didn't matter for Sonnet** (2 of 3 succeeded without them, 1 of 3 with). The model, not the scaffolding, made the difference |
 | 7a | Can context alone push Haiku into Sonnet's habits? | Prompt v5: spell out coordinates, exit estimation and landmark-anchored routes | **Adopted in form by 100% of agents** (0% before); 83% estimated the exit's position | **Progress got worse (−0.10).** The coordinates drifted (only 28% of noted positions correct), and agents then distrusted their own maps |
-| 7b | Is it a matter of reasoning budget? | Higher thinking effort (`effort: high`), with v4 and with v5 | **Haiku's first team successes: 2 of 12 runs.** +0.5 agents reaching the exit per run. With v5, coordinates were more accurate (42%) | The extra thinking overflowed the 2,048-token cap: 34 and 74 cut-off decisions became forced STAYs. Cost +40–57% (still ~10× cheaper than Sonnet) |
+| 7b | Is it a matter of reasoning budget? | Higher thinking effort (`effort: high`), with v4 and with v5 | Haiku's first team successes: 2 of 12 runs, both on the easiest seed. +0.5 agents reaching the exit per run. With v5, coordinates were more accurate (42%) | The extra thinking overflowed the 2,048-token cap: 34 and 74 cut-off decisions became forced STAYs. Cost +40–57% |
+| 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
 - **Notebook use from turn one:** concise journals, one line per turn.
@@ -27,14 +28,17 @@ Batches use 3 seeds, so intervals are wide.
 - **Checking a peer's claim with its sensors:** "My exit dist 3.2 equals my range to A, so A on exit is
   consistent".
 
-**Model or context?** So far it looks like both, in layers.
-- **Telling Haiku what to do** (v3, v4, v5) reliably changes what it writes, and changes how it explores
-  somewhat.
-- **Doing it accurately needs reasoning budget or a stronger model.** Haiku can work out where the exit is,
-  but can't keep a coordinate frame straight for 20 moves at default effort.
-- **More thinking narrows the gap** (2 of 12 successes against 0 of 24 at default effort), but runs into the
-  output cap.
-- **Sonnet does it at default settings** (3 of 6).
+**Model or context? Mostly the model.**
+- **Context changes what Haiku writes and does.** Each nudge (v3, v4, v5, landmarks) was adopted, often by
+  every agent, and moved exploration metrics.
+- **None turned into reaching the exit.** On the 12×12, 80-tick setup, 2 of 78 Haiku batch runs met the team
+  objective, across every prompt, effort and cap variant.
+- **Sonnet did it at default settings:** 3 of 6 in the batch, plus 1 single run.
+- **More thinking didn't close the gap.** At an 8,192-token cap Haiku wrote ~550 output tokens per decision,
+  Sonnet ~225; Haiku's coordinates stayed under 50% correct, against ~98% for Sonnet agents tracking from their
+  start.
+- **What Haiku lacks:** precise state-tracking (dead reckoning over 20+ moves) and decisive exploration. It
+  doesn't lack strategy: it can be told the right strategy, and it complies.
 
 **What Haiku almost never did without explicit help:**
 - **Keep coordinates.** 0–17% of agents, and only the weakest form.
@@ -690,6 +694,37 @@ Both successes were on seed 102, the easiest maze: the slowest spawn needs 33 mo
 stay the agent's job. The next test is cheap: high effort with a larger output cap (say 8,192), to see how much
 of the gap closes once thinking isn't cut off. If it closes most of it, the story is less "Haiku can't" than
 "Haiku needs room to think, and the default budget hides that".
+
+## Batch: high effort with an 8,192-token cap, 12 runs (`experiments/haiku_high_8k.json`)
+These are the `haiku_pattern` high-effort conditions (v4 and v5, `effort: high`, 10 landmarks, 12×12, 80 ticks,
+same seeds and replicates), with `max_output_tokens` raised from 2,048 to 8,192 so thinking is no longer cut
+off. Full table: `reports/haiku_high_8k.md`. The table below sets every condition on these seeds side by side;
+the rows come from different experiments, but configs match apart from the stated change.
+
+| Condition | Team success | Agents exited | Progress | Forced STAYs per run | Output tokens per decision (median / p90 / max) | Latency p50 / p90 | Coordinates correct | Cost per run |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Haiku v4, medium effort, 2k cap | 0 / 6 | 1.17 | 0.73 | 0.0 | 373 / 600 / 1,501 | 2.6 / 3.9 s | — | $0.083 |
+| Haiku v5, medium, 2k | 0 / 6 | 1.00 | 0.63 | 0.5 | 379 / 684 / 2,048 | 2.6 / 4.2 s | 28% | $0.083 |
+| Haiku v4, high, 2k | 1 / 6 | 1.67 | 0.79 | 5.7 | 516 / 1,013 / 2,048 | 3.3 / 5.9 s | — | $0.117 |
+| Haiku v5, high, 2k | 1 / 6 | 1.67 | 0.73 | 12.3 | 560 / 1,446 / 2,048 | 3.5 / 7.8 s | 42% | $0.130 |
+| **Haiku v4, high, 8k** | **0 / 6** | 1.17 | 0.68 | 0.5 | 545 / 1,206 / 8,192 | 3.3 / 6.5 s | — | $0.140 |
+| **Haiku v5, high, 8k** | **0 / 6** | 1.67 | 0.75 | 0.2 | 553 / 1,312 / 8,192 | 3.3 / 6.9 s | 46% | $0.132 |
+| Sonnet v4 + landmarks, default effort, 2k | 1 / 3 | 2.33 | 0.90 | 0.7 | 221 / 432 / 2,048 | 3.0 / 4.8 s | (origin at a landmark) | $1.62 |
+| Sonnet v4, no landmarks | 2 / 3 | 2.67 | 0.98 | 0.0 | 227 / 414 / 1,516 | 3.0 / 4.6 s | 98% | $1.36 |
+
+"Coordinates correct" is the share of noted (x, y) positions that match the true offset from the agent's start.
+It is meaningless for agents that put the origin at a landmark, as the successful Sonnet runs often did.
+
+**Removing the cap removed the truncations, not the gap.** Forced STAYs fell to under one per run, but no
+8k-cap run met the objective, and exits and progress matched default-effort Haiku. The two 2k-cap high-effort
+successes were both on seed 102, the easiest maze. With no successes at 8k, they look like luck.
+
+**Haiku thinks more and does worse.** At high effort Haiku produced about 2.4× Sonnet's output per decision and
+still kept coordinates less than half right. Sonnet answered in about 225 tokens and, when tracking from its
+start, kept them about 98% right. Extra reasoning budget doesn't substitute for the stronger model's precision.
+
+**Cost per success.** Haiku spent about $9 across all 78 batch runs on this setup for 2 team successes. Sonnet
+spent about $9 on 6 batch runs for 3. At these prices the stronger model is the cheaper way to get a team out.
 
 ## Prompt caching (added after the pilot, prompt `maze_agent_v2`)
 The pilot sent each observation as one JSON blob, so no part of the prompt was reusable between ticks. Version 2
