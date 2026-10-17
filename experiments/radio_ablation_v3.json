@@ -1,0 +1,16 @@
+{
+  "name": "radio_ablation_v3",
+  "experiment_seed": 1,
+  "base_config_file": "../configs/pilot_haiku.json",
+  "base_config": {
+    "maze": {"width": 12, "height": 12},
+    "horizon_ticks": 80,
+    "prompt_version": "maze_agent_v3"
+  },
+  "seeds": [202611017, 101, 102],
+  "replicates": 3,
+  "conditions": {
+    "radio_on": {},
+    "radio_off": {"rules": {"radio_enabled": false, "radio_message_bytes": 0}}
+  }
+}

@@ -70,6 +70,12 @@ equivalent (needs the `websockets` package, now a dependency). Checked in a brow
 heard at decision 14, agent view, notebooks/diffs) and a live baseline run (follow, scrub without pausing,
 operator pause/step/resume). 11 vitest tests cover live follow, seek, duplicate delivery, and gap → resync.
 
+## Phase 6 — Comparative experiments (in progress)
+- [x] Paired batch runner: spec (conditions × seeds × replicates), seeded shuffled order, parallel, resumable,
+  spec-hash guard (`maze-lab batch`); bootstrap report by seed with paired differences (`maze-lab report`)
+- [ ] LangChain adapter
+- [ ] Cooperative / frontier baselines
+- [ ] Remaining ablation variants (landmarks, checkpoints, sensor variants)
+
 ## Next (not started)
-- Phase 6: LangChain adapter, cooperative/frontier baselines, ablation conditions, paired batch runner.
 - Phase 7: PostgreSQL / separate coordinator, retention jobs, remote auth hardening.

@@ -12,9 +12,12 @@ from typing import get_args
 from dotenv import find_dotenv, load_dotenv
 
 from maze_lab.agent_contracts import AGENT_IDS
+from maze_lab.analysis import analyse, render_markdown
+from maze_lab.batch import Cell, ExperimentSpec, cells, load_spec, run_batch
 from maze_lab.config import BaselineAgentConfig, BaselinePolicyName, RunConfig, TimingConfig, TimingMode
 from maze_lab.coordinator import Coordinator
 from maze_lab.export import export_run
+from maze_lab.persistence.models import RunSummary
 from maze_lab.persistence.store import RunStore
 from maze_lab.replay import verify_run
 from maze_lab.runs import build_policies, create_run
@@ -90,6 +93,14 @@ def main(argv: list[str] | None = None) -> int:
         ("show", "print a run's summary and latest metrics"),
     ):
         sub.add_parser(name, help=help_text).add_argument("run_id")
+    batch = sub.add_parser("batch", help="run (or resume) a paired experiment from a spec file")
+    batch.add_argument("spec", type=Path)
+    batch.add_argument("--parallel", type=int, default=2, help="runs at a time (default 2)")
+    batch.add_argument("--dry-run", action="store_true", help="validate and list the cells without running")
+    report = sub.add_parser("report", help="paired bootstrap comparison of an experiment's conditions")
+    report.add_argument("experiment", help="experiment name")
+    report.add_argument("--baseline", help="condition to compare against (default: the first)")
+    report.add_argument("--out", type=Path, help="also write the Markdown report here")
     transcript = sub.add_parser("transcript", help="write one JSONL file per agent, one line per turn")
     transcript.add_argument("run_id")
     transcript.add_argument("--out", type=Path, help="output directory (default: transcripts/<run_id>)")
@@ -138,6 +149,41 @@ def main(argv: list[str] | None = None) -> int:
                         "metrics": final.metrics.model_dump(mode="json") if final else None,
                     }
                 )
+            case "batch":
+                spec = load_spec(args.spec)
+                planned = cells(spec)
+                print(
+                    f"{spec.name}: {len(spec.conditions)} conditions x {len(spec.seeds)} seeds x "
+                    f"{spec.replicates} replicates = {len(planned)} runs",
+                    file=sys.stderr,
+                )
+                if args.dry_run:
+                    for cell in planned:
+                        print(f"  {cell.condition}  seed {cell.seed}  replicate {cell.replicate}")
+                    return 0
+
+                def progress(cell: Cell, summary: RunSummary | None, error: str | None) -> None:
+                    where = f"{cell.condition} seed {cell.seed} rep {cell.replicate}"
+                    if summary is None:
+                        print(f"FAILED {where}: {error}", file=sys.stderr)
+                    else:
+                        reason = summary.termination_reason
+                        print(
+                            f"done {where}: {summary.run_id} {reason} tick {summary.committed_tick}",
+                            file=sys.stderr,
+                        )
+
+                asyncio.run(run_batch(store, spec, parallel=args.parallel, progress=progress))
+            case "report":
+                stored = store.experiment_spec(args.experiment)
+                if stored is None:
+                    print(f"no such experiment: {args.experiment}", file=sys.stderr)
+                    return 1
+                result = analyse(store, ExperimentSpec.model_validate_json(stored), baseline=args.baseline)
+                text = render_markdown(result)
+                print(text)
+                if args.out:
+                    args.out.write_text(text, encoding="utf-8")
             case "transcript":
                 for path in write_transcripts(
                     store, args.run_id, args.out or Path("transcripts") / args.run_id

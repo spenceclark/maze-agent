@@ -1,0 +1,28 @@
+{
+  "name": "baselines_12x12",
+  "experiment_seed": 1,
+  "base_config": {
+    "maze": {"width": 12, "height": 12},
+    "agents": [
+      {"id": "A", "kind": "baseline", "policy": "dfs_bounded_v1"},
+      {"id": "B", "kind": "baseline", "policy": "dfs_bounded_v1"},
+      {"id": "C", "kind": "baseline", "policy": "dfs_bounded_v1"}
+    ],
+    "timing": {"mode": "barrier", "decision_window_ms": 5000}
+  },
+  "seeds": [202611017, 101, 102, 103, 104],
+  "replicates": 1,
+  "conditions": {
+    "dfs": {},
+    "wall_follower": {"agents": [
+      {"id": "A", "kind": "baseline", "policy": "wall_follower_v1"},
+      {"id": "B", "kind": "baseline", "policy": "wall_follower_v1"},
+      {"id": "C", "kind": "baseline", "policy": "wall_follower_v1"}
+    ]},
+    "random": {"agents": [
+      {"id": "A", "kind": "baseline", "policy": "random_open_v1"},
+      {"id": "B", "kind": "baseline", "policy": "random_open_v1"},
+      {"id": "C", "kind": "baseline", "policy": "random_open_v1"}
+    ]}
+  }
+}

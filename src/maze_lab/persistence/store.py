@@ -99,6 +99,20 @@ CREATE TABLE IF NOT EXISTS invocations (
     record_json TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS invocations_by_tick ON invocations (run_id, tick, agent_id);
+CREATE TABLE IF NOT EXISTS experiments (
+    name TEXT PRIMARY KEY,
+    spec_json TEXT NOT NULL,
+    spec_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS experiment_runs (
+    experiment TEXT NOT NULL,
+    condition TEXT NOT NULL,
+    seed INTEGER NOT NULL,
+    replicate INTEGER NOT NULL,
+    run_id TEXT NOT NULL,
+    PRIMARY KEY (experiment, condition, seed, replicate)
+);
 CREATE TABLE IF NOT EXISTS commands (
     command_id TEXT PRIMARY KEY,
     run_id TEXT NOT NULL,
@@ -263,6 +277,24 @@ class RunStore:
                 (receipt.model_dump_json(), receipt.command_id),
             )
 
+    def save_experiment(self, name: str, spec_json: str, spec_hash: str, created_at: datetime) -> str | None:
+        """Register an experiment; returns the stored hash if the name already exists."""
+        with self._tx() as db:
+            row = db.execute("SELECT spec_hash FROM experiments WHERE name = ?", (name,)).fetchone()
+            if row is not None:
+                return str(row[0])
+            db.execute(
+                "INSERT INTO experiments VALUES (?,?,?,?)",
+                (name, spec_json, spec_hash, created_at.isoformat()),
+            )
+            return None
+
+    def add_experiment_run(self, name: str, condition: str, seed: int, replicate: int, run_id: str) -> None:
+        with self._tx() as db:
+            db.execute(
+                "INSERT INTO experiment_runs VALUES (?,?,?,?,?)", (name, condition, seed, replicate, run_id)
+            )
+
     @staticmethod
     def _insert_events(db: sqlite3.Connection, events: Iterable[EventEnvelope]) -> None:
         db.executemany(
@@ -405,6 +437,17 @@ class RunStore:
     def commands(self, run_id: str) -> list[CommandReceipt]:
         rows = self._all("SELECT receipt_json FROM commands WHERE run_id = ? ORDER BY rowid", (run_id,))
         return [CommandReceipt.model_validate_json(r[0]) for r in rows]
+
+    def experiment_spec(self, name: str) -> str | None:
+        row = self._one("SELECT spec_json FROM experiments WHERE name = ?", (name,))
+        return str(row[0]) if row else None
+
+    def experiment_runs(self, name: str) -> dict[tuple[str, int, int], str]:
+        """(condition, seed, replicate) -> run_id."""
+        rows = self._all(
+            "SELECT condition, seed, replicate, run_id FROM experiment_runs WHERE experiment = ?", (name,)
+        )
+        return {(str(c), int(s), int(r)): str(run) for c, s, r, run in rows}
 
     def invocations(
         self, run_id: str, tick: int | None = None, agent_id: AgentId | None = None

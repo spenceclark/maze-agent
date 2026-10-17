@@ -22,6 +22,20 @@ uv run maze-lab export <run_id> run.zip                 # replay ZIP with checks
 uv run maze-lab transcript <run_id>                     # transcripts/<run_id>/{A,B,C}.jsonl, one line per turn
 ```
 
+## Experiments
+
+A spec crosses named conditions (config overrides) with seeds and replicates; every condition sees the same
+mazes, so comparisons are paired by seed. See `experiments/` for examples.
+
+```bash
+uv run maze-lab batch experiments/radio_ablation_v3.json --dry-run     # list the cells, no cost
+uv run maze-lab batch experiments/radio_ablation_v3.json --parallel 3  # run or resume
+uv run maze-lab report radio_ablation_v3 --baseline radio_on --out report.md
+```
+
+Reports give means with 95% bootstrap intervals, resampled by seed (by replicate if there is only one seed),
+plus paired differences from the baseline condition. Crashed or cancelled runs are excluded and listed.
+
 ## Spectator API
 
 ```bash
@@ -51,4 +65,5 @@ cd ui && npm run dev                     # dev server on :5173, proxies the API 
 - `src/maze_lab/metrics/` – ground-truth scoring
 - `src/maze_lab/replay.py`, `export.py`, `transcript.py`, `runs.py`, `cli.py` – replay, export, per-agent transcripts, run creation, CLI
 - `src/maze_lab/service.py`, `src/maze_lab/api/` – run ownership, commands, REST + SSE/WebSocket
+- `src/maze_lab/batch.py`, `analysis.py` – paired experiment batches and bootstrap reports
 - `ui/` – React + TypeScript spectator viewer
