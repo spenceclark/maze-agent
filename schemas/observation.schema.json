@@ -1,0 +1,433 @@
+{
+  "$defs": {
+    "ActionReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "tick": {
+          "minimum": 0,
+          "title": "Tick",
+          "type": "integer"
+        },
+        "movement": {
+          "$ref": "#/$defs/MovementReceipt"
+        },
+        "notebook": {
+          "$ref": "#/$defs/ComponentReceipt"
+        },
+        "radio": {
+          "$ref": "#/$defs/ComponentReceipt"
+        }
+      },
+      "required": [
+        "tick",
+        "movement",
+        "notebook",
+        "radio"
+      ],
+      "title": "ActionReceipt",
+      "type": "object"
+    },
+    "Budgets": {
+      "additionalProperties": false,
+      "properties": {
+        "notebook_cap_bytes": {
+          "minimum": 0,
+          "title": "Notebook Cap Bytes",
+          "type": "integer"
+        },
+        "notebook_insert_bytes": {
+          "minimum": 0,
+          "title": "Notebook Insert Bytes",
+          "type": "integer"
+        },
+        "radio_message_bytes": {
+          "minimum": 0,
+          "title": "Radio Message Bytes",
+          "type": "integer"
+        },
+        "radio_next_eligible_tick": {
+          "minimum": 1,
+          "title": "Radio Next Eligible Tick",
+          "type": "integer"
+        },
+        "radio_enabled": {
+          "title": "Radio Enabled",
+          "type": "boolean"
+        },
+        "notebook_enabled": {
+          "title": "Notebook Enabled",
+          "type": "boolean"
+        },
+        "allow_stay": {
+          "title": "Allow Stay",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "notebook_cap_bytes",
+        "notebook_insert_bytes",
+        "radio_message_bytes",
+        "radio_next_eligible_tick",
+        "radio_enabled",
+        "notebook_enabled",
+        "allow_stay"
+      ],
+      "title": "Budgets",
+      "type": "object"
+    },
+    "ComponentReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": [
+            "not_requested",
+            "accepted",
+            "rejected"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Code"
+        }
+      },
+      "required": [
+        "status",
+        "code"
+      ],
+      "title": "ComponentReceipt",
+      "type": "object"
+    },
+    "LocalCell": {
+      "additionalProperties": false,
+      "properties": {
+        "north": {
+          "enum": [
+            "open",
+            "interior_wall",
+            "outer_brick"
+          ],
+          "title": "North",
+          "type": "string"
+        },
+        "east": {
+          "enum": [
+            "open",
+            "interior_wall",
+            "outer_brick"
+          ],
+          "title": "East",
+          "type": "string"
+        },
+        "south": {
+          "enum": [
+            "open",
+            "interior_wall",
+            "outer_brick"
+          ],
+          "title": "South",
+          "type": "string"
+        },
+        "west": {
+          "enum": [
+            "open",
+            "interior_wall",
+            "outer_brick"
+          ],
+          "title": "West",
+          "type": "string"
+        },
+        "is_exit": {
+          "title": "Is Exit",
+          "type": "boolean"
+        },
+        "landmarks": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Landmarks",
+          "type": "array"
+        },
+        "checkpoints": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Checkpoints",
+          "type": "array"
+        }
+      },
+      "required": [
+        "north",
+        "east",
+        "south",
+        "west",
+        "is_exit",
+        "landmarks",
+        "checkpoints"
+      ],
+      "title": "LocalCell",
+      "type": "object"
+    },
+    "MovementReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "attempted": {
+          "anyOf": [
+            {
+              "enum": [
+                "N",
+                "E",
+                "S",
+                "W",
+                "STAY"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Attempted"
+        },
+        "outcome": {
+          "enum": [
+            "spawned",
+            "moved",
+            "blocked",
+            "stayed",
+            "forced_stay"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "arrived_from": {
+          "anyOf": [
+            {
+              "enum": [
+                "N",
+                "E",
+                "S",
+                "W"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Arrived From"
+        },
+        "cause": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cause"
+        }
+      },
+      "required": [
+        "attempted",
+        "outcome",
+        "arrived_from",
+        "cause"
+      ],
+      "title": "MovementReceipt",
+      "type": "object"
+    },
+    "Notebook": {
+      "additionalProperties": false,
+      "properties": {
+        "owner": {
+          "enum": [
+            "A",
+            "B",
+            "C"
+          ],
+          "title": "Owner",
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 0,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "utf8_bytes": {
+          "minimum": 0,
+          "title": "Utf8 Bytes",
+          "type": "integer"
+        },
+        "codepoints": {
+          "minimum": 0,
+          "title": "Codepoints",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "owner",
+        "revision",
+        "text",
+        "utf8_bytes",
+        "codepoints"
+      ],
+      "title": "Notebook",
+      "type": "object"
+    },
+    "PeerRange": {
+      "additionalProperties": false,
+      "properties": {
+        "agent_id": {
+          "enum": [
+            "A",
+            "B",
+            "C"
+          ],
+          "title": "Agent Id",
+          "type": "string"
+        },
+        "distance_tenths": {
+          "minimum": 0,
+          "title": "Distance Tenths",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "agent_id",
+        "distance_tenths"
+      ],
+      "title": "PeerRange",
+      "type": "object"
+    },
+    "RadioObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "sender": {
+          "enum": [
+            "A",
+            "B",
+            "C"
+          ],
+          "title": "Sender",
+          "type": "string"
+        },
+        "sent_tick": {
+          "minimum": 1,
+          "title": "Sent Tick",
+          "type": "integer"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sender",
+        "sent_tick",
+        "text"
+      ],
+      "title": "RadioObservation",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "agent_id": {
+      "enum": [
+        "A",
+        "B",
+        "C"
+      ],
+      "title": "Agent Id",
+      "type": "string"
+    },
+    "decision_tick": {
+      "minimum": 1,
+      "title": "Decision Tick",
+      "type": "integer"
+    },
+    "state_tick": {
+      "minimum": 0,
+      "title": "State Tick",
+      "type": "integer"
+    },
+    "has_reached_exit": {
+      "title": "Has Reached Exit",
+      "type": "boolean"
+    },
+    "local": {
+      "$ref": "#/$defs/LocalCell"
+    },
+    "exit_distance_tenths": {
+      "minimum": 0,
+      "title": "Exit Distance Tenths",
+      "type": "integer"
+    },
+    "peer_ranges": {
+      "items": {
+        "$ref": "#/$defs/PeerRange"
+      },
+      "title": "Peer Ranges",
+      "type": "array"
+    },
+    "last_action": {
+      "$ref": "#/$defs/ActionReceipt"
+    },
+    "notebook": {
+      "$ref": "#/$defs/Notebook"
+    },
+    "radio_inbox": {
+      "items": {
+        "$ref": "#/$defs/RadioObservation"
+      },
+      "title": "Radio Inbox",
+      "type": "array"
+    },
+    "colocated_notebooks": {
+      "items": {
+        "$ref": "#/$defs/Notebook"
+      },
+      "title": "Colocated Notebooks",
+      "type": "array"
+    },
+    "budgets": {
+      "$ref": "#/$defs/Budgets"
+    }
+  },
+  "required": [
+    "schema_version",
+    "agent_id",
+    "decision_tick",
+    "state_tick",
+    "has_reached_exit",
+    "local",
+    "exit_distance_tenths",
+    "peer_ranges",
+    "last_action",
+    "notebook",
+    "radio_inbox",
+    "colocated_notebooks",
+    "budgets"
+  ],
+  "title": "Observation",
+  "type": "object"
+}

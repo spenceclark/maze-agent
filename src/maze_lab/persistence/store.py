@@ -247,7 +247,13 @@ class RunStore:
         with self._tx() as db:
             db.execute(
                 "INSERT INTO commands VALUES (?,?,?,?,?)",
-                (receipt.command_id, receipt.run_id, idempotency_key, request_hash, receipt.model_dump_json()),
+                (
+                    receipt.command_id,
+                    receipt.run_id,
+                    idempotency_key,
+                    request_hash,
+                    receipt.model_dump_json(),
+                ),
             )
 
     def update_command(self, receipt: CommandReceipt) -> None:

@@ -21,6 +21,16 @@ uv run maze-lab verify <run_id>                         # re-execute and check e
 uv run maze-lab export <run_id> run.zip                 # replay ZIP with checksums
 ```
 
+## Spectator API
+
+```bash
+uv run maze-lab serve            # http://127.0.0.1:8000/docs
+uv run maze-lab schema           # regenerate schemas/openapi.json and agent-contract JSON Schemas
+```
+
+LLM agents read provider keys from `.env` by variable name (e.g. `ANTHROPIC_API_KEY`); see
+`configs/pilot_haiku.json` for an LLM run config.
+
 ## Layout
 
 - `src/maze_lab/agent_contracts.py` – everything an agent sees or emits
@@ -32,3 +42,4 @@ uv run maze-lab export <run_id> run.zip                 # replay ZIP with checks
 - `src/maze_lab/persistence/` – SQLite journal, snapshots, invocation ledger
 - `src/maze_lab/metrics/` – ground-truth scoring
 - `src/maze_lab/replay.py`, `runs.py`, `cli.py` – replay/export, run creation, CLI
+- `src/maze_lab/service.py`, `src/maze_lab/api/` – run ownership, commands, REST + SSE/WebSocket

@@ -1,0 +1,96 @@
+{
+  "additionalProperties": false,
+  "description": "Public rules shown to every agent. Never a serialization of RunConfig.",
+  "properties": {
+    "version": {
+      "title": "Version",
+      "type": "string"
+    },
+    "agent_ids": {
+      "items": {
+        "enum": [
+          "A",
+          "B",
+          "C"
+        ],
+        "type": "string"
+      },
+      "title": "Agent Ids",
+      "type": "array"
+    },
+    "objective": {
+      "enum": [
+        "all_reach_exit",
+        "first_exit",
+        "all_at_exit_simultaneously"
+      ],
+      "title": "Objective",
+      "type": "string"
+    },
+    "allow_stay": {
+      "title": "Allow Stay",
+      "type": "boolean"
+    },
+    "notebook_enabled": {
+      "title": "Notebook Enabled",
+      "type": "boolean"
+    },
+    "notebook_cap_bytes": {
+      "minimum": 0,
+      "title": "Notebook Cap Bytes",
+      "type": "integer"
+    },
+    "notebook_insert_bytes": {
+      "minimum": 0,
+      "title": "Notebook Insert Bytes",
+      "type": "integer"
+    },
+    "radio_enabled": {
+      "title": "Radio Enabled",
+      "type": "boolean"
+    },
+    "radio_message_bytes": {
+      "minimum": 0,
+      "title": "Radio Message Bytes",
+      "type": "integer"
+    },
+    "radio_cooldown_ticks": {
+      "minimum": 0,
+      "title": "Radio Cooldown Ticks",
+      "type": "integer"
+    },
+    "meeting_notebooks_enabled": {
+      "title": "Meeting Notebooks Enabled",
+      "type": "boolean"
+    },
+    "checkpoint_labels": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Checkpoint Labels",
+      "type": "array"
+    },
+    "max_provider_requests_per_turn": {
+      "minimum": 1,
+      "title": "Max Provider Requests Per Turn",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "version",
+    "agent_ids",
+    "objective",
+    "allow_stay",
+    "notebook_enabled",
+    "notebook_cap_bytes",
+    "notebook_insert_bytes",
+    "radio_enabled",
+    "radio_message_bytes",
+    "radio_cooldown_ticks",
+    "meeting_notebooks_enabled",
+    "checkpoint_labels",
+    "max_provider_requests_per_turn"
+  ],
+  "title": "AgentRules",
+  "type": "object"
+}

@@ -1,0 +1,90 @@
+{
+  "$defs": {
+    "NotebookEdit": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_revision": {
+          "minimum": 0,
+          "title": "Expected Revision",
+          "type": "integer"
+        },
+        "start": {
+          "minimum": 0,
+          "title": "Start",
+          "type": "integer"
+        },
+        "end": {
+          "minimum": 0,
+          "title": "End",
+          "type": "integer"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "expected_revision",
+        "start",
+        "end",
+        "text"
+      ],
+      "title": "NotebookEdit",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "tick": {
+      "minimum": 1,
+      "title": "Tick",
+      "type": "integer"
+    },
+    "move": {
+      "enum": [
+        "N",
+        "E",
+        "S",
+        "W",
+        "STAY"
+      ],
+      "title": "Move",
+      "type": "string"
+    },
+    "notebook_edit": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/NotebookEdit"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "radio": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Radio"
+    }
+  },
+  "required": [
+    "schema_version",
+    "tick",
+    "move",
+    "notebook_edit",
+    "radio"
+  ],
+  "title": "TurnAction",
+  "type": "object"
+}

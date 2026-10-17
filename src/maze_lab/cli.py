@@ -49,6 +49,24 @@ async def _drive(store: RunStore, run_id: str) -> None:
     )
 
 
+def _write_schemas(out: Path) -> None:
+    """Published contracts: the API (OpenAPI) and what agents see and emit (JSON Schema)."""
+    from maze_lab.agent_contracts import AgentRules, Observation, TurnAction
+    from maze_lab.api.app import create_app
+
+    out.mkdir(parents=True, exist_ok=True)
+    documents = {
+        "openapi.json": create_app(":memory:").openapi(),
+        "observation.schema.json": Observation.model_json_schema(),
+        "turn_action.schema.json": TurnAction.model_json_schema(),
+        "agent_rules.schema.json": AgentRules.model_json_schema(),
+        "run_config.schema.json": RunConfig.model_json_schema(),
+    }
+    for name, doc in documents.items():
+        (out / name).write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+        print(f"wrote {out / name}", file=sys.stderr)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="maze-lab", description=__doc__)
     parser.add_argument("--db", default="runs.db", help="SQLite run database (default: runs.db)")
@@ -73,6 +91,8 @@ def main(argv: list[str] | None = None) -> int:
     export.add_argument("run_id")
     export.add_argument("out", type=Path)
     sub.add_parser("list", help="list runs")
+    schema = sub.add_parser("schema", help="write OpenAPI and agent-contract JSON Schemas")
+    schema.add_argument("--out", type=Path, default=Path("schemas"))
     serve = sub.add_parser("serve", help="run the spectator API (single process; owns all coordinators)")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8000)
@@ -121,6 +141,8 @@ def main(argv: list[str] | None = None) -> int:
 
                 store.close()
                 uvicorn.run(create_app(args.db), host=args.host, port=args.port, workers=1)
+            case "schema":
+                _write_schemas(args.out)
             case "list":
                 for s in store.summaries():
                     print(f"{s.run_id}  {s.status:<9}  tick {s.committed_tick:>4}  {s.condition}")

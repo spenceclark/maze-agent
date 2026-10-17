@@ -45,10 +45,14 @@ by default; `reasoning_tokens` is not reported separately by the provider.
 
 
 ## Phase 4 — Spectator service
-- [ ] FastAPI REST reads + commands (idempotency)
-- [ ] SSE + WebSocket parity, reconnect from sequence
-- [ ] Export endpoint, health
-- [ ] Generated OpenAPI / JSON Schema / TS types
+- [x] FastAPI REST reads + commands (idempotency)
+- [x] SSE + WebSocket parity, reconnect from sequence
+- [x] Export endpoint, health
+- [x] Generated OpenAPI + JSON Schemas (`maze-lab schema` → `schemas/`); TS types generated in phase 5
+
+Server: `uv run maze-lab serve` (single process, loopback by default; set `MAZE_LAB_SPECTATOR_TOKEN` /
+`MAZE_LAB_OPERATOR_TOKEN` for remote use). Runs keep going with no client connected and are re-adopted on restart.
+
 
 ## Phase 5 — React viewer
 - [ ] Maze SVG, agent inspectors, notebooks, radio archive

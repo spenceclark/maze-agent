@@ -1,0 +1,4595 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "maze-lab spectator API",
+    "version": "1.0"
+  },
+  "paths": {
+    "/health/live": {
+      "get": {
+        "summary": "Live",
+        "operationId": "live_health_live_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "summary": "Ready",
+        "operationId": "ready_health_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs": {
+      "post": {
+        "summary": "Create Run",
+        "operationId": "create_run_api_v1_runs_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunConfig"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "List Runs",
+        "operationId": "list_runs_api_v1_runs_get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "created",
+                    "running",
+                    "paused",
+                    "completed",
+                    "cancelled",
+                    "failed"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "condition",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Condition"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_RunSummary_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}": {
+      "get": {
+        "summary": "Get Run",
+        "operationId": "get_run_api_v1_runs__run_id__get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/commands": {
+      "post": {
+        "summary": "Run Command",
+        "operationId": "run_command_api_v1_runs__run_id__commands_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandReceipt"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/maze": {
+      "get": {
+        "summary": "Get Maze",
+        "operationId": "get_maze_api_v1_runs__run_id__maze_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "if-none-match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-None-Match"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MazeDefinition"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/state": {
+      "get": {
+        "summary": "Get State",
+        "operationId": "get_state_api_v1_runs__run_id__state_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "at_tick",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "At Tick"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/agents": {
+      "get": {
+        "summary": "Get Agents",
+        "operationId": "get_agents_api_v1_runs__run_id__agents_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "at_tick",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "At Tick"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/agents/{agent_id}/notebook": {
+      "get": {
+        "summary": "Get Notebook",
+        "operationId": "get_notebook_api_v1_runs__run_id__agents__agent_id__notebook_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "A",
+                "B",
+                "C"
+              ],
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "at_tick",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "At Tick"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotebookResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/agents/{agent_id}/observation": {
+      "get": {
+        "summary": "Get Observation",
+        "operationId": "get_observation_api_v1_runs__run_id__agents__agent_id__observation_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "A",
+                "B",
+                "C"
+              ],
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "decision_tick",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Decision Tick"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObservationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/metrics": {
+      "get": {
+        "summary": "Get Metrics",
+        "operationId": "get_metrics_api_v1_runs__run_id__metrics_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "at_tick",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "At Tick"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/replay": {
+      "get": {
+        "summary": "Get Replay",
+        "operationId": "get_replay_api_v1_runs__run_id__replay_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "at_tick",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "title": "At Tick"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/agents/{agent_id}/notebook-revisions": {
+      "get": {
+        "summary": "Get Notebook Revisions",
+        "operationId": "get_notebook_revisions_api_v1_runs__run_id__agents__agent_id__notebook_revisions_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "A",
+                "B",
+                "C"
+              ],
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_NotebookRevision_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/radio": {
+      "get": {
+        "summary": "Get Radio",
+        "operationId": "get_radio_api_v1_runs__run_id__radio_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "from_tick",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From Tick"
+            }
+          },
+          {
+            "name": "to_tick",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To Tick"
+            }
+          },
+          {
+            "name": "sender",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "A",
+                    "B",
+                    "C"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sender"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_RadioRecord_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/timeline": {
+      "get": {
+        "summary": "Get Timeline",
+        "operationId": "get_timeline_api_v1_runs__run_id__timeline_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "after_sequence",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "After Sequence"
+            }
+          },
+          {
+            "name": "to_tick",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To Tick"
+            }
+          },
+          {
+            "name": "types",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Types"
+            }
+          },
+          {
+            "name": "agent",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "A",
+                    "B",
+                    "C"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Agent"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_EventEnvelope_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/invocations": {
+      "get": {
+        "summary": "Get Invocations",
+        "operationId": "get_invocations_api_v1_runs__run_id__invocations_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "agent",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "A",
+                    "B",
+                    "C"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Agent"
+            }
+          },
+          {
+            "name": "tick",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tick"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_InvocationRecord_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/export": {
+      "get": {
+        "summary": "Get Export",
+        "operationId": "get_export_api_v1_runs__run_id__export_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/events": {
+      "get": {
+        "summary": "Sse Events",
+        "operationId": "sse_events_api_v1_runs__run_id__events_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "after_sequence",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "After Sequence"
+            }
+          },
+          {
+            "name": "last-event-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Last-Event-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ActionReceipt": {
+        "properties": {
+          "tick": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Tick"
+          },
+          "movement": {
+            "$ref": "#/components/schemas/MovementReceipt"
+          },
+          "notebook": {
+            "$ref": "#/components/schemas/ComponentReceipt"
+          },
+          "radio": {
+            "$ref": "#/components/schemas/ComponentReceipt"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "tick",
+          "movement",
+          "notebook",
+          "radio"
+        ],
+        "title": "ActionReceipt"
+      },
+      "AgentMetrics": {
+        "properties": {
+          "first_exit_tick": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Exit Tick"
+          },
+          "successful_moves": {
+            "type": "integer",
+            "title": "Successful Moves"
+          },
+          "blocked": {
+            "type": "integer",
+            "title": "Blocked"
+          },
+          "stayed": {
+            "type": "integer",
+            "title": "Stayed"
+          },
+          "forced_stays": {
+            "type": "integer",
+            "title": "Forced Stays"
+          },
+          "forced_stays_by_cause": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Forced Stays By Cause"
+          },
+          "revisits": {
+            "type": "integer",
+            "title": "Revisits"
+          },
+          "revisit_fraction": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revisit Fraction"
+          },
+          "shortest_path_to_exit": {
+            "type": "integer",
+            "title": "Shortest Path To Exit"
+          },
+          "moves_to_first_exit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moves To First Exit"
+          },
+          "path_efficiency": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path Efficiency"
+          },
+          "scheduled_decisions": {
+            "type": "integer",
+            "title": "Scheduled Decisions"
+          },
+          "valid_decisions": {
+            "type": "integer",
+            "title": "Valid Decisions"
+          },
+          "radio_accepted": {
+            "type": "integer",
+            "title": "Radio Accepted"
+          },
+          "radio_bytes": {
+            "type": "integer",
+            "title": "Radio Bytes"
+          },
+          "radio_rejected_by_code": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Radio Rejected By Code"
+          },
+          "radio_eligible_ticks": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Radio Eligible Ticks"
+          },
+          "notebook_bytes": {
+            "type": "integer",
+            "title": "Notebook Bytes"
+          },
+          "notebook_peak_bytes": {
+            "type": "integer",
+            "title": "Notebook Peak Bytes"
+          },
+          "notebook_inserted_bytes": {
+            "type": "integer",
+            "title": "Notebook Inserted Bytes"
+          },
+          "notebook_deleted_bytes": {
+            "type": "integer",
+            "title": "Notebook Deleted Bytes"
+          },
+          "notebook_revisions": {
+            "type": "integer",
+            "title": "Notebook Revisions"
+          },
+          "notebook_rejected_by_code": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Notebook Rejected By Code"
+          },
+          "notebook_cap_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notebook Cap Bytes"
+          },
+          "notebook_cap_pressure": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notebook Cap Pressure"
+          },
+          "input_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Tokens"
+          },
+          "output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Tokens"
+          },
+          "reasoning_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Tokens"
+          },
+          "provider_requests": {
+            "type": "integer",
+            "title": "Provider Requests"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "first_exit_tick",
+          "successful_moves",
+          "blocked",
+          "stayed",
+          "forced_stays",
+          "forced_stays_by_cause",
+          "revisits",
+          "revisit_fraction",
+          "shortest_path_to_exit",
+          "moves_to_first_exit",
+          "path_efficiency",
+          "scheduled_decisions",
+          "valid_decisions",
+          "radio_accepted",
+          "radio_bytes",
+          "radio_rejected_by_code",
+          "radio_eligible_ticks",
+          "notebook_bytes",
+          "notebook_peak_bytes",
+          "notebook_inserted_bytes",
+          "notebook_deleted_bytes",
+          "notebook_revisions",
+          "notebook_rejected_by_code",
+          "notebook_cap_bytes",
+          "notebook_cap_pressure",
+          "input_tokens",
+          "output_tokens",
+          "reasoning_tokens",
+          "provider_requests"
+        ],
+        "title": "AgentMetrics"
+      },
+      "AgentRules": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "agent_ids": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "A",
+                "B",
+                "C"
+              ]
+            },
+            "type": "array",
+            "title": "Agent Ids"
+          },
+          "objective": {
+            "type": "string",
+            "enum": [
+              "all_reach_exit",
+              "first_exit",
+              "all_at_exit_simultaneously"
+            ],
+            "title": "Objective"
+          },
+          "allow_stay": {
+            "type": "boolean",
+            "title": "Allow Stay"
+          },
+          "notebook_enabled": {
+            "type": "boolean",
+            "title": "Notebook Enabled"
+          },
+          "notebook_cap_bytes": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Notebook Cap Bytes"
+          },
+          "notebook_insert_bytes": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Notebook Insert Bytes"
+          },
+          "radio_enabled": {
+            "type": "boolean",
+            "title": "Radio Enabled"
+          },
+          "radio_message_bytes": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Radio Message Bytes"
+          },
+          "radio_cooldown_ticks": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Radio Cooldown Ticks"
+          },
+          "meeting_notebooks_enabled": {
+            "type": "boolean",
+            "title": "Meeting Notebooks Enabled"
+          },
+          "checkpoint_labels": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Checkpoint Labels"
+          },
+          "max_provider_requests_per_turn": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Max Provider Requests Per Turn"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version",
+          "agent_ids",
+          "objective",
+          "allow_stay",
+          "notebook_enabled",
+          "notebook_cap_bytes",
+          "notebook_insert_bytes",
+          "radio_enabled",
+          "radio_message_bytes",
+          "radio_cooldown_ticks",
+          "meeting_notebooks_enabled",
+          "checkpoint_labels",
+          "max_provider_requests_per_turn"
+        ],
+        "title": "AgentRules",
+        "description": "Public rules shown to every agent. Never a serialization of RunConfig."
+      },
+      "AgentState": {
+        "properties": {
+          "agent_id": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B",
+              "C"
+            ],
+            "title": "Agent Id"
+          },
+          "position": {
+            "$ref": "#/components/schemas/Position"
+          },
+          "notebook": {
+            "$ref": "#/components/schemas/Notebook"
+          },
+          "last_receipt": {
+            "$ref": "#/components/schemas/ActionReceipt"
+          },
+          "last_radio_tick": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Radio Tick"
+          },
+          "first_exit_tick": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Exit Tick"
+          },
+          "successful_moves": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Successful Moves"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "agent_id",
+          "position",
+          "notebook",
+          "last_receipt",
+          "last_radio_tick",
+          "first_exit_tick",
+          "successful_moves"
+        ],
+        "title": "AgentState"
+      },
+      "AgentsResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "state_tick": {
+            "type": "integer",
+            "title": "State Tick"
+          },
+          "as_of_sequence": {
+            "type": "integer",
+            "title": "As Of Sequence"
+          },
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/AgentState"
+            },
+            "type": "array",
+            "title": "Agents"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "state_tick",
+          "as_of_sequence",
+          "agents"
+        ],
+        "title": "AgentsResponse"
+      },
+      "BaselineAgentConfig": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B",
+              "C"
+            ],
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "const": "baseline",
+            "title": "Kind"
+          },
+          "policy": {
+            "type": "string",
+            "enum": [
+              "random_open_v1",
+              "wall_follower_v1",
+              "dfs_bounded_v1"
+            ],
+            "title": "Policy"
+          },
+          "adapter": {
+            "type": "null",
+            "title": "Adapter"
+          },
+          "provider": {
+            "type": "null",
+            "title": "Provider"
+          },
+          "model": {
+            "type": "null",
+            "title": "Model"
+          },
+          "sampling": {
+            "$ref": "#/components/schemas/Sampling",
+            "default": {}
+          },
+          "max_output_tokens": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Max Output Tokens",
+            "default": 2048
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "policy"
+        ],
+        "title": "BaselineAgentConfig"
+      },
+      "Budgets": {
+        "properties": {
+          "notebook_cap_bytes": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Notebook Cap Bytes"
+          },
+          "notebook_insert_bytes": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Notebook Insert Bytes"
+          },
+          "radio_message_bytes": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Radio Message Bytes"
+          },
+          "radio_next_eligible_tick": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Radio Next Eligible Tick"
+          },
+          "radio_enabled": {
+            "type": "boolean",
+            "title": "Radio Enabled"
+          },
+          "notebook_enabled": {
+            "type": "boolean",
+            "title": "Notebook Enabled"
+          },
+          "allow_stay": {
+            "type": "boolean",
+            "title": "Allow Stay"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "notebook_cap_bytes",
+          "notebook_insert_bytes",
+          "radio_message_bytes",
+          "radio_next_eligible_tick",
+          "radio_enabled",
+          "notebook_enabled",
+          "allow_stay"
+        ],
+        "title": "Budgets"
+      },
+      "CellDef": {
+        "properties": {
+          "x": {
+            "type": "integer",
+            "title": "X"
+          },
+          "y": {
+            "type": "integer",
+            "title": "Y"
+          },
+          "north": {
+            "type": "string",
+            "enum": [
+              "open",
+              "interior_wall",
+              "outer_brick"
+            ],
+            "title": "North"
+          },
+          "east": {
+            "type": "string",
+            "enum": [
+              "open",
+              "interior_wall",
+              "outer_brick"
+            ],
+            "title": "East"
+          },
+          "south": {
+            "type": "string",
+            "enum": [
+              "open",
+              "interior_wall",
+              "outer_brick"
+            ],
+            "title": "South"
+          },
+          "west": {
+            "type": "string",
+            "enum": [
+              "open",
+              "interior_wall",
+              "outer_brick"
+            ],
+            "title": "West"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "x",
+          "y",
+          "north",
+          "east",
+          "south",
+          "west"
+        ],
+        "title": "CellDef"
+      },
+      "CommandReceipt": {
+        "properties": {
+          "command_id": {
+            "type": "string",
+            "title": "Command Id"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "command": {
+            "type": "string",
+            "enum": [
+              "start",
+              "pause",
+              "resume",
+              "step",
+              "cancel"
+            ],
+            "title": "Command"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "applied",
+              "rejected"
+            ],
+            "title": "Status"
+          },
+          "requested_at_tick": {
+            "type": "integer",
+            "title": "Requested At Tick"
+          },
+          "effective_after_tick": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective After Tick"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "command_id",
+          "run_id",
+          "command",
+          "status",
+          "requested_at_tick",
+          "effective_after_tick",
+          "error"
+        ],
+        "title": "CommandReceipt"
+      },
+      "ComponentReceipt": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "not_requested",
+              "accepted",
+              "rejected"
+            ],
+            "title": "Status"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "code"
+        ],
+        "title": "ComponentReceipt"
+      },
+      "DecisionAttempt": {
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TurnAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "timeout",
+                  "provider_error",
+                  "refusal",
+                  "invalid_action",
+                  "stale_tick",
+                  "stay_disabled"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure"
+          },
+          "request_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Text"
+          },
+          "response_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Text"
+          },
+          "provider_request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Request Id"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/Usage",
+            "default": {
+              "requests": 0
+            }
+          },
+          "estimated_cost_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Cost Usd"
+          },
+          "error_detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Detail"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "action",
+          "failure"
+        ],
+        "title": "DecisionAttempt",
+        "description": "A policy's answer: an action, or the reason it has none, plus provider metadata."
+      },
+      "DecisionResolved": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "agent.decision_resolved",
+            "title": "Type",
+            "default": "agent.decision_resolved"
+          },
+          "agent_id": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B",
+              "C"
+            ],
+            "title": "Agent Id"
+          },
+          "action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TurnAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "receipt": {
+            "$ref": "#/components/schemas/ActionReceipt"
+          },
+          "invocation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invocation Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "agent_id",
+          "action",
+          "receipt",
+          "invocation_id"
+        ],
+        "title": "DecisionResolved"
+      },
+      "EventEnvelope": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "1.0",
+            "title": "Schema Version",
+            "default": "1.0"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Sequence"
+          },
+          "tick": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Tick"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "recorded_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Recorded At"
+          },
+          "payload": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RunCreated"
+              },
+              {
+                "$ref": "#/components/schemas/RunStatusChanged"
+              },
+              {
+                "$ref": "#/components/schemas/DecisionResolved"
+              },
+              {
+                "$ref": "#/components/schemas/NotebookUpdated"
+              },
+              {
+                "$ref": "#/components/schemas/RadioSent"
+              },
+              {
+                "$ref": "#/components/schemas/MeetingObserved"
+              },
+              {
+                "$ref": "#/components/schemas/ExitReached"
+              },
+              {
+                "$ref": "#/components/schemas/TickCommitted"
+              },
+              {
+                "$ref": "#/components/schemas/RunCompleted"
+              }
+            ],
+            "title": "Payload",
+            "discriminator": {
+              "propertyName": "type",
+              "mapping": {
+                "agent.decision_resolved": "#/components/schemas/DecisionResolved",
+                "agent.exit_reached": "#/components/schemas/ExitReached",
+                "meeting.observed": "#/components/schemas/MeetingObserved",
+                "notebook.updated": "#/components/schemas/NotebookUpdated",
+                "radio.sent": "#/components/schemas/RadioSent",
+                "run.completed": "#/components/schemas/RunCompleted",
+                "run.created": "#/components/schemas/RunCreated",
+                "run.status_changed": "#/components/schemas/RunStatusChanged",
+                "tick.committed": "#/components/schemas/TickCommitted"
+              }
+            }
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "sequence",
+          "tick",
+          "type",
+          "recorded_at",
+          "payload"
+        ],
+        "title": "EventEnvelope"
+      },
+      "ExitReached": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "agent.exit_reached",
+            "title": "Type",
+            "default": "agent.exit_reached"
+          },
+          "agent_id": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B",
+              "C"
+            ],
+            "title": "Agent Id"
+          },
+          "tick": {
+            "type": "integer",
+            "title": "Tick"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "agent_id",
+          "tick"
+        ],
+        "title": "ExitReached"
+      },
+      "GeneratorInfo": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "prng": {
+            "type": "string",
+            "title": "Prng"
+          },
+          "root_seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Root Seed"
+          },
+          "extra_open_edges": {
+            "items": {
+              "prefixItems": [
+                {
+                  "$ref": "#/components/schemas/Position"
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "N",
+                    "E",
+                    "S",
+                    "W"
+                  ]
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "array",
+            "title": "Extra Open Edges"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "prng",
+          "root_seed",
+          "extra_open_edges"
+        ],
+        "title": "GeneratorInfo"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "Health": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "Health"
+      },
+      "InvocationRecord": {
+        "properties": {
+          "invocation_id": {
+            "type": "string",
+            "title": "Invocation Id"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "agent_id": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B",
+              "C"
+            ],
+            "title": "Agent Id"
+          },
+          "tick": {
+            "type": "integer",
+            "title": "Tick"
+          },
+          "coordinator_generation": {
+            "type": "integer",
+            "title": "Coordinator Generation"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "dispatched",
+              "completed",
+              "failed",
+              "timed_out"
+            ],
+            "title": "Status"
+          },
+          "observation": {
+            "$ref": "#/components/schemas/Observation"
+          },
+          "observation_hash": {
+            "type": "string",
+            "title": "Observation Hash"
+          },
+          "rules": {
+            "$ref": "#/components/schemas/AgentRules"
+          },
+          "attempt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DecisionAttempt"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "dispatched_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Dispatched At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "invocation_id",
+          "run_id",
+          "agent_id",
+          "tick",
+          "coordinator_generation",
+          "status",
+          "observation",
+          "observation_hash",
+          "rules",
+          "attempt",
+          "dispatched_at",
+          "finished_at",
+          "duration_ms"
+        ],
+        "title": "InvocationRecord",
+        "description": "Ledger entry for one policy invocation. Written outside the tick transaction."
+      },
+      "LlmAgentConfig": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B",
+              "C"
+            ],
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "const": "llm",
+            "title": "Kind"
+          },
+          "policy": {
+            "type": "null",
+            "title": "Policy"
+          },
+          "adapter": {
+            "type": "string",
+            "const": "pydantic_ai",
+            "title": "Adapter"
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "anthropic",
+              "openai",
+              "ollama"
+            ],
+            "title": "Provider"
+          },
+          "model": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Model"
+          },
+          "base_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          },
+          "api_key_env": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key Env"
+          },
+          "output_mode": {
+            "type": "string",
+            "enum": [
+              "tool",
+              "native",
+              "prompted"
+            ],
+            "title": "Output Mode",
+            "default": "tool"
+          },
+          "context_window_tokens": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Context Window Tokens"
+          },
+          "sampling": {
+            "$ref": "#/components/schemas/Sampling",
+            "default": {}
+          },
+          "max_output_tokens": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Max Output Tokens",
+            "default": 2048
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "adapter",
+          "provider",
+          "model",
+          "base_url",
+          "api_key_env",
+          "context_window_tokens"
+        ],
+        "title": "LlmAgentConfig"
+      },
+      "LocalCell": {
+        "properties": {
+          "north": {
+            "type": "string",
+            "enum": [
+              "open",
+              "interior_wall",
+              "outer_brick"
+            ],
+            "title": "North"
+          },
+          "east": {
+            "type": "string",
+            "enum": [
+              "open",
+              "interior_wall",
+              "outer_brick"
+            ],
+            "title": "East"
+          },
+          "south": {
+            "type": "string",
+            "enum": [
+              "open",
+              "interior_wall",
+              "outer_brick"
+            ],
+            "title": "South"
+          },
+          "west": {
+            "type": "string",
+            "enum": [
+              "open",
+              "interior_wall",
+              "outer_brick"
+            ],
+            "title": "West"
+          },
+          "is_exit": {
+            "type": "boolean",
+            "title": "Is Exit"
+          },
+          "landmarks": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Landmarks"
+          },
+          "checkpoints": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Checkpoints"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "north",
+          "east",
+          "south",
+          "west",
+          "is_exit",
+          "landmarks",
+          "checkpoints"
+        ],
+        "title": "LocalCell"
+      },
+      "MazeDefinition": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "const": "1.0",
+            "title": "Version",
+            "default": "1.0"
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 2.0,
+            "title": "Width"
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 2.0,
+            "title": "Height"
+          },
+          "cells": {
+            "items": {
+              "$ref": "#/components/schemas/CellDef"
+            },
+            "type": "array",
+            "title": "Cells"
+          },
+          "exit": {
+            "$ref": "#/components/schemas/Position"
+          },
+          "spawns": {
+            "items": {
+              "$ref": "#/components/schemas/Position"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Spawns"
+          },
+          "generator": {
+            "$ref": "#/components/schemas/GeneratorInfo"
+          },
+          "maze_hash": {
+            "type": "string",
+            "title": "Maze Hash"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "width",
+          "height",
+          "cells",
+          "exit",
+          "spawns",
+          "generator",
+          "maze_hash"
+        ],
+        "title": "MazeDefinition"
+      },
+      "MazeSettings": {
+        "properties": {
+          "width": {
+            "type": "integer",
+            "minimum": 2.0,
+            "title": "Width",
+            "default": 15
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 2.0,
+            "title": "Height",
+            "default": 15
+          },
+          "generator": {
+            "type": "string",
+            "const": "dfs_v1",
+            "title": "Generator",
+            "default": "dfs_v1"
+          },
+          "extra_open_edges": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Extra Open Edges",
+            "default": 0
+          },
+          "exit_policy": {
+            "type": "string",
+            "const": "uniform_perimeter_cell",
+            "title": "Exit Policy",
+            "default": "uniform_perimeter_cell"
+          },
+          "spawn_policy": {
+            "type": "string",
+            "const": "uniform_distinct_non_exit",
+            "title": "Spawn Policy",
+            "default": "uniform_distinct_non_exit"
+          },
+          "landmark_count": {
+            "type": "integer",
+            "const": 0,
+            "title": "Landmark Count",
+            "default": 0
+          },
+          "checkpoint_count": {
+            "type": "integer",
+            "const": 0,
+            "title": "Checkpoint Count",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "MazeSettings"
+      },
+      "MeetingObserved": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "meeting.observed",
+            "title": "Type",
+            "default": "meeting.observed"
+          },
+          "agents": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "A",
+                "B",
+                "C"
+              ]
+            },
+            "type": "array",
+            "title": "Agents"
+          },
+          "position": {
+            "$ref": "#/components/schemas/Position"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "agents",
+          "position"
+        ],
+        "title": "MeetingObserved"
+      },
+      "MetricsResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "state_tick": {
+            "type": "integer",
+            "title": "State Tick"
+          },
+          "as_of_sequence": {
+            "type": "integer",
+            "title": "As Of Sequence"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/RunMetrics"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "state_tick",
+          "as_of_sequence",
+          "metrics"
+        ],
+        "title": "MetricsResponse"
+      },
+      "MovementReceipt": {
+        "properties": {
+          "attempted": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "N",
+                  "E",
+                  "S",
+                  "W",
+                  "STAY"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attempted"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "spawned",
+              "moved",
+              "blocked",
+              "stayed",
+              "forced_stay"
+            ],
+            "title": "Outcome"
+          },
+          "arrived_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "N",
+                  "E",
+                  "S",
+                  "W"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arrived From"
+          },
+          "cause": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cause"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "attempted",
+          "outcome",
+          "arrived_from",
+          "cause"
+        ],
+        "title": "MovementReceipt"
+      },
+      "Notebook": {
+        "properties": {
+          "owner": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B",
+              "C"
+            ],
+            "title": "Owner"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Revision"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "utf8_bytes": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Utf8 Bytes"
+          },
+          "codepoints": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Codepoints"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "owner",
+          "revision",
+          "text",
+          "utf8_bytes",
+          "codepoints"
+        ],
+        "title": "Notebook"
+      },
+      "NotebookEdit": {
+        "properties": {
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Expected Revision"
+          },
+          "start": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Start"
+          },
+          "end": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "End"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_revision",
+          "start",
+          "end",
+          "text"
+        ],
+        "title": "NotebookEdit"
+      },
+      "NotebookResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "state_tick": {
+            "type": "integer",
+            "title": "State Tick"
+          },
+          "as_of_sequence": {
+            "type": "integer",
+            "title": "As Of Sequence"
+          },
+          "notebook": {
+            "$ref": "#/components/schemas/Notebook"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "state_tick",
+          "as_of_sequence",
+          "notebook"
+        ],
+        "title": "NotebookResponse"
+      },
+      "NotebookRevision": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "agent_id": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B",
+              "C"
+            ],
+            "title": "Agent Id"
+          },
+          "revision": {
+            "type": "integer",
+            "title": "Revision"
+          },
+          "tick": {
+            "type": "integer",
+            "title": "Tick"
+          },
+          "splice": {
+            "$ref": "#/components/schemas/NotebookEdit"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "utf8_bytes": {
+            "type": "integer",
+            "title": "Utf8 Bytes"
+          },
+          "sha256": {
+            "type": "string",
+            "title": "Sha256"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "agent_id",
+          "revision",
+          "tick",
+          "splice",
+          "text",
+          "utf8_bytes",
+          "sha256"
+        ],
+        "title": "NotebookRevision"
+      },
+      "NotebookUpdated": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "notebook.updated",
+            "title": "Type",
+            "default": "notebook.updated"
+          },
+          "agent_id": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B",
+              "C"
+            ],
+            "title": "Agent Id"
+          },
+          "previous_revision": {
+            "type": "integer",
+            "title": "Previous Revision"
+          },
+          "new_revision": {
+            "type": "integer",
+            "title": "New Revision"
+          },
+          "splice": {
+            "$ref": "#/components/schemas/NotebookEdit"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "sha256": {
+            "type": "string",
+            "title": "Sha256"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "agent_id",
+          "previous_revision",
+          "new_revision",
+          "splice",
+          "text",
+          "sha256"
+        ],
+        "title": "NotebookUpdated"
+      },
+      "Observation": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "1.0",
+            "title": "Schema Version"
+          },
+          "agent_id": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B",
+              "C"
+            ],
+            "title": "Agent Id"
+          },
+          "decision_tick": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Decision Tick"
+          },
+          "state_tick": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "State Tick"
+          },
+          "has_reached_exit": {
+            "type": "boolean",
+            "title": "Has Reached Exit"
+          },
+          "local": {
+            "$ref": "#/components/schemas/LocalCell"
+          },
+          "exit_distance_tenths": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Exit Distance Tenths"
+          },
+          "peer_ranges": {
+            "items": {
+              "$ref": "#/components/schemas/PeerRange"
+            },
+            "type": "array",
+            "title": "Peer Ranges"
+          },
+          "last_action": {
+            "$ref": "#/components/schemas/ActionReceipt"
+          },
+          "notebook": {
+            "$ref": "#/components/schemas/Notebook"
+          },
+          "radio_inbox": {
+            "items": {
+              "$ref": "#/components/schemas/RadioObservation"
+            },
+            "type": "array",
+            "title": "Radio Inbox"
+          },
+          "colocated_notebooks": {
+            "items": {
+              "$ref": "#/components/schemas/Notebook"
+            },
+            "type": "array",
+            "title": "Colocated Notebooks"
+          },
+          "budgets": {
+            "$ref": "#/components/schemas/Budgets"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema_version",
+          "agent_id",
+          "decision_tick",
+          "state_tick",
+          "has_reached_exit",
+          "local",
+          "exit_distance_tenths",
+          "peer_ranges",
+          "last_action",
+          "notebook",
+          "radio_inbox",
+          "colocated_notebooks",
+          "budgets"
+        ],
+        "title": "Observation"
+      },
+      "ObservationResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "decision_tick": {
+            "type": "integer",
+            "title": "Decision Tick"
+          },
+          "invocation_id": {
+            "type": "string",
+            "title": "Invocation Id"
+          },
+          "observation": {
+            "$ref": "#/components/schemas/Observation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "decision_tick",
+          "invocation_id",
+          "observation"
+        ],
+        "title": "ObservationResponse"
+      },
+      "Page_EventEnvelope_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/EventEnvelope"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "as_of_sequence": {
+            "type": "integer",
+            "title": "As Of Sequence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "next_cursor",
+          "as_of_sequence"
+        ],
+        "title": "Page[EventEnvelope]"
+      },
+      "Page_InvocationRecord_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/InvocationRecord"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "as_of_sequence": {
+            "type": "integer",
+            "title": "As Of Sequence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "next_cursor",
+          "as_of_sequence"
+        ],
+        "title": "Page[InvocationRecord]"
+      },
+      "Page_NotebookRevision_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NotebookRevision"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "as_of_sequence": {
+            "type": "integer",
+            "title": "As Of Sequence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "next_cursor",
+          "as_of_sequence"
+        ],
+        "title": "Page[NotebookRevision]"
+      },
+      "Page_RadioRecord_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RadioRecord"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "as_of_sequence": {
+            "type": "integer",
+            "title": "As Of Sequence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "next_cursor",
+          "as_of_sequence"
+        ],
+        "title": "Page[RadioRecord]"
+      },
+      "Page_RunSummary_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RunSummary"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "as_of_sequence": {
+            "type": "integer",
+            "title": "As Of Sequence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "next_cursor",
+          "as_of_sequence"
+        ],
+        "title": "Page[RunSummary]"
+      },
+      "PairMetrics": {
+        "properties": {
+          "colocated_ticks": {
+            "type": "integer",
+            "title": "Colocated Ticks"
+          },
+          "episodes": {
+            "type": "integer",
+            "title": "Episodes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "colocated_ticks",
+          "episodes"
+        ],
+        "title": "PairMetrics"
+      },
+      "PeerRange": {
+        "properties": {
+          "agent_id": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B",
+              "C"
+            ],
+            "title": "Agent Id"
+          },
+          "distance_tenths": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Distance Tenths"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "agent_id",
+          "distance_tenths"
+        ],
+        "title": "PeerRange"
+      },
+      "Position": {
+        "properties": {
+          "x": {
+            "type": "integer",
+            "title": "X"
+          },
+          "y": {
+            "type": "integer",
+            "title": "Y"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "x",
+          "y"
+        ],
+        "title": "Position"
+      },
+      "RadioObservation": {
+        "properties": {
+          "sender": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B",
+              "C"
+            ],
+            "title": "Sender"
+          },
+          "sent_tick": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Sent Tick"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sender",
+          "sent_tick",
+          "text"
+        ],
+        "title": "RadioObservation"
+      },
+      "RadioRecord": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "sequence": {
+            "type": "integer",
+            "title": "Sequence"
+          },
+          "sender": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B",
+              "C"
+            ],
+            "title": "Sender"
+          },
+          "sent_tick": {
+            "type": "integer",
+            "title": "Sent Tick"
+          },
+          "visible_decision_tick": {
+            "type": "integer",
+            "title": "Visible Decision Tick"
+          },
+          "recipients": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "A",
+                "B",
+                "C"
+              ]
+            },
+            "type": "array",
+            "title": "Recipients"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "utf8_bytes": {
+            "type": "integer",
+            "title": "Utf8 Bytes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "sequence",
+          "sender",
+          "sent_tick",
+          "visible_decision_tick",
+          "recipients",
+          "text",
+          "utf8_bytes"
+        ],
+        "title": "RadioRecord"
+      },
+      "RadioSent": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "radio.sent",
+            "title": "Type",
+            "default": "radio.sent"
+          },
+          "sender": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B",
+              "C"
+            ],
+            "title": "Sender"
+          },
+          "sent_tick": {
+            "type": "integer",
+            "title": "Sent Tick"
+          },
+          "visible_decision_tick": {
+            "type": "integer",
+            "title": "Visible Decision Tick"
+          },
+          "recipients": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "A",
+                "B",
+                "C"
+              ]
+            },
+            "type": "array",
+            "title": "Recipients"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "utf8_bytes": {
+            "type": "integer",
+            "title": "Utf8 Bytes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sender",
+          "sent_tick",
+          "visible_decision_tick",
+          "recipients",
+          "text",
+          "utf8_bytes"
+        ],
+        "title": "RadioSent"
+      },
+      "ReplayResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/TickSnapshot"
+          },
+          "sequence_cursor": {
+            "type": "integer",
+            "title": "Sequence Cursor"
+          },
+          "manifest_schema_version": {
+            "type": "string",
+            "title": "Manifest Schema Version"
+          },
+          "available_ticks": {
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Available Ticks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "snapshot",
+          "sequence_cursor",
+          "manifest_schema_version",
+          "available_ticks"
+        ],
+        "title": "ReplayResponse"
+      },
+      "RulesConfig": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "const": "rules_v1",
+            "title": "Version",
+            "default": "rules_v1"
+          },
+          "objective": {
+            "type": "string",
+            "enum": [
+              "all_reach_exit",
+              "first_exit",
+              "all_at_exit_simultaneously"
+            ],
+            "title": "Objective",
+            "default": "all_reach_exit"
+          },
+          "allow_stay": {
+            "type": "boolean",
+            "title": "Allow Stay",
+            "default": true
+          },
+          "notebook_enabled": {
+            "type": "boolean",
+            "title": "Notebook Enabled",
+            "default": true
+          },
+          "notebook_cap_bytes": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Notebook Cap Bytes",
+            "default": 8192
+          },
+          "notebook_insert_bytes": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Notebook Insert Bytes",
+            "default": 1024
+          },
+          "radio_enabled": {
+            "type": "boolean",
+            "title": "Radio Enabled",
+            "default": true
+          },
+          "radio_message_bytes": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Radio Message Bytes",
+            "default": 280
+          },
+          "radio_cooldown_ticks": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Radio Cooldown Ticks",
+            "default": 5
+          },
+          "meeting_notebooks_enabled": {
+            "type": "boolean",
+            "title": "Meeting Notebooks Enabled",
+            "default": true
+          },
+          "distance_sensors": {
+            "type": "string",
+            "const": "exit_and_peers",
+            "title": "Distance Sensors",
+            "default": "exit_and_peers"
+          },
+          "distance_quantization": {
+            "type": "string",
+            "const": "tenths",
+            "title": "Distance Quantization",
+            "default": "tenths"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RulesConfig"
+      },
+      "RunCommand": {
+        "properties": {
+          "command": {
+            "type": "string",
+            "enum": [
+              "start",
+              "pause",
+              "resume",
+              "step",
+              "cancel"
+            ],
+            "title": "Command"
+          },
+          "expected_state_tick": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Expected State Tick"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "command",
+          "expected_state_tick"
+        ],
+        "title": "RunCommand"
+      },
+      "RunCompleted": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "run.completed",
+            "title": "Type",
+            "default": "run.completed"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "objective_met",
+              "tick_limit",
+              "resource_limit",
+              "operator_cancelled",
+              "infrastructure_failure"
+            ],
+            "title": "Reason"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/RunMetrics"
+          },
+          "final_state_hash": {
+            "type": "string",
+            "title": "Final State Hash"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "reason",
+          "metrics",
+          "final_state_hash"
+        ],
+        "title": "RunCompleted"
+      },
+      "RunConfig": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "1.0",
+            "title": "Schema Version",
+            "default": "1.0"
+          },
+          "root_seed": {
+            "type": "integer",
+            "exclusiveMaximum": 1.8446744073709552e+19,
+            "minimum": 0.0,
+            "title": "Root Seed"
+          },
+          "condition": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Condition"
+          },
+          "maze": {
+            "$ref": "#/components/schemas/MazeSettings",
+            "default": {
+              "width": 15,
+              "height": 15,
+              "generator": "dfs_v1",
+              "extra_open_edges": 0,
+              "exit_policy": "uniform_perimeter_cell",
+              "spawn_policy": "uniform_distinct_non_exit",
+              "landmark_count": 0,
+              "checkpoint_count": 0
+            }
+          },
+          "agents": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/BaselineAgentConfig"
+                },
+                {
+                  "$ref": "#/components/schemas/LlmAgentConfig"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "kind",
+                "mapping": {
+                  "baseline": "#/components/schemas/BaselineAgentConfig",
+                  "llm": "#/components/schemas/LlmAgentConfig"
+                }
+              }
+            },
+            "type": "array",
+            "title": "Agents"
+          },
+          "rules": {
+            "$ref": "#/components/schemas/RulesConfig",
+            "default": {
+              "version": "rules_v1",
+              "objective": "all_reach_exit",
+              "allow_stay": true,
+              "notebook_enabled": true,
+              "notebook_cap_bytes": 8192,
+              "notebook_insert_bytes": 1024,
+              "radio_enabled": true,
+              "radio_message_bytes": 280,
+              "radio_cooldown_ticks": 5,
+              "meeting_notebooks_enabled": true,
+              "distance_sensors": "exit_and_peers",
+              "distance_quantization": "tenths"
+            }
+          },
+          "timing": {
+            "$ref": "#/components/schemas/TimingConfig",
+            "default": {
+              "mode": "fixed_deadline",
+              "decision_window_ms": 30000
+            }
+          },
+          "horizon_ticks": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Horizon Ticks",
+            "default": 500
+          },
+          "prompt_version": {
+            "type": "string",
+            "title": "Prompt Version",
+            "default": "maze_agent_v1"
+          },
+          "max_provider_requests_per_turn": {
+            "type": "integer",
+            "const": 1,
+            "title": "Max Provider Requests Per Turn",
+            "default": 1
+          },
+          "snapshot_interval_ticks": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Snapshot Interval Ticks",
+            "default": 25
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "root_seed",
+          "condition",
+          "agents"
+        ],
+        "title": "RunConfig"
+      },
+      "RunCreated": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "run.created",
+            "title": "Type",
+            "default": "run.created"
+          },
+          "manifest_hash": {
+            "type": "string",
+            "title": "Manifest Hash"
+          },
+          "initial_state_hash": {
+            "type": "string",
+            "title": "Initial State Hash"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "manifest_hash",
+          "initial_state_hash"
+        ],
+        "title": "RunCreated"
+      },
+      "RunDetail": {
+        "properties": {
+          "summary": {
+            "$ref": "#/components/schemas/RunSummary"
+          },
+          "config": {
+            "$ref": "#/components/schemas/RunConfig"
+          },
+          "manifest": {
+            "$ref": "#/components/schemas/RunManifest"
+          },
+          "commands": {
+            "items": {
+              "$ref": "#/components/schemas/CommandReceipt"
+            },
+            "type": "array",
+            "title": "Commands"
+          }
+        },
+        "type": "object",
+        "required": [
+          "summary",
+          "config",
+          "manifest",
+          "commands"
+        ],
+        "title": "RunDetail"
+      },
+      "RunManifest": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "1.0",
+            "title": "Schema Version",
+            "default": "1.0"
+          },
+          "config": {
+            "$ref": "#/components/schemas/RunConfig"
+          },
+          "config_hash": {
+            "type": "string",
+            "title": "Config Hash"
+          },
+          "maze_hash": {
+            "type": "string",
+            "title": "Maze Hash"
+          },
+          "initial_state_hash": {
+            "type": "string",
+            "title": "Initial State Hash"
+          },
+          "dependency_lock_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dependency Lock Hash"
+          },
+          "python_version": {
+            "type": "string",
+            "title": "Python Version"
+          },
+          "platform": {
+            "type": "string",
+            "title": "Platform"
+          },
+          "code_commit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code Commit"
+          },
+          "versions": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Versions"
+          },
+          "randomness": {
+            "type": "string",
+            "title": "Randomness"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "config",
+          "config_hash",
+          "maze_hash",
+          "initial_state_hash",
+          "dependency_lock_hash",
+          "python_version",
+          "platform",
+          "code_commit",
+          "versions",
+          "randomness"
+        ],
+        "title": "RunManifest"
+      },
+      "RunMetrics": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "const": "metrics_v1",
+            "title": "Version",
+            "default": "metrics_v1"
+          },
+          "tick": {
+            "type": "integer",
+            "title": "Tick"
+          },
+          "objective_met_tick": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Objective Met Tick"
+          },
+          "first_exit_tick": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Exit Tick"
+          },
+          "oracle_ticks": {
+            "type": "integer",
+            "title": "Oracle Ticks"
+          },
+          "reachable_cells": {
+            "type": "integer",
+            "title": "Reachable Cells"
+          },
+          "covered_cells": {
+            "type": "integer",
+            "title": "Covered Cells"
+          },
+          "coverage": {
+            "type": "number",
+            "title": "Coverage"
+          },
+          "shared_cells": {
+            "type": "integer",
+            "title": "Shared Cells"
+          },
+          "redundant_exploration": {
+            "type": "number",
+            "title": "Redundant Exploration"
+          },
+          "meetings": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PairMetrics"
+            },
+            "type": "object",
+            "title": "Meetings"
+          },
+          "agents": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/AgentMetrics"
+            },
+            "propertyNames": {
+              "enum": [
+                "A",
+                "B",
+                "C"
+              ]
+            },
+            "type": "object",
+            "title": "Agents"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "tick",
+          "objective_met_tick",
+          "first_exit_tick",
+          "oracle_ticks",
+          "reachable_cells",
+          "covered_cells",
+          "coverage",
+          "shared_cells",
+          "redundant_exploration",
+          "meetings",
+          "agents"
+        ],
+        "title": "RunMetrics"
+      },
+      "RunStatusChanged": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "run.status_changed",
+            "title": "Type",
+            "default": "run.status_changed"
+          },
+          "previous": {
+            "type": "string",
+            "enum": [
+              "created",
+              "running",
+              "paused",
+              "completed",
+              "cancelled",
+              "failed"
+            ],
+            "title": "Previous"
+          },
+          "new": {
+            "type": "string",
+            "enum": [
+              "created",
+              "running",
+              "paused",
+              "completed",
+              "cancelled",
+              "failed"
+            ],
+            "title": "New"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "effective_tick": {
+            "type": "integer",
+            "title": "Effective Tick"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "previous",
+          "new",
+          "reason",
+          "effective_tick"
+        ],
+        "title": "RunStatusChanged"
+      },
+      "RunSummary": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "created",
+              "running",
+              "paused",
+              "completed",
+              "cancelled",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "committed_tick": {
+            "type": "integer",
+            "title": "Committed Tick"
+          },
+          "config_hash": {
+            "type": "string",
+            "title": "Config Hash"
+          },
+          "maze_hash": {
+            "type": "string",
+            "title": "Maze Hash"
+          },
+          "condition": {
+            "type": "string",
+            "title": "Condition"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "termination_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "objective_met",
+                  "tick_limit",
+                  "resource_limit",
+                  "operator_cancelled",
+                  "infrastructure_failure"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Termination Reason"
+          },
+          "recovered_incomplete_tick": {
+            "type": "boolean",
+            "title": "Recovered Incomplete Tick"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "status",
+          "committed_tick",
+          "config_hash",
+          "maze_hash",
+          "condition",
+          "created_at",
+          "started_at",
+          "ended_at",
+          "termination_reason",
+          "recovered_incomplete_tick"
+        ],
+        "title": "RunSummary"
+      },
+      "Sampling": {
+        "properties": {
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature"
+          },
+          "top_p": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top P"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "Sampling"
+      },
+      "StateResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "state_tick": {
+            "type": "integer",
+            "title": "State Tick"
+          },
+          "as_of_sequence": {
+            "type": "integer",
+            "title": "As Of Sequence"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/TickSnapshot"
+          },
+          "pending_commands": {
+            "items": {
+              "$ref": "#/components/schemas/CommandReceipt"
+            },
+            "type": "array",
+            "title": "Pending Commands"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "state_tick",
+          "as_of_sequence",
+          "snapshot",
+          "pending_commands"
+        ],
+        "title": "StateResponse"
+      },
+      "TickCommitted": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "tick.committed",
+            "title": "Type",
+            "default": "tick.committed"
+          },
+          "state": {
+            "$ref": "#/components/schemas/WorldState"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/RunMetrics"
+          },
+          "state_hash": {
+            "type": "string",
+            "title": "State Hash"
+          },
+          "first_sequence": {
+            "type": "integer",
+            "title": "First Sequence"
+          },
+          "last_sequence": {
+            "type": "integer",
+            "title": "Last Sequence"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "state",
+          "metrics",
+          "state_hash",
+          "first_sequence",
+          "last_sequence"
+        ],
+        "title": "TickCommitted"
+      },
+      "TickSnapshot": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "1.0",
+            "title": "Schema Version",
+            "default": "1.0"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "tick": {
+            "type": "integer",
+            "title": "Tick"
+          },
+          "last_sequence": {
+            "type": "integer",
+            "title": "Last Sequence"
+          },
+          "maze_hash": {
+            "type": "string",
+            "title": "Maze Hash"
+          },
+          "state": {
+            "$ref": "#/components/schemas/WorldState"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/RunMetrics"
+          },
+          "state_hash": {
+            "type": "string",
+            "title": "State Hash"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "tick",
+          "last_sequence",
+          "maze_hash",
+          "state",
+          "metrics",
+          "state_hash"
+        ],
+        "title": "TickSnapshot"
+      },
+      "TimingConfig": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "fixed_deadline",
+              "barrier",
+              "manual"
+            ],
+            "title": "Mode",
+            "default": "fixed_deadline"
+          },
+          "decision_window_ms": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Decision Window Ms",
+            "default": 30000
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "TimingConfig"
+      },
+      "TurnAction": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "1.0",
+            "title": "Schema Version"
+          },
+          "tick": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Tick"
+          },
+          "move": {
+            "type": "string",
+            "enum": [
+              "N",
+              "E",
+              "S",
+              "W",
+              "STAY"
+            ],
+            "title": "Move"
+          },
+          "notebook_edit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NotebookEdit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "radio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Radio"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema_version",
+          "tick",
+          "move",
+          "notebook_edit",
+          "radio"
+        ],
+        "title": "TurnAction"
+      },
+      "Usage": {
+        "properties": {
+          "input_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Tokens"
+          },
+          "output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Tokens"
+          },
+          "reasoning_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Tokens"
+          },
+          "requests": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Requests",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "Usage"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "WorldState": {
+        "properties": {
+          "tick": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Tick"
+          },
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/AgentState"
+            },
+            "type": "array",
+            "title": "Agents"
+          },
+          "radio_batch": {
+            "items": {
+              "$ref": "#/components/schemas/RadioObservation"
+            },
+            "type": "array",
+            "title": "Radio Batch"
+          },
+          "meetings": {
+            "items": {
+              "items": {
+                "type": "string",
+                "enum": [
+                  "A",
+                  "B",
+                  "C"
+                ]
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Meetings"
+          },
+          "objective_met_tick": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Objective Met Tick"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "tick",
+          "agents",
+          "radio_batch",
+          "meetings",
+          "objective_met_tick"
+        ],
+        "title": "WorldState"
+      }
+    }
+  }
+}

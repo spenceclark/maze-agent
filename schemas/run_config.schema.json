@@ -1,0 +1,482 @@
+{
+  "$defs": {
+    "BaselineAgentConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "enum": [
+            "A",
+            "B",
+            "C"
+          ],
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "baseline",
+          "title": "Kind",
+          "type": "string"
+        },
+        "policy": {
+          "enum": [
+            "random_open_v1",
+            "wall_follower_v1",
+            "dfs_bounded_v1"
+          ],
+          "title": "Policy",
+          "type": "string"
+        },
+        "adapter": {
+          "default": null,
+          "title": "Adapter",
+          "type": "null"
+        },
+        "provider": {
+          "default": null,
+          "title": "Provider",
+          "type": "null"
+        },
+        "model": {
+          "default": null,
+          "title": "Model",
+          "type": "null"
+        },
+        "sampling": {
+          "$ref": "#/$defs/Sampling",
+          "default": {
+            "temperature": null,
+            "top_p": null,
+            "seed": null
+          }
+        },
+        "max_output_tokens": {
+          "default": 2048,
+          "minimum": 1,
+          "title": "Max Output Tokens",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "policy"
+      ],
+      "title": "BaselineAgentConfig",
+      "type": "object"
+    },
+    "LlmAgentConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "enum": [
+            "A",
+            "B",
+            "C"
+          ],
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "llm",
+          "title": "Kind",
+          "type": "string"
+        },
+        "policy": {
+          "default": null,
+          "title": "Policy",
+          "type": "null"
+        },
+        "adapter": {
+          "const": "pydantic_ai",
+          "title": "Adapter",
+          "type": "string"
+        },
+        "provider": {
+          "enum": [
+            "anthropic",
+            "openai",
+            "ollama"
+          ],
+          "title": "Provider",
+          "type": "string"
+        },
+        "model": {
+          "minLength": 1,
+          "title": "Model",
+          "type": "string"
+        },
+        "base_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Base Url"
+        },
+        "api_key_env": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Api Key Env"
+        },
+        "output_mode": {
+          "default": "tool",
+          "enum": [
+            "tool",
+            "native",
+            "prompted"
+          ],
+          "title": "Output Mode",
+          "type": "string"
+        },
+        "context_window_tokens": {
+          "exclusiveMinimum": 0,
+          "title": "Context Window Tokens",
+          "type": "integer"
+        },
+        "sampling": {
+          "$ref": "#/$defs/Sampling",
+          "default": {
+            "temperature": null,
+            "top_p": null,
+            "seed": null
+          }
+        },
+        "max_output_tokens": {
+          "default": 2048,
+          "minimum": 1,
+          "title": "Max Output Tokens",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "adapter",
+        "provider",
+        "model",
+        "base_url",
+        "api_key_env",
+        "context_window_tokens"
+      ],
+      "title": "LlmAgentConfig",
+      "type": "object"
+    },
+    "MazeSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "width": {
+          "default": 15,
+          "minimum": 2,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "default": 15,
+          "minimum": 2,
+          "title": "Height",
+          "type": "integer"
+        },
+        "generator": {
+          "const": "dfs_v1",
+          "default": "dfs_v1",
+          "title": "Generator",
+          "type": "string"
+        },
+        "extra_open_edges": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Extra Open Edges",
+          "type": "integer"
+        },
+        "exit_policy": {
+          "const": "uniform_perimeter_cell",
+          "default": "uniform_perimeter_cell",
+          "title": "Exit Policy",
+          "type": "string"
+        },
+        "spawn_policy": {
+          "const": "uniform_distinct_non_exit",
+          "default": "uniform_distinct_non_exit",
+          "title": "Spawn Policy",
+          "type": "string"
+        },
+        "landmark_count": {
+          "const": 0,
+          "default": 0,
+          "title": "Landmark Count",
+          "type": "integer"
+        },
+        "checkpoint_count": {
+          "const": 0,
+          "default": 0,
+          "title": "Checkpoint Count",
+          "type": "integer"
+        }
+      },
+      "title": "MazeSettings",
+      "type": "object"
+    },
+    "RulesConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "const": "rules_v1",
+          "default": "rules_v1",
+          "title": "Version",
+          "type": "string"
+        },
+        "objective": {
+          "default": "all_reach_exit",
+          "enum": [
+            "all_reach_exit",
+            "first_exit",
+            "all_at_exit_simultaneously"
+          ],
+          "title": "Objective",
+          "type": "string"
+        },
+        "allow_stay": {
+          "default": true,
+          "title": "Allow Stay",
+          "type": "boolean"
+        },
+        "notebook_enabled": {
+          "default": true,
+          "title": "Notebook Enabled",
+          "type": "boolean"
+        },
+        "notebook_cap_bytes": {
+          "default": 8192,
+          "minimum": 0,
+          "title": "Notebook Cap Bytes",
+          "type": "integer"
+        },
+        "notebook_insert_bytes": {
+          "default": 1024,
+          "minimum": 0,
+          "title": "Notebook Insert Bytes",
+          "type": "integer"
+        },
+        "radio_enabled": {
+          "default": true,
+          "title": "Radio Enabled",
+          "type": "boolean"
+        },
+        "radio_message_bytes": {
+          "default": 280,
+          "minimum": 0,
+          "title": "Radio Message Bytes",
+          "type": "integer"
+        },
+        "radio_cooldown_ticks": {
+          "default": 5,
+          "minimum": 0,
+          "title": "Radio Cooldown Ticks",
+          "type": "integer"
+        },
+        "meeting_notebooks_enabled": {
+          "default": true,
+          "title": "Meeting Notebooks Enabled",
+          "type": "boolean"
+        },
+        "distance_sensors": {
+          "const": "exit_and_peers",
+          "default": "exit_and_peers",
+          "title": "Distance Sensors",
+          "type": "string"
+        },
+        "distance_quantization": {
+          "const": "tenths",
+          "default": "tenths",
+          "title": "Distance Quantization",
+          "type": "string"
+        }
+      },
+      "title": "RulesConfig",
+      "type": "object"
+    },
+    "Sampling": {
+      "additionalProperties": false,
+      "properties": {
+        "temperature": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Temperature"
+        },
+        "top_p": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Top P"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seed"
+        }
+      },
+      "title": "Sampling",
+      "type": "object"
+    },
+    "TimingConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "default": "fixed_deadline",
+          "enum": [
+            "fixed_deadline",
+            "barrier",
+            "manual"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "decision_window_ms": {
+          "default": 30000,
+          "exclusiveMinimum": 0,
+          "title": "Decision Window Ms",
+          "type": "integer"
+        }
+      },
+      "title": "TimingConfig",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "root_seed": {
+      "exclusiveMaximum": 18446744073709551616,
+      "minimum": 0,
+      "title": "Root Seed",
+      "type": "integer"
+    },
+    "condition": {
+      "minLength": 1,
+      "title": "Condition",
+      "type": "string"
+    },
+    "maze": {
+      "$ref": "#/$defs/MazeSettings",
+      "default": {
+        "width": 15,
+        "height": 15,
+        "generator": "dfs_v1",
+        "extra_open_edges": 0,
+        "exit_policy": "uniform_perimeter_cell",
+        "spawn_policy": "uniform_distinct_non_exit",
+        "landmark_count": 0,
+        "checkpoint_count": 0
+      }
+    },
+    "agents": {
+      "items": {
+        "discriminator": {
+          "mapping": {
+            "baseline": "#/$defs/BaselineAgentConfig",
+            "llm": "#/$defs/LlmAgentConfig"
+          },
+          "propertyName": "kind"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/BaselineAgentConfig"
+          },
+          {
+            "$ref": "#/$defs/LlmAgentConfig"
+          }
+        ]
+      },
+      "title": "Agents",
+      "type": "array"
+    },
+    "rules": {
+      "$ref": "#/$defs/RulesConfig",
+      "default": {
+        "version": "rules_v1",
+        "objective": "all_reach_exit",
+        "allow_stay": true,
+        "notebook_enabled": true,
+        "notebook_cap_bytes": 8192,
+        "notebook_insert_bytes": 1024,
+        "radio_enabled": true,
+        "radio_message_bytes": 280,
+        "radio_cooldown_ticks": 5,
+        "meeting_notebooks_enabled": true,
+        "distance_sensors": "exit_and_peers",
+        "distance_quantization": "tenths"
+      }
+    },
+    "timing": {
+      "$ref": "#/$defs/TimingConfig",
+      "default": {
+        "mode": "fixed_deadline",
+        "decision_window_ms": 30000
+      }
+    },
+    "horizon_ticks": {
+      "default": 500,
+      "exclusiveMinimum": 0,
+      "title": "Horizon Ticks",
+      "type": "integer"
+    },
+    "prompt_version": {
+      "default": "maze_agent_v1",
+      "title": "Prompt Version",
+      "type": "string"
+    },
+    "max_provider_requests_per_turn": {
+      "const": 1,
+      "default": 1,
+      "title": "Max Provider Requests Per Turn",
+      "type": "integer"
+    },
+    "snapshot_interval_ticks": {
+      "default": 25,
+      "exclusiveMinimum": 0,
+      "title": "Snapshot Interval Ticks",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "root_seed",
+    "condition",
+    "agents"
+  ],
+  "title": "RunConfig",
+  "type": "object"
+}
