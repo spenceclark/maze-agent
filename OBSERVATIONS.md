@@ -329,10 +329,18 @@ so they are wide and crude. Cost $1.41 for 4,320 decisions; about 30 minutes at 
 | Path efficiency (agents that exited) | 0.92 | 0.88 | −0.04 [−0.18, 0.13] |
 | Cost | $0.085 | $0.072 | **−$0.013 [−0.017, −0.010]** |
 
-**The 80-tick horizon caused a floor effect, and that was my choice.** The slowest spawn needs 49, 33 and 52 moves
-on these three seeds even with perfect play, so no run met the team objective and the success comparison is
-empty. I kept 80 ticks to match the earlier single runs; the scaled default would have been 320. The rerun
-should use it.
+**Agents mostly got stuck; they didn't run out of time.** I first called this a floor effect from the
+80-tick horizon. That was wrong. Across the 36 agents that never reached the exit:
+- **They stopped improving early.** Path distance to the exit last improved at a median of t24, and for 26 of
+  36 agents before t40.
+- **They stopped finding new ground.** 22 of 36 visited no new cell in the final 20 ticks, and the median agent
+  saw only 30 of 144 cells.
+- **They drifted back.** The median agent ended further from the exit (30 moves) than its best (25).
+- **Few were still progressing at the end:** only 5 agents were still getting closer in the last few ticks.
+
+So a longer horizon would mostly have bought more looping. It would only matter once agents explore
+systematically: the bounded-DFS baselines need about 170–200 ticks on 12×12, so 80 would also cap good
+exploration. Success is zero here mainly because of stalling, not the clock.
 
 **Distance from the exit decides who gets out.** Agents whose spawn was at most 25 moves from the exit reached it
 in 11 of 12 cases. Agents 27 or more moves away managed 7 of 42. The one near-miss: seed 202611017, `radio_on`
@@ -365,10 +373,13 @@ The adapter now records it as "output truncated at max_tokens". It happened once
 `max_output_tokens` would remove it, at some cost.
 
 **Next:**
-1. Rerun the same design with the default horizon (320 ticks on 12×12) and about 5 seeds, so success and
-   completion time can actually differ.
-2. Track "STAYs before reaching the exit" as a standard metric; it moved more than anything else here.
-3. Landmarks remain the main structural fix for the local-minimum stalls.
+1. Work on stalling before spending on longer runs:
+   - landmarks, so agents can tell cells apart;
+   - a rules nudge to record which exits of a junction have been tried, as the DFS baseline does.
+2. Track "STAYs before reaching the exit" and "ticks since the last new cell" as standard metrics; they move
+   more than the outcome measures do.
+3. A longer horizon (the 320-tick default) is worth testing once agents explore systematically. As things
+   stand, it would mostly measure longer loops.
 
 ## Prompt caching (added after the pilot, prompt `maze_agent_v2`)
 The pilot sent each observation as one JSON blob, so no part of the prompt was reusable between ticks. Version 2
