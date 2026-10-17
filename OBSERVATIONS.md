@@ -723,8 +723,10 @@ successes were both on seed 102, the easiest maze. With no successes at 8k, they
 still kept coordinates less than half right. Sonnet answered in about 225 tokens and, when tracking from its
 start, kept them about 98% right. Extra reasoning budget doesn't substitute for the stronger model's precision.
 
-**Cost per success.** Haiku spent about $9 across all 78 batch runs on this setup for 2 team successes. Sonnet
-spent about $9 on 6 batch runs for 3. At these prices the stronger model is the cheaper way to get a team out.
+**Cost per success.** Haiku spent $7.59 across all 78 batch runs on this setup for 2 team successes, about $3.80
+each. Sonnet spent $8.93 on 6 batch runs for 3, about $3.00 each. Despite costing ~16× more per run, the
+stronger model is the cheaper way to get a team out. These figures exclude the re-run cells and the duplicate
+runs from the accidental double batch.
 
 ## Prompt caching (added after the pilot, prompt `maze_agent_v2`)
 The pilot sent each observation as one JSON blob, so no part of the prompt was reusable between ticks. Version 2
