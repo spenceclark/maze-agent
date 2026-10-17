@@ -19,6 +19,7 @@ uv run pyright src tests
 uv run maze-lab run --policy dfs_bounded_v1 --seed 1   # baseline run, barrier timing
 uv run maze-lab verify <run_id>                         # re-execute and check every state hash
 uv run maze-lab export <run_id> run.zip                 # replay ZIP with checksums
+uv run maze-lab transcript <run_id>                     # transcripts/<run_id>/{A,B,C}.jsonl, one line per turn
 ```
 
 ## Spectator API
@@ -48,6 +49,6 @@ cd ui && npm run dev                     # dev server on :5173, proxies the API 
 - `src/maze_lab/policies/` – policy protocol and baselines
 - `src/maze_lab/persistence/` – SQLite journal, snapshots, invocation ledger
 - `src/maze_lab/metrics/` – ground-truth scoring
-- `src/maze_lab/replay.py`, `runs.py`, `cli.py` – replay/export, run creation, CLI
+- `src/maze_lab/replay.py`, `export.py`, `transcript.py`, `runs.py`, `cli.py` – replay, export, per-agent transcripts, run creation, CLI
 - `src/maze_lab/service.py`, `src/maze_lab/api/` – run ownership, commands, REST + SSE/WebSocket
 - `ui/` – React + TypeScript spectator viewer

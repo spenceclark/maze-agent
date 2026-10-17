@@ -30,6 +30,7 @@ from maze_lab.api.schemas import (
 )
 from maze_lab.config import RunConfig
 from maze_lab.domain.maze import MazeDefinition
+from maze_lab.export import export_run
 from maze_lab.persistence.models import (
     CommandReceipt,
     EventEnvelope,
@@ -43,7 +44,6 @@ from maze_lab.persistence.models import (
     TickSnapshot,
 )
 from maze_lab.persistence.store import RunStore
-from maze_lab.replay import export_run
 
 router = APIRouter(prefix="/api/v1")
 spectator = [require("spectator")]

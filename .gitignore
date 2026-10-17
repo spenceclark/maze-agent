@@ -32,3 +32,4 @@ diagnostics/
 *.db-wal
 *.db-shm
 .claude/worktrees/
+transcripts/

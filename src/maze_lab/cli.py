@@ -13,9 +13,11 @@ from dotenv import find_dotenv, load_dotenv
 from maze_lab.agent_contracts import AGENT_IDS
 from maze_lab.config import BaselineAgentConfig, BaselinePolicyName, RunConfig, TimingConfig, TimingMode
 from maze_lab.coordinator import Coordinator
+from maze_lab.export import export_run
 from maze_lab.persistence.store import RunStore
-from maze_lab.replay import export_run, verify_run
+from maze_lab.replay import verify_run
 from maze_lab.runs import build_policies, create_run
+from maze_lab.transcript import write_transcripts
 
 
 def _config_from_args(args: argparse.Namespace) -> RunConfig:
@@ -87,6 +89,9 @@ def main(argv: list[str] | None = None) -> int:
         ("show", "print a run's summary and latest metrics"),
     ):
         sub.add_parser(name, help=help_text).add_argument("run_id")
+    transcript = sub.add_parser("transcript", help="write one JSONL file per agent, one line per turn")
+    transcript.add_argument("run_id")
+    transcript.add_argument("--out", type=Path, help="output directory (default: transcripts/<run_id>)")
     export = sub.add_parser("export", help="write a replay ZIP with checksums")
     export.add_argument("run_id")
     export.add_argument("out", type=Path)
@@ -131,6 +136,11 @@ def main(argv: list[str] | None = None) -> int:
                         "metrics": final.metrics.model_dump(mode="json") if final else None,
                     }
                 )
+            case "transcript":
+                for path in write_transcripts(
+                    store, args.run_id, args.out or Path("transcripts") / args.run_id
+                ):
+                    print(f"wrote {path}", file=sys.stderr)
             case "export":
                 export_run(store, args.run_id, args.out)
                 print(f"wrote {args.out}", file=sys.stderr)

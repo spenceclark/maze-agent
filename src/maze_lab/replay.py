@@ -1,10 +1,7 @@
-"""Playback, deterministic re-execution, and replay export (spec §10)."""
+"""Playback and deterministic re-execution (spec §10)."""
 
-import hashlib
-import zipfile
 from collections.abc import Iterator
 from dataclasses import dataclass
-from pathlib import Path
 
 from maze_lab.agent_contracts import AgentId
 from maze_lab.domain.events import DecisionResolved, GameEvent
@@ -88,45 +85,3 @@ def verify_run(store: RunStore, run_id: str) -> VerifyReport:
         state = result.state
         checked += 1
     return VerifyReport(checked, mismatched)
-
-
-def _ndjson(lines: list[str]) -> bytes:
-    return "".join(line + "\n" for line in lines).encode()
-
-
-def export_run(store: RunStore, run_id: str, path: Path) -> None:
-    """ZIP replay export with a SHA-256 checksum file."""
-    files: dict[str, bytes] = {
-        "manifest.json": store.manifest(run_id).model_dump_json(indent=2).encode(),
-        "maze.json": store.maze(run_id).model_dump_json(indent=2).encode(),
-        "events.ndjson": _ndjson([e.model_dump_json() for e in store.events(run_id)]),
-        "invocations.ndjson": _ndjson([i.model_dump_json() for i in store.invocations(run_id)]),
-        "notebook_revisions.ndjson": _ndjson([r.model_dump_json() for r in store.notebook_revisions(run_id)]),
-        "radio.ndjson": _ndjson([r.model_dump_json() for r in store.radio(run_id)]),
-    }
-    for snap in store.snapshots(run_id):
-        files[f"snapshots/{snap.tick:06d}.json"] = snap.model_dump_json().encode()
-    summary = store.summary(run_id)
-    last = store.tick_commit(run_id, summary.committed_tick) if summary else None
-    if last is not None:
-        files["metrics.json"] = last.metrics.model_dump_json(indent=2).encode()
-    checksums = "".join(
-        f"{hashlib.sha256(data).hexdigest()}  {name}\n" for name, data in sorted(files.items())
-    )
-    files["SHA256SUMS"] = checksums.encode()
-
-    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
-        for name, data in files.items():
-            zf.writestr(name, data)
-
-
-def verify_export(path: Path) -> bool:
-    """Check every file in an export against its recorded checksum."""
-    with zipfile.ZipFile(path) as zf:
-        expected: dict[str, str] = {}
-        for line in zf.read("SHA256SUMS").decode().splitlines():
-            digest, name = line.split("  ", 1)
-            expected[name] = digest
-        if set(expected) != set(zf.namelist()) - {"SHA256SUMS"}:
-            return False
-        return all(hashlib.sha256(zf.read(name)).hexdigest() == digest for name, digest in expected.items())

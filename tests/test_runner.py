@@ -11,11 +11,12 @@ from maze_lab.config import RunConfig
 from maze_lab.coordinator import Coordinator, RunControl
 from maze_lab.domain.geometry import DIRECTIONS, Position
 from maze_lab.domain.maze import MazeDefinition
+from maze_lab.export import export_run, verify_export
 from maze_lab.observation import observe
 from maze_lab.persistence.models import InvocationRecord
 from maze_lab.persistence.store import LostOwnershipError, RunStore
 from maze_lab.policies.base import AgentPolicy, DecisionAttempt
-from maze_lab.replay import export_run, verify_export, verify_run
+from maze_lab.replay import verify_run
 from maze_lab.runs import build_policies, create_run
 
 
