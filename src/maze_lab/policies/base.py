@@ -17,6 +17,7 @@ class Usage(Contract):
     output_tokens: int | None = None
     reasoning_tokens: int | None = None
     requests: int = Field(default=0, ge=0)
+    estimated_cost_usd: float | None = None  # provider price table at call time, when known
 
 
 class DecisionAttempt(Contract):
@@ -28,7 +29,6 @@ class DecisionAttempt(Contract):
     response_text: str | None = None  # exact text returned (LLM policies)
     provider_request_id: str | None = None
     usage: Usage = Usage()
-    estimated_cost_usd: float | None = None
     error_detail: str | None = None
 
     @model_validator(mode="after")

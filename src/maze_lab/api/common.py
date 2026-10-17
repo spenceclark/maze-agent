@@ -90,19 +90,17 @@ class ReadPoint(BaseModel):
 
 
 def read_point(store: RunStore, run_id: str, at_tick: int | None = None) -> ReadPoint:
-    summary = store.summary(run_id)
-    if summary is None:
+    position = store.read_position(run_id)
+    if position is None:
         raise ApiError(404, "not_found", f"no run {run_id}")
-    tick = summary.committed_tick if at_tick is None else at_tick
-    if at_tick is not None and not 0 <= at_tick <= summary.committed_tick:
-        raise ApiError(
-            409, "tick_not_committed", f"tick {at_tick} is not committed (latest {summary.committed_tick})"
-        )
-    commit = store.tick_commit(run_id, tick)
-    if commit is None:
-        raise ApiError(409, "tick_not_committed", f"tick {tick} is not committed")
-    as_of = commit.last_sequence if at_tick is not None else store.last_sequence(run_id)
-    return ReadPoint(run_id=run_id, state_tick=tick, as_of_sequence=as_of)
+    latest_tick, latest_sequence = position
+    if at_tick is None:
+        return ReadPoint(run_id=run_id, state_tick=latest_tick, as_of_sequence=latest_sequence)
+    if not 0 <= at_tick <= latest_tick:
+        raise ApiError(409, "tick_not_committed", f"tick {at_tick} is not committed (latest {latest_tick})")
+    commit = store.tick_commit(run_id, at_tick)
+    assert commit is not None
+    return ReadPoint(run_id=run_id, state_tick=at_tick, as_of_sequence=commit.last_sequence)
 
 
 # ---- opaque cursors ---------------------------------------------------------

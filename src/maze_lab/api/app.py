@@ -14,12 +14,15 @@ from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from maze_lab.api import routes, stream
 from maze_lab.api.common import ApiError, error_response, from_service_error
 from maze_lab.api.schemas import Health
 from maze_lab.persistence.store import RunStore
 from maze_lab.service import EventHub, RunService, ServiceError
+
+VIEWER_DIST = Path(__file__).resolve().parents[3] / "ui" / "dist"
 
 
 def create_app(
@@ -71,4 +74,6 @@ def create_app(
 
     app.include_router(routes.router)
     app.include_router(stream.router)
+    if VIEWER_DIST.is_dir():  # the built React viewer, if present (`npm run build` in ui/)
+        app.mount("/", StaticFiles(directory=VIEWER_DIST, html=True), name="viewer")
     return app

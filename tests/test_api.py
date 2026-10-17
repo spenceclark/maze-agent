@@ -1,6 +1,7 @@
 """Spectator API contract tests (spec §11, §17): viewer-independent runs, consistent
 reads, idempotent commands, and SSE/WebSocket parity."""
 
+import asyncio
 import json
 import time
 import zipfile
@@ -12,16 +13,23 @@ from fastapi.testclient import TestClient
 
 from maze_lab.agent_contracts import AGENT_IDS
 from maze_lab.api.app import create_app
+from maze_lab.api.stream import event_stream
+from maze_lab.config import RunConfig, TimingConfig
+from maze_lab.persistence.models import EventEnvelope, RunCommand
+from maze_lab.persistence.store import RunStore
+from maze_lab.service import EventHub, RunService
 
 API = "/api/v1"
 
 
-def baseline_config(mode: str = "barrier", horizon: int = 120) -> dict[str, object]:
+def baseline_config(
+    mode: str = "barrier", horizon: int = 120, policy: str = "dfs_bounded_v1"
+) -> dict[str, object]:
     return {
         "root_seed": 5,
         "condition": "api_test",
         "maze": {"width": 5, "height": 5},
-        "agents": [{"id": a, "kind": "baseline", "policy": "dfs_bounded_v1"} for a in AGENT_IDS],
+        "agents": [{"id": a, "kind": "baseline", "policy": policy} for a in AGENT_IDS],
         "timing": {"mode": mode, "decision_window_ms": 2000},
         "horizon_ticks": horizon,
     }
@@ -202,3 +210,43 @@ def test_tokens_gate_reads_and_mutations(tmp_path: Path):
         created = c.post(f"{API}/runs", json=baseline_config(), headers={"Authorization": "Bearer op"})
         assert created.status_code == 201
         assert c.get("/health/live").status_code == 200
+
+
+def test_live_stream_and_mid_run_reconnect_have_no_gaps(tmp_path: Path):
+    """Drive the shared stream generator against a run that is still ticking.
+
+    (Starlette's TestClient buffers streaming bodies, so the live path is tested
+    here, below the transport; SSE and WebSocket both wrap this generator.)
+    """
+    config = RunConfig.model_validate(
+        baseline_config(mode="fixed_deadline", horizon=60, policy="random_open_v1")
+    )
+    config = config.model_copy(update={"timing": TimingConfig(mode="fixed_deadline", decision_window_ms=20)})
+
+    async def scenario() -> tuple[list[EventEnvelope], list[EventEnvelope], bool]:
+        store = RunStore(tmp_path / "live.db")
+        service = RunService(store, EventHub())
+        run_id = service.create(config).run_id
+        service.command(run_id, RunCommand(command="start", expected_state_tick=0), "go")
+
+        first: list[EventEnvelope] = []
+        async for item in event_stream(service, run_id, 0, heartbeat=0.5):
+            if isinstance(item, EventEnvelope):
+                first.append(item)
+            if len(first) == 12:
+                break  # client drops mid-run
+        was_running = service.summary(run_id).status == "running"
+
+        rest: list[EventEnvelope] = []
+        async for item in event_stream(service, run_id, first[-1].sequence, heartbeat=0.5):
+            if isinstance(item, EventEnvelope):
+                rest.append(item)
+        await service.shutdown()
+        store.close()
+        return first, rest, was_running
+
+    first, rest, was_running = asyncio.run(scenario())
+    assert was_running
+    combined = [e.sequence for e in first + rest]
+    assert combined == list(range(1, len(combined) + 1))
+    assert rest[-1].type == "run.completed"

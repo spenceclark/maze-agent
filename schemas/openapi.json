@@ -1459,6 +1459,17 @@
           "provider_requests": {
             "type": "integer",
             "title": "Provider Requests"
+          },
+          "estimated_cost_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Cost Usd"
           }
         },
         "additionalProperties": false,
@@ -1492,7 +1503,8 @@
           "input_tokens",
           "output_tokens",
           "reasoning_tokens",
-          "provider_requests"
+          "provider_requests",
+          "estimated_cost_usd"
         ],
         "title": "AgentMetrics"
       },
@@ -2018,17 +2030,6 @@
             "default": {
               "requests": 0
             }
-          },
-          "estimated_cost_usd": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Estimated Cost Usd"
           },
           "error_detail": {
             "anyOf": [
@@ -4485,6 +4486,17 @@
             "minimum": 0.0,
             "title": "Requests",
             "default": 0
+          },
+          "estimated_cost_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Cost Usd"
           }
         },
         "additionalProperties": false,

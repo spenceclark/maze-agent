@@ -8,8 +8,10 @@ One `RunService` per process owns every coordinator it starts.
 import asyncio
 import logging
 import uuid
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 
+from maze_lab.agent_contracts import AgentId
 from maze_lab.config import RunConfig
 from maze_lab.coordinator import TERMINAL, Coordinator, RunControl
 from maze_lab.hashing import content_hash
@@ -22,6 +24,7 @@ from maze_lab.persistence.models import (
     RunSummary,
 )
 from maze_lab.persistence.store import RunStore
+from maze_lab.policies.base import AgentPolicy
 from maze_lab.runs import build_policies, create_run
 
 log = logging.getLogger(__name__)
@@ -159,6 +162,12 @@ class RunService:
         if summary.status not in _ALLOWED[cmd.command]:
             raise ConflictError(f"cannot {cmd.command} a {summary.status} run")
 
+        launch = cmd.command == "start" or run_id not in self._controls
+        try:
+            policies = build_policies(self.store.config(run_id)) if launch else None  # before persisting
+        except ValueError as e:
+            raise InvalidConfigError(str(e)) from e
+
         open_tick = summary.status == "running"  # a tick may be in flight; it commits first
         receipt = CommandReceipt(
             command_id=uuid.uuid4().hex,
@@ -172,10 +181,9 @@ class RunService:
         self.store.save_command(receipt, idempotency_key, request_hash)
         self._pending.setdefault(run_id, []).append(receipt)
 
+        control = self._launch(run_id, policies) if policies is not None else self._controls[run_id]
         if cmd.command == "start":
-            self._launch(run_id)
             return receipt
-        control = self._controls.get(run_id) or self._launch(run_id)
         match cmd.command:
             case "pause":
                 control.pause()
@@ -187,15 +195,14 @@ class RunService:
                 control.cancel()
         return receipt
 
-    def _launch(self, run_id: str) -> RunControl:
+    def _launch(self, run_id: str, policies: Mapping[AgentId, AgentPolicy] | None = None) -> RunControl:
         if run_id in self._controls:
             return self._controls[run_id]
-        config = self.store.config(run_id)
         control = RunControl()
         coordinator = Coordinator(
             self.store,
             run_id,
-            build_policies(config),
+            policies if policies is not None else build_policies(self.store.config(run_id)),
             control=control,
             on_commit=lambda events: self._on_commit(run_id, events),
         )

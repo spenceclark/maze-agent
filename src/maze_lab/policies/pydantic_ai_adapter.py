@@ -91,6 +91,7 @@ def _usage(responses: list[ModelResponse]) -> Usage:
         if any(x is not None for x in reasoning)
         else None,
         requests=len(responses),
+        estimated_cost_usd=_cost(responses),
     )
 
 
@@ -168,6 +169,5 @@ class PydanticAiPolicy:
             response_text=raw,
             provider_request_id=last.provider_response_id if last else None,
             usage=_usage(responses),
-            estimated_cost_usd=_cost(responses),
             error_detail=detail,
         )

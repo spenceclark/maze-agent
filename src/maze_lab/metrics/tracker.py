@@ -79,6 +79,7 @@ class AgentMetrics(Contract):
     output_tokens: int | None
     reasoning_tokens: int | None
     provider_requests: int
+    estimated_cost_usd: float | None
 
 
 class RunMetrics(Contract):
@@ -104,7 +105,7 @@ def _ratio(num: int, den: int | None) -> float | None:
     return num / den if den else None
 
 
-def _add(total: int | None, value: int | None) -> int | None:
+def _add[N: (int, float)](total: N | None, value: N | None) -> N | None:
     return total if value is None else (total or 0) + value
 
 
@@ -134,6 +135,7 @@ class _AgentTally:
     output_tokens: int | None = None
     reasoning_tokens: int | None = None
     requests: int = 0
+    cost_usd: float | None = None
 
 
 class MetricsTracker:
@@ -232,6 +234,7 @@ class MetricsTracker:
         t.output_tokens = _add(t.output_tokens, usage.output_tokens)
         t.reasoning_tokens = _add(t.reasoning_tokens, usage.reasoning_tokens)
         t.requests += usage.requests
+        t.cost_usd = _add(t.cost_usd, usage.estimated_cost_usd)
 
     def snapshot(self) -> RunMetrics:
         state = self._state
@@ -289,4 +292,5 @@ class MetricsTracker:
             output_tokens=t.output_tokens,
             reasoning_tokens=t.reasoning_tokens,
             provider_requests=t.requests,
+            estimated_cost_usd=t.cost_usd,
         )

@@ -297,6 +297,15 @@ class RunStore:
         with self._lock:
             return self._conn.execute(sql, params).fetchall()
 
+    def read_position(self, run_id: str) -> tuple[int, int] | None:
+        """(committed_tick, last_sequence) in one statement, so a read cannot straddle a commit."""
+        row = self._one(
+            "SELECT committed_tick, (SELECT MAX(sequence) FROM events WHERE run_id = ?)"
+            " FROM runs WHERE run_id = ?",
+            (run_id, run_id),
+        )
+        return (int(row[0]), int(row[1] or 0)) if row else None
+
     def ping(self) -> bool:
         return self._one("SELECT 1", ()) == (1,)
 
