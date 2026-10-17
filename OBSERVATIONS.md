@@ -1,5 +1,59 @@
 # Observations
 
+## Summary: what didn't work, and how much shepherding the model needed
+This is a running digest for write-ups; the detailed, chronological evidence is below, and the batch tables
+are in `reports/`. All of these are 12×12 or smaller mazes with three agents on Claude Haiku 5.5 unless noted.
+Batches use 3 seeds, so intervals are wide.
+
+**The shepherding ladder.** Each row is a failure we saw, the nudge we tried, and what changed.
+
+| # | Failure observed | Shepherding tried | What changed | Still broken |
+| --- | --- | --- | --- | --- |
+| 1 | Agents wrote stale notes and trusted them over what they could see: 8 moves into visible walls in 240 decisions (first pilot) | Prompt v2: the current observation moved into its own final block, after the notebooks (done for caching) | Moves into visible walls dropped to 2 in 4,320 decisions in later batches | Not a controlled test; the layout change is a plausible cause, not a proven one |
+| 2 | Straight-line distance followed greedily: agents parked on low-reading dead ends, one 2.2 cells away in a straight line but 39 moves by path | Prompt v3: the rules say distance ignores walls, so a local minimum can be a dead end | One agent improved in a single run, but its notes never cited the rule. Batches showed no change in greedy reversals | **Didn't work.** Knowing the rule didn't change the behaviour |
+| 3 | Agents on the exit radioed greedy advice ("avoid E", "hold at 5.0") and camped there as "beacons" | Radio-off ablation (18 runs) | No change in outcomes. With radio, agents still searching stood still ~17 more turns, and cost was ~15% higher | **Removing bad advice didn't remove the greed**; it's the model's own habit. Radio mostly bought waiting |
+| 4 | Aimless re-exploration, with no record of which branches were tried | Prompt v4: note each junction and which exits were tried; prefer an untried one | Habit adopted by 17 of 18 agents (1 of 18 before). Coverage +9.5 points, revisits −6.8 points, ~16 fewer STAYs | **Progress toward the exit unchanged.** Better bookkeeping, same stalls |
+| 5 | Cells all look alike, and routes told "from my spawn" are useless to anyone else | Landmarks: 10 unique labels on fixed cells | Used as place names ("north corridor above mirror is exhausted"). Best progress toward the exit +6.5 points | **No more agents exited.** Landmarks were rarely shared (10 of 155 radio messages) |
+| 6 | All of the above | **Swap model:** Sonnet 5.5, same config (single run) | **Team objective met at t70**, the first LLM success. It built landmark-anchored coordinates, estimated the exit's position, took detours, and followed a peer's route from a landmark | Cost ~22×. Batch replication pending |
+| 7 | Can Haiku be pushed into Sonnet's habits? | Prompt v5: spell out coordinates, exit estimation and landmark-anchored routes; plus higher thinking effort | *Pending (`experiments/haiku_pattern.json`)* | — |
+
+**What Haiku did well unprompted:**
+- **Notebook use from turn one:** concise journals, one line per turn.
+- **Logging one tick late:** it recorded moves only once the next observation confirmed them, as the
+  bounded-DFS baseline does.
+- **Radioing** useful facts, such as the exit cell's walls.
+- **Occasional self-correction** ("labels look swapped vs obs, trust obs").
+- **Checking a peer's claim with its sensors:** "My exit dist 3.2 equals my range to A, so A on exit is
+  consistent".
+
+**What Haiku almost never did without explicit help:**
+- **Keep coordinates.** 0–17% of agents, and only the weakest form.
+- **Estimate where the exit is** from several readings.
+- **Anchor shared routes to something peers can find.** It almost always used its own spawn.
+- **Answer a peer's specific question,** or move toward a stuck peer.
+- **Commit to a branch** while the distance reading rose.
+
+**Failure modes that kept recurring:**
+- **Copying stale notes forward.**
+- **Retelling drift:** routes shortened or garbled when re-radioed from memory, even though the notebook
+  was right.
+- **Camping on the exit** as a "beacon" that adds no information, because the peer range to a beacon equals
+  the exit distance.
+- **Greedy advice** to peers in different places, including advice that contradicted the rule just quoted.
+- **Note-taking lapses** followed by a two-cell back-and-forth that lasted 38 ticks.
+- **Hidden thinking using up the output budget:** about 1 decision in 3,000 was cut off.
+
+**Lessons about running the experiment:**
+- **Single runs mislead.** B's large v3 improvement didn't replicate.
+- **"Ran out of time" was wrong.** Agents stalled by tick ~24 and looped; a longer horizon would have measured
+  longer loops.
+- **Behavioural metrics moved where outcomes didn't.** STAYs before exiting, ticks since a new cell and best
+  progress toward the exit showed changes that success rate couldn't.
+- **Cheap prompt nudges change behaviour reliably,** and agents adopt them almost universally. They don't
+  automatically change outcomes.
+
+---
+
 Notes on things that surprised us while building phases 1–5. **Most agent-behaviour notes come from one pilot run**
 (n = 1, one seed, one model). Treat them as hypotheses to test with the phase 6 batch runner, not as results.
 
