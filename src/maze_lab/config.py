@@ -1,6 +1,6 @@
 """Run configuration (spec §3, §8.1). Internal: never shown to agents."""
 
-from typing import Annotated, Literal, Self
+from typing import Annotated, Any, Literal, Self
 
 from pydantic import Field, model_validator
 
@@ -8,7 +8,8 @@ from maze_lab.agent_contracts import AGENT_IDS, AgentId, Contract, Objective
 
 BaselinePolicyName = Literal["random_open_v1", "wall_follower_v1", "dfs_bounded_v1"]
 LlmAdapter = Literal["pydantic_ai"]
-LlmProvider = Literal["anthropic", "openai", "ollama"]
+LlmProvider = Literal["anthropic", "openai", "ollama"]  # "openai" = any OpenAI-compatible endpoint
+LlmOutputMode = Literal["tool", "native", "prompted"]
 TimingMode = Literal["fixed_deadline", "barrier", "manual"]
 
 
@@ -46,6 +47,13 @@ class BaselineAgentConfig(Contract):
     max_output_tokens: int = Field(default=2048, ge=1)
 
 
+PROVIDER_DEFAULTS: dict[str, dict[str, str | None]] = {
+    "anthropic": {"base_url": None, "api_key_env": "ANTHROPIC_API_KEY"},
+    "openai": {"base_url": None, "api_key_env": "OPENAI_API_KEY"},
+    "ollama": {"base_url": "http://localhost:11434/v1", "api_key_env": None},
+}
+
+
 class LlmAgentConfig(Contract):
     id: AgentId
     kind: Literal["llm"]
@@ -53,8 +61,20 @@ class LlmAgentConfig(Contract):
     adapter: LlmAdapter
     provider: LlmProvider
     model: str = Field(min_length=1)
+    base_url: str | None
+    api_key_env: str | None  # name of the server-side environment variable; never the key itself
+    output_mode: LlmOutputMode = "tool"
+    context_window_tokens: int = Field(gt=0)  # stated explicitly; checked by the prompt preflight
     sampling: Sampling = Sampling()
     max_output_tokens: int = Field(default=2048, ge=1)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _provider_defaults(cls, data: Any) -> Any:
+        """Resolve provider defaults so the stored config is never ambiguous."""
+        if isinstance(data, dict) and data.get("provider") in PROVIDER_DEFAULTS:
+            return {**PROVIDER_DEFAULTS[data["provider"]], **data}
+        return data
 
 
 AgentConfig = Annotated[BaselineAgentConfig | LlmAgentConfig, Field(discriminator="kind")]

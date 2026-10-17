@@ -148,6 +148,24 @@ class RadioRecord(Contract):
     utf8_bytes: int
 
 
+CommandName = Literal["start", "pause", "resume", "step", "cancel"]
+
+
+class RunCommand(Contract):
+    command: CommandName
+    expected_state_tick: int = Field(ge=0)
+
+
+class CommandReceipt(Contract):
+    command_id: str
+    run_id: str
+    command: CommandName
+    status: Literal["pending", "applied", "rejected"]
+    requested_at_tick: int
+    effective_after_tick: int | None
+    error: str | None
+
+
 InvocationStatus = Literal["dispatched", "completed", "failed", "timed_out"]
 
 

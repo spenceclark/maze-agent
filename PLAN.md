@@ -29,11 +29,20 @@ Decisions recorded:
 Phase 2 check (15×15, seed 20261017): dfs 326 ticks, wall follower 217, random hits the 500-tick limit; `verify` matches all hashes.
 
 ## Phase 3 — LLM adapters
-- [ ] Provider config (Anthropic / OpenAI-compatible incl. Ollama), per-agent model
-- [ ] PydanticAI adapter: one request, no history, no retries
-- [ ] Prompt (versioned system instruction + ordered observation), invocation logging
-- [ ] Context-capacity preflight
-- [ ] Pilot run with `claude-haiku-5-5`
+- [x] Provider config (Anthropic / OpenAI-compatible incl. Ollama), per-agent model
+- [x] PydanticAI adapter: one request, no history, no retries
+- [x] Prompt (versioned system instruction + ordered observation), invocation logging
+- [x] Context-capacity preflight
+- [x] Pilot run with `claude-haiku-5-5` (`configs/pilot_haiku.json`)
+
+Phase 3 pilot (7×7, seed 20261017, barrier, 80 ticks, `native` output mode): 240/240 decisions valid,
+1 request each, no timeouts/refusals/rejected writes; A exited at t12, B at t31, C still exploring at t80
+(`tick_limit`). Agents compacted notebooks and radioed routes. Cost $0.12, p50 latency 2.5 s.
+`verify` matched all 80 state hashes.
+
+Notes: Haiku 5.5 rejects non-default temperature/top_p (leave `sampling` empty) and thinks adaptively
+by default; `reasoning_tokens` is not reported separately by the provider.
+
 
 ## Phase 4 — Spectator service
 - [ ] FastAPI REST reads + commands (idempotency)

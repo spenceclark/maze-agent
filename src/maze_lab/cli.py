@@ -3,9 +3,12 @@
 import argparse
 import asyncio
 import json
+import os
 import sys
 from pathlib import Path
 from typing import get_args
+
+from dotenv import find_dotenv, load_dotenv
 
 from maze_lab.agent_contracts import AGENT_IDS
 from maze_lab.config import BaselineAgentConfig, BaselinePolicyName, RunConfig, TimingConfig, TimingMode
@@ -70,8 +73,13 @@ def main(argv: list[str] | None = None) -> int:
     export.add_argument("run_id")
     export.add_argument("out", type=Path)
     sub.add_parser("list", help="list runs")
+    serve = sub.add_parser("serve", help="run the spectator API (single process; owns all coordinators)")
+    serve.add_argument("--host", default="127.0.0.1")
+    serve.add_argument("--port", type=int, default=8000)
 
     args = parser.parse_args(argv)
+    os.environ.setdefault("PYDANTIC_AI_NO_BANNER", "1")
+    load_dotenv(find_dotenv(usecwd=True))  # provider keys stay server-side, referenced by env var name
     store = RunStore(args.db)
     try:
         match args.command:
@@ -106,6 +114,13 @@ def main(argv: list[str] | None = None) -> int:
             case "export":
                 export_run(store, args.run_id, args.out)
                 print(f"wrote {args.out}", file=sys.stderr)
+            case "serve":
+                import uvicorn
+
+                from maze_lab.api.app import create_app
+
+                store.close()
+                uvicorn.run(create_app(args.db), host=args.host, port=args.port, workers=1)
             case "list":
                 for s in store.summaries():
                     print(f"{s.run_id}  {s.status:<9}  tick {s.committed_tick:>4}  {s.condition}")

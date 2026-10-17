@@ -19,6 +19,7 @@ from maze_lab.agent_contracts import AgentId
 from maze_lab.config import RunConfig
 from maze_lab.domain.maze import MazeDefinition
 from maze_lab.persistence.models import (
+    CommandReceipt,
     EventEnvelope,
     InvocationRecord,
     NotebookRevision,
@@ -98,6 +99,14 @@ CREATE TABLE IF NOT EXISTS invocations (
     record_json TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS invocations_by_tick ON invocations (run_id, tick, agent_id);
+CREATE TABLE IF NOT EXISTS commands (
+    command_id TEXT PRIMARY KEY,
+    run_id TEXT NOT NULL,
+    idempotency_key TEXT NOT NULL,
+    request_hash TEXT NOT NULL,
+    receipt_json TEXT NOT NULL,
+    UNIQUE (run_id, idempotency_key)
+);
 """
 
 
@@ -234,6 +243,20 @@ class RunStore:
                 ),
             )
 
+    def save_command(self, receipt: CommandReceipt, idempotency_key: str, request_hash: str) -> None:
+        with self._tx() as db:
+            db.execute(
+                "INSERT INTO commands VALUES (?,?,?,?,?)",
+                (receipt.command_id, receipt.run_id, idempotency_key, request_hash, receipt.model_dump_json()),
+            )
+
+    def update_command(self, receipt: CommandReceipt) -> None:
+        with self._tx() as db:
+            db.execute(
+                "UPDATE commands SET receipt_json = ? WHERE command_id = ?",
+                (receipt.model_dump_json(), receipt.command_id),
+            )
+
     @staticmethod
     def _insert_events(db: sqlite3.Connection, events: Iterable[EventEnvelope]) -> None:
         db.executemany(
@@ -267,6 +290,9 @@ class RunStore:
     def _all(self, sql: str, params: tuple[object, ...]) -> list[tuple[Any, ...]]:
         with self._lock:
             return self._conn.execute(sql, params).fetchall()
+
+    def ping(self) -> bool:
+        return self._one("SELECT 1", ()) == (1,)
 
     def summary(self, run_id: str) -> RunSummary | None:
         row = self._one(f"SELECT {_SUMMARY_COLUMNS} FROM runs WHERE run_id = ?", (run_id,))
@@ -352,6 +378,18 @@ class RunStore:
     def radio(self, run_id: str) -> list[RadioRecord]:
         rows = self._all("SELECT record_json FROM radio WHERE run_id = ? ORDER BY sequence", (run_id,))
         return [RadioRecord.model_validate_json(str(r[0])) for r in rows]
+
+    def command_by_key(self, run_id: str, idempotency_key: str) -> tuple[str, CommandReceipt] | None:
+        """(request hash, receipt) for an idempotency key already used on this run."""
+        row = self._one(
+            "SELECT request_hash, receipt_json FROM commands WHERE run_id = ? AND idempotency_key = ?",
+            (run_id, idempotency_key),
+        )
+        return (row[0], CommandReceipt.model_validate_json(row[1])) if row else None
+
+    def commands(self, run_id: str) -> list[CommandReceipt]:
+        rows = self._all("SELECT receipt_json FROM commands WHERE run_id = ? ORDER BY rowid", (run_id,))
+        return [CommandReceipt.model_validate_json(r[0]) for r in rows]
 
     def invocations(
         self, run_id: str, tick: int | None = None, agent_id: AgentId | None = None

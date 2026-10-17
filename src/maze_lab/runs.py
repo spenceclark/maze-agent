@@ -26,6 +26,9 @@ from maze_lab.persistence.models import (
 from maze_lab.persistence.store import RunStore
 from maze_lab.policies.base import AgentPolicy
 from maze_lab.policies.baselines import make_baseline
+from maze_lab.policies.preflight import preflight
+from maze_lab.policies.prompt import PROMPT_VERSION
+from maze_lab.policies.pydantic_ai_adapter import ADAPTER_VERSION, PydanticAiPolicy
 
 REDUCER_VERSION = "reducer_v1"
 RANDOMNESS = (
@@ -49,7 +52,10 @@ def _lock_hash() -> str | None:
 
 
 def create_run(store: RunStore, config: RunConfig, run_id: str | None = None) -> RunSummary:
-    """Generate and validate the fixture, then journal `run.created` and tick 0."""
+    """Validate the config and fixture, then journal `run.created` and tick 0."""
+    if config.prompt_version != PROMPT_VERSION:
+        raise ValueError(f"unknown prompt_version {config.prompt_version!r}")
+    preflight(config)
     run_id = run_id or uuid.uuid4().hex[:12]
     now = datetime.now(UTC)
     maze = generate_maze(
@@ -74,6 +80,7 @@ def create_run(store: RunStore, config: RunConfig, run_id: str | None = None) ->
             "reducer": REDUCER_VERSION,
             "rules": config.rules.version,
             "prompt": config.prompt_version,
+            "adapter": ADAPTER_VERSION,
             "metrics": metrics.version,
         },
         randomness=RANDOMNESS,
@@ -135,5 +142,5 @@ def build_policies(config: RunConfig) -> dict[AgentId, AgentPolicy]:
         if agent.kind == "baseline":
             policies[agent.id] = make_baseline(agent.policy, baseline_sampler(config.root_seed, agent.id))
         else:
-            raise NotImplementedError("LLM policies arrive in phase 3")
+            policies[agent.id] = PydanticAiPolicy(agent, timeout_s=config.timing.decision_window_ms / 1000)
     return policies
