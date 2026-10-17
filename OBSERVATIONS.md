@@ -478,6 +478,61 @@ above come from the final 12 valid runs.
 Two next steps would show whether these gains turn into exits: a longer horizon (320 ticks) now that
 exploration is more systematic, and a stronger model on the same specs.
 
+## Single run: Sonnet 5.5 on v4 + landmarks, run `ac57358e8053` (`configs/sonnet55_v4_landmarks.json`)
+This is the config of the Haiku `landmarks_v4` / `v4_landmarks` runs on seed 202611017 with only `model`
+changed to `claude-sonnet-5-5`: same 12×12 maze, 10 landmarks, prompt v4, 80 ticks, radio on and a
+2,048-token output cap. It is compared with the two Haiku runs of that cell (`c5c295d66542`,
+`d80ae20b7b8e`). **One run against two**, so treat it as a strong anecdote, not an estimate. Replay
+verification matched all 70 ticks.
+
+| | Haiku r0 | Haiku r1 | **Sonnet** |
+| --- | --- | --- | --- |
+| Team objective | not met | not met | **met at t70** |
+| A (spawn 5 moves out) | exit t5 | exit t5 | exit t5 |
+| B (spawn 28) | exit t32 | never (got within 20) | exit t30 |
+| C (spawn 52) | never (got within 32) | never (got within 20) | **exit t70**, 70 moves, 0 stays, revisit 0.14 |
+| Cost | $0.073 | $0.086 | **$1.757** (~22×) |
+| Output tokens per decision (median) | 312 | 386 | 229 |
+| Latency p50 / p90 | 2.3 / 4.1 s | 2.6 / 4.0 s | 3.2 / 6.2 s |
+| Cache reads as share of input | 73% | 62% | 42% |
+| Failed or truncated decisions | 0 | 0 | 0 |
+
+This is the first LLM team to meet the objective in any run so far. It came from three things Haiku never
+combined.
+
+**1. A coordinate frame anchored on a landmark.**
+- **The anchor:** Sonnet's C labelled the fountain cell "W10" and made it the origin. It tracked relative
+  coordinates from there ("E13=(3,1)"), something no Haiku agent did in any run.
+- **Locating the exit by distance:** it estimated the exit's position from its distance readings and kept
+  checking the estimate: "t25: at (3,-2) dist 5.8 matches exit (0,3) rel W10". So the straight-line reading
+  became a sensor for locating the exit, not a gradient to follow.
+
+**2. Willingness to move away from the exit.** With a position estimate, C could accept a rising reading as part
+of a detour. At t18 it wrote "dist 3.6 rising… Only new exit N, going N". At t40 it went east to "look for a
+southern route" at distance 7.8. Haiku agents in the same spot turned back to the low-distance cell and
+stalled.
+
+**3. Routes anchored on landmarks, shared over the radio.**
+- **The request:** at t48 C asked "Please give turn-by-turn route from the fountain or ladder landmark".
+- **The answer:** at t49 B replied with "B route to exit from PICTURE cell (S brick, W wall, N/E open):
+  N,N,N,W,S,W,S,E,S,W,W,N,N,W,S,W".
+- **Following it:** C found the picture cell at t55 and followed the 16 steps, logging its progress ("Route
+  steps 1-10 done… Step11 W"), and reached the exit at t70.
+
+This is the cooperation the experiment is designed to detect. It needed landmarks: a route from someone's
+spawn, as in the Haiku runs, is useless to anyone else.
+
+Peer advice was also more nuanced, though still partly greedy: "Follow falling distance, accept small rises";
+"if distance rises over several steps, backtrack and try an untried junction exit".
+
+**Cost.** Sonnet used fewer output tokens than Haiku and similar input, but costs about 20× per token: $1.76
+for the game, against about $0.08. Its cache share was lower (42%) because its notebooks changed every tick
+and were re-written to the cache. It never came near the 2,048-token cap; the largest output was 1,345.
+
+**Next:** a small Sonnet batch (`landmarks_v4` with the model swapped, 3 seeds × 1 replicate, about $5) to see
+whether this holds beyond one seed and one run. Sonnet with landmarks off would isolate how much of the gain is
+the model and how much is landmarks.
+
 ## Prompt caching (added after the pilot, prompt `maze_agent_v2`)
 The pilot sent each observation as one JSON blob, so no part of the prompt was reusable between ticks. Version 2
 splits the user message into three blocks, from most to least stable:
