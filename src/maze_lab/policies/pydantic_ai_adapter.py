@@ -128,6 +128,8 @@ class PydanticAiPolicy:
             # Breakpoint after the system instruction; the user prompt adds one after the notebooks.
             # OpenAI-compatible servers and Ollama reuse matching prompt prefixes on their own.
             settings["anthropic_cache_instructions"] = True
+            if config.effort is not None:
+                settings["anthropic_effort"] = config.effort
         self.settings = settings
 
     def request_text(self, system: str, blocks: list[str]) -> str:

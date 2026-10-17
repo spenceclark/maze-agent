@@ -27,6 +27,14 @@ PROMPT_MEMORY_NOTES: dict[str, str] = {
         " you come back."
     ),
 }
+# v5 adds the habits that won the Sonnet run ac57358e8053, stated generally.
+PROMPT_MEMORY_NOTES["maze_agent_v5"] = PROMPT_MEMORY_NOTES["maze_agent_v4"] + (
+    " It also helps to keep your own coordinates: choose an origin (your start, or a landmark), update x"
+    " and y after every successful move, and note cells by their coordinates. Exit distances read at"
+    " several known positions narrow down where the exit is; plan toward that estimate even when a route"
+    " first leads away from it. When you radio a route, start it from a landmark or a place the others"
+    " can recognise, not from your own start."
+)
 _LANDMARK_NOTE = (
     '\n- Some cells carry a landmark: local.landmarks lists the label (for example "clock") of any'
     " landmark on your cell. Each label is unique and fixed to one cell, and you see it only while"

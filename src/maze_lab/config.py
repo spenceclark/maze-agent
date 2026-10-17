@@ -11,6 +11,7 @@ BaselinePolicyName = Literal["random_open_v1", "wall_follower_v1", "dfs_bounded_
 LlmAdapter = Literal["pydantic_ai"]
 LlmProvider = Literal["anthropic", "openai", "ollama"]  # "openai" = any OpenAI-compatible endpoint
 LlmOutputMode = Literal["tool", "native", "prompted"]
+Effort = Literal["low", "medium", "high", "xhigh", "max"]
 TimingMode = Literal["fixed_deadline", "barrier", "manual"]
 
 
@@ -82,6 +83,7 @@ class LlmAgentConfig(Contract):
     context_bytes_per_token: float = Field(default=1.5, ge=1.0)
     sampling: Sampling = Sampling()
     max_output_tokens: int = Field(default=2048, ge=1)
+    effort: Effort | None = None  # Anthropic reasoning effort; None keeps the model's default
 
     @model_validator(mode="before")
     @classmethod

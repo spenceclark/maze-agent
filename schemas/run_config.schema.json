@@ -161,6 +161,25 @@
           "minimum": 1,
           "title": "Max Output Tokens",
           "type": "integer"
+        },
+        "effort": {
+          "anyOf": [
+            {
+              "enum": [
+                "low",
+                "medium",
+                "high",
+                "xhigh",
+                "max"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Effort"
         }
       },
       "required": [

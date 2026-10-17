@@ -2548,6 +2548,24 @@
             "minimum": 1.0,
             "title": "Max Output Tokens",
             "default": 2048
+          },
+          "effort": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high",
+                  "xhigh",
+                  "max"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effort"
           }
         },
         "additionalProperties": false,

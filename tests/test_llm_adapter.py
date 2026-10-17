@@ -241,3 +241,18 @@ def test_policy_sends_its_configured_prompt_version():
     )
     attempt = asyncio.run(policy.decide(OBS, AGENT_RULES))
     assert "junction" not in json.loads(attempt.request_text or "")["system"]
+
+
+def test_v5_adds_the_coordinate_habits_on_top_of_v4():
+    v4 = system_instruction(AGENT_RULES, "A", "maze_agent_v4")
+    v5 = system_instruction(AGENT_RULES, "A", "maze_agent_v5")
+    assert (
+        "untried exit" in v5 and "keep your own coordinates" in v5 and "keep your own coordinates" not in v4
+    )
+
+
+def test_effort_is_passed_to_anthropic_only_when_set():
+    plain = PydanticAiPolicy(llm_config(), timeout_s=5, model=FunctionModel(tool_call({})))
+    assert "anthropic_effort" not in plain.settings
+    high = PydanticAiPolicy(llm_config(effort="high"), timeout_s=5, model=FunctionModel(tool_call({})))
+    assert high.settings.get("anthropic_effort") == "high"

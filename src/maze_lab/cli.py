@@ -14,6 +14,7 @@ from dotenv import find_dotenv, load_dotenv
 from maze_lab.agent_contracts import AGENT_IDS
 from maze_lab.analysis import analyse, render_markdown
 from maze_lab.batch import Cell, ExperimentSpec, cells, load_spec, run_batch
+from maze_lab.behaviour import summarise
 from maze_lab.config import BaselineAgentConfig, BaselinePolicyName, RunConfig, TimingConfig, TimingMode
 from maze_lab.coordinator import Coordinator
 from maze_lab.export import export_run
@@ -106,6 +107,8 @@ def main(argv: list[str] | None = None) -> int:
     report.add_argument("experiment", help="experiment name")
     report.add_argument("--baseline", help="condition to compare against (default: the first)")
     report.add_argument("--out", type=Path, help="also write the Markdown report here")
+    behaviour = sub.add_parser("behaviour", help="exploratory habit markers per condition (text heuristics)")
+    behaviour.add_argument("experiments", nargs="+")
     transcript = sub.add_parser("transcript", help="write one JSONL file per agent, one line per turn")
     transcript.add_argument("run_id")
     transcript.add_argument("--out", type=Path, help="output directory (default: transcripts/<run_id>)")
@@ -197,6 +200,11 @@ def main(argv: list[str] | None = None) -> int:
                 print(text)
                 if args.out:
                     args.out.write_text(text, encoding="utf-8")
+            case "behaviour":
+                for name in args.experiments:
+                    for condition, values in summarise(store, name).items():
+                        row = "  ".join(f"{k} {v:.2f}" for k, v in values.items())
+                        print(f"{name}/{condition}: {row}")
             case "transcript":
                 for path in write_transcripts(
                     store, args.run_id, args.out or Path("transcripts") / args.run_id
