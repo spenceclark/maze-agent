@@ -1,0 +1,62 @@
+{
+  "name": "haiku_high_8k",
+  "experiment_seed": 6,
+  "base_config_file": "../configs/pilot_haiku.json",
+  "base_config": {
+    "maze": {
+      "width": 12,
+      "height": 12,
+      "landmark_count": 10
+    },
+    "horizon_ticks": 80,
+    "agents": [
+      {
+        "id": "A",
+        "kind": "llm",
+        "adapter": "pydantic_ai",
+        "provider": "anthropic",
+        "model": "claude-haiku-5-5",
+        "output_mode": "native",
+        "context_window_tokens": 1000000,
+        "max_output_tokens": 8192,
+        "effort": "high"
+      },
+      {
+        "id": "B",
+        "kind": "llm",
+        "adapter": "pydantic_ai",
+        "provider": "anthropic",
+        "model": "claude-haiku-5-5",
+        "output_mode": "native",
+        "context_window_tokens": 1000000,
+        "max_output_tokens": 8192,
+        "effort": "high"
+      },
+      {
+        "id": "C",
+        "kind": "llm",
+        "adapter": "pydantic_ai",
+        "provider": "anthropic",
+        "model": "claude-haiku-5-5",
+        "output_mode": "native",
+        "context_window_tokens": 1000000,
+        "max_output_tokens": 8192,
+        "effort": "high"
+      }
+    ]
+  },
+  "seeds": [
+    202611017,
+    101,
+    102
+  ],
+  "replicates": 2,
+  "conditions": {
+    "v4_high_8k": {
+      "prompt_version": "maze_agent_v4"
+    },
+    "v5_high_8k": {
+      "prompt_version": "maze_agent_v5"
+    }
+  }
+}
