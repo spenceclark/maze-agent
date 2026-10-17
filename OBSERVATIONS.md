@@ -138,6 +138,64 @@ independently did the same thing ("t13: moved E, arrived from W").
   - On Windows, running `uv sync` while a run is going risks file locks, so dependency changes waited until the
     pilot finished.
 
+## Second pilot: run `6c7068296716` (12×12, seed 202611017, prompt v2, 80 ticks)
+Shortest spawn→exit paths were A 5, B 28, C 52, so the 80-tick horizon left C almost no slack.
+
+| Agent | First exit | Moves | Stays | Blocked | Revisit fraction | Path efficiency | Cost |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| A | t5 | 5 | 75 | 0 | 0.00 | 1.00 | $0.013 |
+| B | t75 | 58 | 22 | 0 | 0.45 | 0.48 | $0.032 |
+| C | never | 75 | 5 | 0 | 0.64 | — | $0.034 |
+
+Replay verification matched all 80 ticks. Total cost was $0.078; caching served 57–76% of input tokens.
+
+**No blocked moves this time.** The first pilot had 8 moves into visible walls. Prompt v2 moved the current
+observation into its own final block, after the notebooks. It's plausible that this stops agents copying stale
+notes over what they can see, but with one run each this is only a hypothesis to test.
+
+**Straight-line distance was the main trap.** Both agents treated `exit_distance_tenths` as a gradient to
+descend. In a perfect maze the straight-line minimum is often a dead end:
+- **B** reached junction (5,8) at t27, 13 steps from the exit. Its west branch was the way out, but the
+  straight-line reading there was 5.4, worse than the 5.0 cell two steps south. B shuttled up and down that N–S
+  corridor and parked on the 5.0 cell. It wrote "cells alternate 5.0/5.1 so exit is not straight along it" but
+  never tried the 5.4 junction's west edge. It took that edge on its fifth visit, at t57, and reached the exit
+  at t75.
+- **C** ended on a cell 2.2 cells from the exit in a straight line but **39 moves away by path**. It wrote:
+  "N and E both raise exit dist, so this is a local minimum. Staying put… Waiting for B to coordinate."
+  Correctly diagnosed, then stuck.
+
+**Bad advice from the agent at the exit.** A reached the exit in 5 moves and stayed there for the remaining 75
+ticks as a "beacon". It radioed advice every 6 ticks:
+- "Move toward decreasing exit_distance_tenths" (t36), reinforcing the gradient trap.
+- At t42, "B: hold at 5.0 in the N-S corridor". B then spent 12 of its 22 STAYs parked there (t41–48,
+  t51–54).
+
+The beacon idea is also empty: once A stands on the exit, the peer range to A is the same number as the exit
+distance. Neither agent remarked on this.
+
+**C's loops were one dead-end subtree, walked three times.** C spawned 8.5 from the exit and first went east,
+where the distance rose to 10.0, into a branch of about a dozen cells. It covered that branch at t3–12,
+t28–41 and t44–50. C named cells by their exit distance ("the 7.3 cell", "the 8.1 cell"), a sensible
+fingerprint that ties are rare here. But it described the branch as "loops", which a perfect maze cannot have.
+
+At t44 it compacted 3,612 bytes of notes into 354, keeping only "Loops known… Unexplored: junction W branch
+(t23) and far E", with the plan "explore E-side unexplored branches". That sent it around the branch a third
+time. Only at t51 did it head west, after which it gained steadily (path distance 53 → 38 by t66) until the
+local-minimum stall.
+
+**A described its route relative to the outer wall.** A's first radio said "Route from spawn (outer brick is S
+of spawn): N, N, W, S, W", trying to anchor the route to the boundary. B and C never used it; they were far
+from that corner.
+
+**Possible changes to test:**
+- Tell agents in the rules that straight-line distance ignores walls, so its local minima may be dead ends. The
+  rules already say "not path lengths", but not what that implies.
+- Add landmarks, so cells can be told apart by something other than distance.
+- Scale the horizon with maze size: 80 ticks is short for a 12×12 maze where one spawn is 52 moves out. The
+  spec's default is 500 for 15×15.
+- Record which junction edges have been tried, as the DFS baseline does. Neither LLM agent recorded this
+  reliably.
+
 ## Prompt caching (added after the pilot, prompt `maze_agent_v2`)
 The pilot sent each observation as one JSON blob, so no part of the prompt was reusable between ticks. Version 2
 splits the user message into three blocks, from most to least stable:
