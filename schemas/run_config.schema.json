@@ -142,6 +142,12 @@
           "title": "Context Window Tokens",
           "type": "integer"
         },
+        "context_bytes_per_token": {
+          "default": 1.5,
+          "minimum": 1.0,
+          "title": "Context Bytes Per Token",
+          "type": "number"
+        },
         "sampling": {
           "$ref": "#/$defs/Sampling",
           "default": {
@@ -455,7 +461,7 @@
       "type": "integer"
     },
     "prompt_version": {
-      "default": "maze_agent_v1",
+      "default": "maze_agent_v2",
       "title": "Prompt Version",
       "type": "string"
     },

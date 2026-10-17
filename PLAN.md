@@ -7,6 +7,9 @@ Decisions recorded:
 - Pilot model (phase 3): Anthropic `claude-haiku-5-5`, key from `.env` (`ANTHROPIC_API_KEY`).
 - Python 3.14 via uv; dev tools are ruff, pyright (pylance parity), pytest.
 - Randomness: SHA-256 counter streams (`domain/rng.py`), not `random.Random`, so draws are stable across Python versions.
+- Prompt `maze_agent_v2` (post-pilot): observation split into stability-ordered blocks with Anthropic cache
+  breakpoints; cache tokens recorded. Preflight uses `context_bytes_per_token` (default 1.5) plus a per-request
+  guard that never sends an over-budget prompt. See OBSERVATIONS.md.
 - Deferred to phase 6 (config rejects non-default values until then): landmarks, checkpoints, distance-sensor variants.
 
 ## Phase 1 — Contracts and pure engine

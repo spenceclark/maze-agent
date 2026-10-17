@@ -1470,6 +1470,28 @@
               }
             ],
             "title": "Estimated Cost Usd"
+          },
+          "cache_read_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache Read Tokens"
+          },
+          "cache_write_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache Write Tokens"
           }
         },
         "additionalProperties": false,
@@ -2486,6 +2508,12 @@
             "type": "integer",
             "exclusiveMinimum": 0.0,
             "title": "Context Window Tokens"
+          },
+          "context_bytes_per_token": {
+            "type": "number",
+            "minimum": 1.0,
+            "title": "Context Bytes Per Token",
+            "default": 1.5
           },
           "sampling": {
             "$ref": "#/components/schemas/Sampling",
@@ -3790,7 +3818,7 @@
           "prompt_version": {
             "type": "string",
             "title": "Prompt Version",
-            "default": "maze_agent_v1"
+            "default": "maze_agent_v2"
           },
           "max_provider_requests_per_turn": {
             "type": "integer",
@@ -4480,6 +4508,28 @@
               }
             ],
             "title": "Reasoning Tokens"
+          },
+          "cache_read_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache Read Tokens"
+          },
+          "cache_write_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache Write Tokens"
           },
           "requests": {
             "type": "integer",

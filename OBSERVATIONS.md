@@ -138,6 +138,50 @@ independently did the same thing ("t13: moved E, arrived from W").
   - On Windows, running `uv sync` while a run is going risks file locks, so dependency changes waited until the
     pilot finished.
 
+## Prompt caching (added after the pilot, prompt `maze_agent_v2`)
+The pilot sent each observation as one JSON blob, so no part of the prompt was reusable between ticks. Version 2
+splits the user message into three blocks, from most to least stable:
+1. the agent's own notebook;
+2. co-located notebooks;
+3. everything that changes every tick.
+
+On Anthropic it sets two cache breakpoints, one after the system instruction and one after the notebooks.
+Caching reuses identical input only, so it doesn't break the fresh-invocation rule.
+
+A 15-tick live check on the pilot maze showed:
+- **The fixed prefix is always reused.** After tick 1, every request read about 1.43 k tokens (system
+  instruction plus output schema) from the cache.
+- **Notebooks are reused only when unchanged.** A notebook is written to the cache when it changes, at a 25%
+  premium on those tokens, and read back when it doesn't (C at T14–15: 1,954 read, 0 written).
+- **Cost:** input cost for ticks 1–15 fell from $0.0097 to $0.0051 on similar input volume (about −47%), and
+  total cost by about 26%. On Haiku, output tokens (5× the input price) are now the larger share.
+- **Agents that rewrite their notebook every tick benefit least.** Their notebook block is re-written each
+  time, which makes notebook churn a cost as well as a memory question.
+
+`Usage` and `RunMetrics` now record `cache_read_tokens` and `cache_write_tokens`; both are included in
+`input_tokens`. Cost comes from the provider's usage, so cached tokens are priced at their own rates. OpenAI-
+compatible servers and Ollama ignore the breakpoints but benefit from the stable-first order through their own
+prefix reuse.
+
+## Context sizing for local models
+The original preflight assumed one token per byte and notebooks full of characters that JSON-escape to six
+bytes. That gave about 156 k tokens for default caps and would have rejected every 32 k model.
+
+The pilot's real prompts ran 1.67–1.91 bytes per token. Preflight now uses a per-agent
+`context_bytes_per_token`: default 1.5, with 1.0 as the strict bound. It also only counts peer notebooks when
+meeting notebooks are enabled. With default caps a worst-case turn needs about 22 k tokens, so 32 k models pass
+and 8 k models don't.
+
+An 8 k model fits with:
+- `notebook_cap_bytes: 2048`;
+- `meeting_notebooks_enabled: false`;
+- `max_output_tokens: 1024`.
+
+Every real request is also checked before sending. One that would overflow becomes a forced no-op
+(`provider_error`) instead of being sent, because Ollama truncates oversized prompts silently. Ollama's context
+length must also be raised server-side (`OLLAMA_CONTEXT_LENGTH` or the Modelfile). Its OpenAI-compatible
+endpoint can't set it per request, and the default is far below 8 k on many installs.
+
 ## Worth testing next (phase 6)
 - **Notebook trust:** add a turn-level self-check prompt variant ("re-read `local` before moving"). Measure
   blocked-into-visible-wall rate as a perception-vs-memory reliability metric.

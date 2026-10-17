@@ -3,11 +3,20 @@
 Every request is built from scratch: the system instruction (public rules
 only) plus one observation serialized as JSON data. No history, summaries,
 or earlier notebook revisions are ever included.
+
+The observation is split into blocks ordered from most to least stable, so a
+provider's prefix cache can reuse the unchanged start of the prompt between
+ticks: the system instruction never changes within a run, notebooks change
+only when written, and everything after them changes every tick. Caching
+reuses identical input only; it carries no state between decisions.
 """
 
-from maze_lab.agent_contracts import AgentRules, Observation
+from pydantic import TypeAdapter
 
-PROMPT_VERSION = "maze_agent_v1"
+from maze_lab.agent_contracts import AgentRules, Notebook, Observation
+
+PROMPT_VERSION = "maze_agent_v2"
+_NOTEBOOKS = TypeAdapter(list[Notebook])
 
 _SYSTEM = """\
 You are agent {me} in a three-agent team ({team}) exploring a grid maze. Each turn you are invoked \
@@ -68,6 +77,15 @@ def system_instruction(rules: AgentRules, agent_id: str) -> str:
     )
 
 
-def user_message(observation: Observation) -> str:
-    """The observation as quoted JSON data, fields in their fixed schema order."""
-    return "Current observation (JSON data):\n" + observation.model_dump_json()
+def user_blocks(observation: Observation) -> list[str]:
+    """The observation as quoted JSON data in three blocks, most stable first.
+
+    Together the blocks hold every observation field exactly once, in a fixed order.
+    """
+    peers = _NOTEBOOKS.dump_json(observation.colocated_notebooks).decode()
+    return [
+        "Your notebook (JSON data):\n" + observation.notebook.model_dump_json(),
+        "Notebooks of agents sharing your cell, readable this turn only (JSON data):\n" + peers,
+        "Current observation; notebook fields are given above (JSON data):\n"
+        + observation.model_dump_json(exclude={"notebook", "colocated_notebooks"}),
+    ]

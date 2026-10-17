@@ -15,14 +15,13 @@ from anthropic import AsyncAnthropic
 from openai import AsyncOpenAI
 from pydantic_ai import Agent, capture_run_messages
 from pydantic_ai.exceptions import ContentFilterError, ModelAPIError, UnexpectedModelBehavior
-from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart, ToolCallPart
+from pydantic_ai.messages import CachePoint, ModelMessage, ModelResponse, TextPart, ToolCallPart
 from pydantic_ai.models import Model
-from pydantic_ai.models.anthropic import AnthropicModel
+from pydantic_ai.models.anthropic import AnthropicModel, AnthropicModelSettings
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.output import NativeOutput, PromptedOutput, ToolOutput
 from pydantic_ai.providers.anthropic import AnthropicProvider
 from pydantic_ai.providers.openai import OpenAIProvider
-from pydantic_ai.settings import ModelSettings
 
 from maze_lab.agent_contracts import (
     AgentRules,
@@ -34,7 +33,8 @@ from maze_lab.agent_contracts import (
 )
 from maze_lab.config import LlmAgentConfig
 from maze_lab.policies.base import DecisionAttempt, Usage
-from maze_lab.policies.prompt import system_instruction, user_message
+from maze_lab.policies.preflight import check_prompt
+from maze_lab.policies.prompt import system_instruction, user_blocks
 
 ADAPTER_VERSION = "pydantic_ai_adapter_v1"
 
@@ -90,12 +90,15 @@ def _usage(responses: list[ModelResponse]) -> Usage:
         reasoning_tokens=sum(x for x in reasoning if x is not None)
         if any(x is not None for x in reasoning)
         else None,
+        cache_read_tokens=sum(r.usage.cache_read_tokens for r in responses),
+        cache_write_tokens=sum(r.usage.cache_write_tokens for r in responses),
         requests=len(responses),
         estimated_cost_usd=_cost(responses),
     )
 
 
 def _cost(responses: list[ModelResponse]) -> float | None:
+    """Priced from the provider's usage, so cache reads and writes are charged at their own rates."""
     try:
         return float(sum(r.cost().total_price for r in responses))
     except Exception:  # unknown model in the price table, or no model name
@@ -107,21 +110,26 @@ class PydanticAiPolicy:
         self.config = config
         self.model = model or build_model(config)  # reusable client: allowed, holds no memory
         self.output = _output_spec(config)
-        settings: ModelSettings = {"max_tokens": config.max_output_tokens, "timeout": timeout_s}
+        settings: AnthropicModelSettings = {"max_tokens": config.max_output_tokens, "timeout": timeout_s}
         if config.sampling.temperature is not None:
             settings["temperature"] = config.sampling.temperature
         if config.sampling.top_p is not None:
             settings["top_p"] = config.sampling.top_p
         if config.sampling.seed is not None:
             settings["seed"] = config.sampling.seed
+        if config.provider == "anthropic":
+            # Breakpoint after the system instruction; the user prompt adds one after the notebooks.
+            # OpenAI-compatible servers and Ollama reuse matching prompt prefixes on their own.
+            settings["anthropic_cache_instructions"] = True
         self.settings = settings
 
-    def request_text(self, observation: Observation, rules: AgentRules) -> str:
+    def request_text(self, system: str, blocks: list[str]) -> str:
         """Everything sent to the provider, for the invocation record."""
         return json.dumps(
             {
-                "system": system_instruction(rules, observation.agent_id),
-                "user": user_message(observation),
+                "system": system,
+                "user_blocks": blocks,
+                "cache_breakpoint_after_block": 1,
                 "output_mode": self.config.output_mode,
                 "output_schema": TurnAction.model_json_schema(),
                 "settings": self.settings,
@@ -130,18 +138,23 @@ class PydanticAiPolicy:
         )
 
     async def decide(self, observation: Observation, rules: AgentRules) -> DecisionAttempt:
-        agent = Agent(
-            self.model,
-            output_type=self.output,
-            instructions=system_instruction(rules, observation.agent_id),
-            retries=0,
-        )
+        system = system_instruction(rules, observation.agent_id)
+        blocks = user_blocks(observation)
+        request_text = self.request_text(system, blocks)
+        if (too_big := check_prompt(self.config, system, blocks)) is not None:
+            # Never send a prompt a provider might truncate; this is a forced no-op, not a request.
+            return DecisionAttempt(
+                action=None, failure="provider_error", request_text=request_text, error_detail=too_big
+            )
+
+        agent = Agent(self.model, output_type=self.output, instructions=system, retries=0)
         failure: ForcedStayCause | None = None
         detail: str | None = None
         messages: list[ModelMessage]
         with capture_run_messages() as messages:
             try:
-                await agent.run(user_message(observation), model_settings=self.settings)
+                prompt = [blocks[0], blocks[1], CachePoint(), blocks[2]]  # stable blocks, then volatile
+                await agent.run(prompt, model_settings=self.settings)
             except ContentFilterError as e:
                 failure, detail = "refusal", str(e)
             except UnexpectedModelBehavior as e:
@@ -165,7 +178,7 @@ class PydanticAiPolicy:
         return DecisionAttempt(
             action=action,
             failure=failure,
-            request_text=self.request_text(observation, rules),
+            request_text=request_text,
             response_text=raw,
             provider_request_id=last.provider_response_id if last else None,
             usage=_usage(responses),

@@ -80,6 +80,8 @@ class AgentMetrics(Contract):
     reasoning_tokens: int | None
     provider_requests: int
     estimated_cost_usd: float | None
+    cache_read_tokens: int | None = None  # included in input_tokens
+    cache_write_tokens: int | None = None  # included in input_tokens
 
 
 class RunMetrics(Contract):
@@ -136,6 +138,8 @@ class _AgentTally:
     reasoning_tokens: int | None = None
     requests: int = 0
     cost_usd: float | None = None
+    cache_read_tokens: int | None = None
+    cache_write_tokens: int | None = None
 
 
 class MetricsTracker:
@@ -235,6 +239,8 @@ class MetricsTracker:
         t.reasoning_tokens = _add(t.reasoning_tokens, usage.reasoning_tokens)
         t.requests += usage.requests
         t.cost_usd = _add(t.cost_usd, usage.estimated_cost_usd)
+        t.cache_read_tokens = _add(t.cache_read_tokens, usage.cache_read_tokens)
+        t.cache_write_tokens = _add(t.cache_write_tokens, usage.cache_write_tokens)
 
     def snapshot(self) -> RunMetrics:
         state = self._state
@@ -293,4 +299,6 @@ class MetricsTracker:
             reasoning_tokens=t.reasoning_tokens,
             provider_requests=t.requests,
             estimated_cost_usd=t.cost_usd,
+            cache_read_tokens=t.cache_read_tokens,
+            cache_write_tokens=t.cache_write_tokens,
         )

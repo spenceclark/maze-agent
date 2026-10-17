@@ -65,6 +65,9 @@ class LlmAgentConfig(Contract):
     api_key_env: str | None  # name of the server-side environment variable; never the key itself
     output_mode: LlmOutputMode = "tool"
     context_window_tokens: int = Field(gt=0)  # stated explicitly; checked by the prompt preflight
+    # Prompt bytes per token assumed when sizing prompts against the context window. 1.0 is a hard
+    # bound for byte-level tokenizers; 1.5 sits below the 1.67-1.91 measured on claude-haiku-5-5.
+    context_bytes_per_token: float = Field(default=1.5, ge=1.0)
     sampling: Sampling = Sampling()
     max_output_tokens: int = Field(default=2048, ge=1)
 
@@ -117,7 +120,7 @@ class RunConfig(Contract):
     rules: RulesConfig = RulesConfig()
     timing: TimingConfig = TimingConfig()
     horizon_ticks: int = Field(default=500, gt=0)
-    prompt_version: str = "maze_agent_v1"
+    prompt_version: str = "maze_agent_v2"
     max_provider_requests_per_turn: Literal[1] = 1
     snapshot_interval_ticks: int = Field(default=25, gt=0)
 

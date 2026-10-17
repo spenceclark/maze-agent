@@ -16,6 +16,8 @@ class Usage(Contract):
     input_tokens: int | None = None
     output_tokens: int | None = None
     reasoning_tokens: int | None = None
+    cache_read_tokens: int | None = None  # included in input_tokens
+    cache_write_tokens: int | None = None  # included in input_tokens
     requests: int = Field(default=0, ge=0)
     estimated_cost_usd: float | None = None  # provider price table at call time, when known
 
