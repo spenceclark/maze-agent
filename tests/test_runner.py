@@ -233,3 +233,9 @@ def test_crash_with_open_tick_recovers_without_reissuing_calls(store: RunStore):
     causes = {a.agent_id: a.last_receipt.movement.cause for a in tick1.state.agents}
     assert causes == {"A": None, "B": "timeout", "C": "timeout"}
     assert verify_run(store, run_id).ok
+
+
+def test_horizon_below_oracle_minimum_is_flagged(store: RunStore, caplog: pytest.LogCaptureFixture):
+    with caplog.at_level("WARNING"):
+        create_run(store, make_config(horizon_ticks=1))
+    assert "cannot be met" in caplog.text

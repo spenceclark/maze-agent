@@ -1,6 +1,7 @@
 """Run creation: fixture generation, manifest, initial journal, policy wiring."""
 
 import hashlib
+import logging
 import platform
 import subprocess
 import sys
@@ -29,6 +30,8 @@ from maze_lab.policies.baselines import make_baseline
 from maze_lab.policies.preflight import preflight
 from maze_lab.policies.prompt import PROMPT_VERSION
 from maze_lab.policies.pydantic_ai_adapter import ADAPTER_VERSION, PydanticAiPolicy
+
+log = logging.getLogger(__name__)
 
 REDUCER_VERSION = "reducer_v1"
 RANDOMNESS = (
@@ -64,6 +67,13 @@ def create_run(store: RunStore, config: RunConfig, run_id: str | None = None) ->
     state = initial_state(maze)
     state_hash = content_hash(state)
     metrics = MetricsTracker(maze, state, config.rules).snapshot()
+    if config.horizon_ticks < metrics.oracle_ticks:
+        log.warning(
+            "horizon_ticks %d is below the %d ticks an omniscient team would need on this maze; "
+            "the objective cannot be met",
+            config.horizon_ticks,
+            metrics.oracle_ticks,
+        )
     manifest = RunManifest(
         config=config,
         config_hash=content_hash(config),

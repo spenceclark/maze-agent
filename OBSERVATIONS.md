@@ -188,11 +188,12 @@ of spawn): N, N, W, S, W", trying to anchor the route to the boundary. B and C n
 from that corner.
 
 **Possible changes to test:**
-- Tell agents in the rules that straight-line distance ignores walls, so its local minima may be dead ends. The
-  rules already say "not path lengths", but not what that implies.
+- *(Done in prompt `maze_agent_v3`.)* Tell agents in the rules that straight-line distance ignores walls, so
+  its local minima may be dead ends. The rules already said "not path lengths", but not what that implies.
 - Add landmarks, so cells can be told apart by something other than distance.
-- Scale the horizon with maze size: 80 ticks is short for a 12×12 maze where one spawn is 52 moves out. The
-  spec's default is 500 for 15×15.
+- *(Done.)* Scale the horizon with maze size: 80 ticks is short for a 12×12 maze where one spawn is 52 moves
+  out. An omitted `horizon_ticks` now defaults to 320 there, and run creation warns when a horizon is below the
+  omniscient minimum.
 - Record which junction edges have been tried, as the DFS baseline does. Neither LLM agent recorded this
   reliably.
 

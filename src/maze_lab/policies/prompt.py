@@ -15,7 +15,7 @@ from pydantic import TypeAdapter
 
 from maze_lab.agent_contracts import AgentRules, Notebook, Observation
 
-PROMPT_VERSION = "maze_agent_v2"
+PROMPT_VERSION = "maze_agent_v3"
 _NOTEBOOKS = TypeAdapter(list[Notebook])
 
 _SYSTEM = """\
@@ -32,7 +32,8 @@ WORLD
 there).
 - local.is_exit tells you whether you are standing on the exit.
 - exit_distance_tenths and peer_ranges give straight-line (Euclidean) distances in tenths of a cell, \
-ignoring walls. They are not path lengths and carry no direction.
+ignoring walls. They are not path lengths and carry no direction. Because walls are ignored, a cell \
+where every move raises the reading can be a dead end, and the path to the exit may first lead away from it.
 - Several agents may share a cell. Agents that end a turn on the same cell can read each other's \
 full notebooks on the next turn (colocated_notebooks). Reading copies nothing into your notebook.
 

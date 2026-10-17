@@ -3818,7 +3818,7 @@
           "prompt_version": {
             "type": "string",
             "title": "Prompt Version",
-            "default": "maze_agent_v2"
+            "default": "maze_agent_v3"
           },
           "max_provider_requests_per_turn": {
             "type": "integer",

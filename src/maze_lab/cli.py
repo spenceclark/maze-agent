@@ -3,6 +3,7 @@
 import argparse
 import asyncio
 import json
+import logging
 import os
 import sys
 from pathlib import Path
@@ -23,16 +24,16 @@ from maze_lab.transcript import write_transcripts
 def _config_from_args(args: argparse.Namespace) -> RunConfig:
     if args.config:
         return RunConfig.model_validate_json(Path(args.config).read_text(encoding="utf-8"))
-    return RunConfig.model_validate(
-        {
-            "root_seed": args.seed,
-            "condition": f"baseline_{args.policy}",
-            "maze": {"width": args.size, "height": args.size},
-            "agents": [BaselineAgentConfig(id=a, kind="baseline", policy=args.policy) for a in AGENT_IDS],
-            "timing": TimingConfig(mode=args.mode, decision_window_ms=args.window_ms),
-            "horizon_ticks": args.horizon,
-        }
-    )
+    data: dict[str, object] = {
+        "root_seed": args.seed,
+        "condition": f"baseline_{args.policy}",
+        "maze": {"width": args.size, "height": args.size},
+        "agents": [BaselineAgentConfig(id=a, kind="baseline", policy=args.policy) for a in AGENT_IDS],
+        "timing": TimingConfig(mode=args.mode, decision_window_ms=args.window_ms),
+    }
+    if args.horizon is not None:
+        data["horizon_ticks"] = args.horizon
+    return RunConfig.model_validate(data)
 
 
 def _print(obj: object) -> None:
@@ -79,7 +80,7 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--seed", type=int, default=20261017)
     run.add_argument("--policy", choices=get_args(BaselinePolicyName), default="dfs_bounded_v1")
     run.add_argument("--size", type=int, default=15)
-    run.add_argument("--horizon", type=int, default=500)
+    run.add_argument("--horizon", type=int, help="default scales with maze size (500 ticks for 15x15)")
     run.add_argument("--mode", choices=get_args(TimingMode), default="barrier")
     run.add_argument("--window-ms", type=int, default=60_000)
 
@@ -103,6 +104,7 @@ def main(argv: list[str] | None = None) -> int:
     serve.add_argument("--port", type=int, default=8000)
 
     args = parser.parse_args(argv)
+    logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
     os.environ.setdefault("PYDANTIC_AI_NO_BANNER", "1")
     load_dotenv(find_dotenv(usecwd=True))  # provider keys stay server-side, referenced by env var name
     store = RunStore(args.db)

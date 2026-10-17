@@ -170,3 +170,12 @@ def test_llm_agent_requires_model_and_no_policy():
         RunConfig.model_validate_json(
             json.dumps({"root_seed": 1, "condition": "x", "agents": [*agents, bad]})
         )
+
+
+def test_omitted_horizon_scales_with_maze_size():
+    agents = [{"id": a, "kind": "baseline", "policy": "random_open_v1"} for a in "ABC"]
+    base: dict[str, object] = {"root_seed": 1, "condition": "x", "agents": agents}
+    assert RunConfig.model_validate(base).horizon_ticks == 500  # spec reference, 15x15
+    assert RunConfig.model_validate({**base, "maze": {"width": 12, "height": 12}}).horizon_ticks == 320
+    assert RunConfig.model_validate({**base, "maze": {"width": 7, "height": 7}}).horizon_ticks == 109
+    assert RunConfig.model_validate({**base, "horizon_ticks": 80}).horizon_ticks == 80  # explicit wins

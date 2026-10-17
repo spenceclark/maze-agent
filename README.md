@@ -16,7 +16,7 @@ uv run pyright src tests
 ## Running headless
 
 ```bash
-uv run maze-lab run --policy dfs_bounded_v1 --seed 1   # baseline run, barrier timing
+uv run maze-lab run --policy dfs_bounded_v1 --seed 1   # baseline run, barrier timing; horizon scales with maze size
 uv run maze-lab verify <run_id>                         # re-execute and check every state hash
 uv run maze-lab export <run_id> run.zip                 # replay ZIP with checksums
 uv run maze-lab transcript <run_id>                     # transcripts/<run_id>/{A,B,C}.jsonl, one line per turn

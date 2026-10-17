@@ -1,5 +1,6 @@
 """Run configuration (spec §3, §8.1). Internal: never shown to agents."""
 
+from math import ceil
 from typing import Annotated, Any, Literal, Self
 
 from pydantic import Field, model_validator
@@ -111,6 +112,11 @@ class TimingConfig(Contract):
     decision_window_ms: int = Field(default=30_000, gt=0)
 
 
+def default_horizon(width: int, height: int) -> int:
+    """The spec's reference horizon (500 ticks for 15x15) scaled by maze area."""
+    return ceil(500 * width * height / (15 * 15))
+
+
 class RunConfig(Contract):
     schema_version: Literal["1.0"] = "1.0"
     root_seed: int = Field(ge=0, lt=2**64)
@@ -119,10 +125,23 @@ class RunConfig(Contract):
     agents: list[AgentConfig]
     rules: RulesConfig = RulesConfig()
     timing: TimingConfig = TimingConfig()
-    horizon_ticks: int = Field(default=500, gt=0)
-    prompt_version: str = "maze_agent_v2"
+    horizon_ticks: int = Field(default=500, gt=0)  # when omitted, resolved from maze size
+    prompt_version: str = "maze_agent_v3"
     max_provider_requests_per_turn: Literal[1] = 1
     snapshot_interval_ticks: int = Field(default=25, gt=0)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _horizon_from_maze_size(cls, data: Any) -> Any:
+        """An omitted horizon scales with the maze, and the resolved value is stored."""
+        if not isinstance(data, dict) or "horizon_ticks" in data:
+            return data
+        maze = data.get("maze", MazeSettings())
+        if isinstance(maze, dict):
+            maze = MazeSettings.model_validate(maze)
+        if not isinstance(maze, MazeSettings):
+            return data  # leave the error to field validation
+        return {**data, "horizon_ticks": default_horizon(maze.width, maze.height)}
 
     @model_validator(mode="after")
     def _three_agents(self) -> Self:

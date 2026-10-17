@@ -29,7 +29,7 @@ from maze_lab.domain.state import initial_state
 from maze_lab.observation import observe, public_rules
 from maze_lab.policies.base import DecisionAttempt
 from maze_lab.policies.preflight import preflight
-from maze_lab.policies.prompt import user_blocks
+from maze_lab.policies.prompt import system_instruction, user_blocks
 from maze_lab.policies.pydantic_ai_adapter import PydanticAiPolicy
 
 MAZE = grid(3, 3, P(2, 2), [P(0, 0), P(1, 0), P(0, 1)])
@@ -208,3 +208,8 @@ def test_preflight_sizes_local_contexts_realistically():
         preflight(_run_config(8_192))  # three full 8 KiB notebooks do not fit 8k
     # An 8k model fits once notebooks are smaller and peer notebooks are off.
     preflight(_run_config(8_192, output=1024, notebook_cap_bytes=2048, meeting_notebooks_enabled=False))
+
+
+def test_rules_warn_that_straight_line_distance_ignores_walls():
+    text = system_instruction(AGENT_RULES, "A")
+    assert "ignoring walls" in text and "dead end" in text
