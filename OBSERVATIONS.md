@@ -381,6 +381,53 @@ The adapter now records it as "output truncated at max_tokens". It happened once
 3. A longer horizon (the 320-tick default) is worth testing once agents explore systematically. As things
    stand, it would mostly measure longer loops.
 
+## Batch: junction-tracking nudge, v3 vs v4, 12 runs (`experiments/junction_nudge_v4.json`)
+Prompt v4 adds one sentence to the rules: "note each junction you reach… and which of its exits you have
+already tried, and prefer an untried exit when you come back". The conditions differ only in
+`prompt_version`.
+
+Same 12×12 maze, 80 ticks, radio on and Haiku 5.5 as the radio ablation. Seeds 202611017, 101 and 102 × 2
+replicates; all 12 runs valid. Full table: `reports/junction_nudge_v4.md`. Intervals are 95% bootstrap
+resampled over 3 seeds, so they are wide.
+
+| Measure (per run) | v3 | v4 | v4 − v3, paired by seed |
+| --- | --- | --- | --- |
+| Coverage | 0.45 | 0.55 | **+0.095 [0.035, 0.177]** |
+| Revisit fraction | 0.43 | 0.36 | **−0.068 [−0.108, −0.038]** |
+| STAYs before exiting (team) | 40.8 | 24.5 | **−16 [−28, −6]** |
+| Progress to exit (best fraction of path closed) | 0.585 | 0.597 | +0.012 [−0.022, 0.044] |
+| Agents reaching the exit | 0.83 | 1.00 | +0.17 [−0.5, 0.5] |
+| Ticks since last new cell (agents that never exited) | 19 | 32 | +13 [−4, 26] |
+| Team success | 0 / 6 | 0 / 6 | 0 |
+| Cost | $0.085 | $0.087 | +$0.002 |
+
+**Agents adopted the habit almost universally.**
+- **Tried exits:** 17 of 18 v4 agents' final notebooks record tried or untried exits, against 1 of 18 under v3.
+- **Junctions:** 16 of 18 mention junctions, against 8 of 18.
+- **Invented cell IDs:** several v4 agents began numbering cells to tell them apart, which nobody had done
+  before. One wrote: "T4 at cell4 (E of cell3): open N,S,W… Trying N first; S untried… heading back S to
+  cell4 to try its untried S exit".
+
+**It changed how agents explore, but not how close they get.** v4 agents covered more of the maze, revisited
+less and waited less; all three intervals exclude zero. But their best progress toward the exit was unchanged,
+and still no team finished in 80 ticks.
+
+The stall measure points the other way: agents that never exited had gone longer without finding a new cell
+(32 vs 19 ticks; the interval includes zero). One reading is that the habit spreads exploration early, but once
+a region's junctions are all marked tried, agents still have no way to choose where to go next. The local
+straight-line pull then takes over again. That fits the earlier single runs, where the stalls happened next to
+low-distance cells.
+
+**Costs are unchanged.** Notes are a little longer, but caching absorbs most of it. One decision in 2,880
+was again cut off by hidden thinking hitting the 2,048-token output cap; it was recorded correctly as "output
+truncated at max_tokens".
+
+**What this suggests:** the notebook habit is cheap and the model follows it, so prompt-level strategy hints
+do change behaviour. Better exploration alone doesn't get agents out, though. The bottleneck is choosing which
+untried exit leads anywhere, and the straight-line reading is a poor guide for that. Landmarks, which give
+agents fixed reference points, are the next lever to test. The stall measure should also be tracked per tick,
+not only at the end.
+
 ## Prompt caching (added after the pilot, prompt `maze_agent_v2`)
 The pilot sent each observation as one JSON blob, so no part of the prompt was reusable between ticks. Version 2
 splits the user message into three blocks, from most to least stable:
