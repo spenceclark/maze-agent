@@ -13,7 +13,7 @@ LlmProvider = Literal[
     "anthropic", "openai", "ollama", "openrouter"
 ]  # "openai" = any OpenAI-compatible endpoint
 LlmOutputMode = Literal["tool", "native", "prompted"]
-Effort = Literal["low", "medium", "high", "xhigh", "max"]
+Effort = Literal["none", "minimal", "low", "medium", "high", "xhigh", "max"]
 TimingMode = Literal["fixed_deadline", "barrier", "manual"]
 
 
@@ -86,7 +86,18 @@ class LlmAgentConfig(Contract):
     context_bytes_per_token: float = Field(default=1.5, ge=1.0)
     sampling: Sampling = Sampling()
     max_output_tokens: int = Field(default=2048, ge=1)
-    effort: Effort | None = None  # Anthropic reasoning effort; None keeps the model's default
+    # Reasoning effort; None keeps the model's default. "none" turns reasoning off (OpenAI-compatible/Ollama).
+    effort: Effort | None = None
+
+    @model_validator(mode="after")
+    def _effort_supported(self) -> Self:
+        if self.effort is None:
+            return self
+        if self.provider == "openrouter":
+            raise ValueError("effort is not wired for openrouter yet")
+        if self.provider == "anthropic" and self.effort in ("none", "minimal"):
+            raise ValueError("Anthropic effort must be low, medium, high, xhigh or max")
+        return self
 
     @model_validator(mode="before")
     @classmethod

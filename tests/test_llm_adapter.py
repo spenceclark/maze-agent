@@ -256,3 +256,12 @@ def test_effort_is_passed_to_anthropic_only_when_set():
     assert "anthropic_effort" not in plain.settings
     high = PydanticAiPolicy(llm_config(effort="high"), timeout_s=5, model=FunctionModel(tool_call({})))
     assert high.settings.get("anthropic_effort") == "high"
+
+
+def test_reasoning_off_for_ollama_and_rejected_for_anthropic():
+    ollama = llm_config(provider="ollama", model="qwen", effort="none")
+    policy = PydanticAiPolicy(ollama, timeout_s=5, model=FunctionModel(tool_call({})))
+    assert policy.settings.get("openai_reasoning_effort") == "none"
+    assert "anthropic_effort" not in policy.settings
+    with pytest.raises(ValidationError):
+        llm_config(effort="none")

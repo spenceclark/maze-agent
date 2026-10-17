@@ -95,7 +95,8 @@
           "enum": [
             "anthropic",
             "openai",
-            "ollama"
+            "ollama",
+            "openrouter"
           ],
           "title": "Provider",
           "type": "string"
@@ -166,6 +167,8 @@
           "anyOf": [
             {
               "enum": [
+                "none",
+                "minimal",
                 "low",
                 "medium",
                 "high",

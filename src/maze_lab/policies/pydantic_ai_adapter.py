@@ -18,7 +18,7 @@ from pydantic_ai.exceptions import ContentFilterError, ModelAPIError, Unexpected
 from pydantic_ai.messages import CachePoint, ModelMessage, ModelResponse, TextPart, ToolCallPart
 from pydantic_ai.models import Model
 from pydantic_ai.models.anthropic import AnthropicModel, AnthropicModelSettings
-from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.models.openai import OpenAIChatModel, OpenAIChatModelSettings
 from pydantic_ai.models.openrouter import OpenRouterModel, OpenRouterModelSettings
 from pydantic_ai.output import NativeOutput, PromptedOutput, ToolOutput
 from pydantic_ai.providers.anthropic import AnthropicProvider
@@ -114,7 +114,7 @@ def _cost(responses: list[ModelResponse]) -> float | None:
         return None
 
 
-class _Settings(AnthropicModelSettings, OpenRouterModelSettings, total=False):
+class _Settings(AnthropicModelSettings, OpenAIChatModelSettings, OpenRouterModelSettings, total=False):
     """Provider settings are key-prefixed, so one dict can carry any provider's options."""
 
 
@@ -141,8 +141,10 @@ class PydanticAiPolicy:
             # Breakpoint after the system instruction; the user prompt adds one after the notebooks.
             # OpenAI-compatible servers and Ollama reuse matching prompt prefixes on their own.
             settings["anthropic_cache_instructions"] = True
-            if config.effort is not None:
+            if config.effort in ("low", "medium", "high", "xhigh", "max"):  # config rejects the others
                 settings["anthropic_effort"] = config.effort
+        if config.provider in ("openai", "ollama") and config.effort is not None:
+            settings["openai_reasoning_effort"] = config.effort  # "none" turns reasoning off
         if config.provider == "openrouter":
             settings["openrouter_usage"] = {"include": True}  # report the billed cost of each call
         self.settings = settings
