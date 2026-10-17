@@ -166,14 +166,15 @@ class PydanticAiPolicy:
         last = responses[-1] if responses else None
         raw = _raw_output(last)
         action: TurnAction | None = None
-        if failure is None:
-            if last is not None and last.finish_reason == "length":
-                failure, detail = "invalid_action", "output truncated at max_tokens"
-            else:
-                try:
-                    action = parse_turn_action(raw or "")
-                except InvalidActionError as e:
-                    failure, detail = "invalid_action", str(e)
+        truncated = last is not None and last.finish_reason == "length"
+        if truncated and failure in (None, "invalid_action"):
+            # Hidden reasoning counts against max_tokens and can leave the action cut off.
+            failure, detail = "invalid_action", "output truncated at max_tokens"
+        elif failure is None:
+            try:
+                action = parse_turn_action(raw or "")
+            except InvalidActionError as e:
+                failure, detail = "invalid_action", str(e)
 
         return DecisionAttempt(
             action=action,

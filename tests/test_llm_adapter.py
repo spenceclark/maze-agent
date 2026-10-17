@@ -213,3 +213,13 @@ def test_preflight_sizes_local_contexts_realistically():
 def test_rules_warn_that_straight_line_distance_ignores_walls():
     text = system_instruction(AGENT_RULES, "A")
     assert "ignoring walls" in text and "dead end" in text
+
+
+def test_truncated_output_is_reported_as_truncation():
+    def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        cut = '{"schema_version":"1.0","tick":1,"move":"S","notebook_edit":null,"radio":"cut off'
+        return ModelResponse(parts=[TextPart(content=cut)], finish_reason="length")
+
+    attempt, recorder = decide(respond, output_mode="native")
+    assert attempt.failure == "invalid_action" and attempt.error_detail == "output truncated at max_tokens"
+    assert len(recorder.calls) == 1

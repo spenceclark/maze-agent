@@ -315,6 +315,61 @@ condition's effect from these early random choices.
 **Next:** the phase 6 batch runner, to run about 5 replicates per condition on this seed plus a few other seeds,
 before changing prompts again. Landmarks are the most promising structural fix for the local-minimum trap.
 
+## Batch: radio ablation, 18 runs (`experiments/radio_ablation_v3.json`)
+Conditions `radio_on` and `radio_off` (prompt v3, Haiku 5.5, 12×12, 80 ticks) × seeds 202611017, 101 and 102 ×
+3 replicates. All 18 runs were valid. Full table: `reports/radio_ablation_v3.md`, from
+`maze-lab report radio_ablation_v3 --baseline radio_on`. Intervals are 95% bootstrap resampled over the 3 seeds,
+so they are wide and crude. Cost $1.41 for 4,320 decisions; about 30 minutes at 3 runs in parallel.
+
+| Measure (per run) | radio_on | radio_off | off − on, paired by seed |
+| --- | --- | --- | --- |
+| Team success | 0 / 9 | 0 / 9 | 0 |
+| Agents reaching the exit | 0.89 | 1.11 | +0.22 [−0.67, 0.67] |
+| Coverage | 0.45 | 0.50 | +0.05 [−0.08, 0.12] |
+| Path efficiency (agents that exited) | 0.92 | 0.88 | −0.04 [−0.18, 0.13] |
+| Cost | $0.085 | $0.072 | **−$0.013 [−0.017, −0.010]** |
+
+**The 80-tick horizon caused a floor effect, and that was my choice.** The slowest spawn needs 49, 33 and 52 moves
+on these three seeds even with perfect play, so no run met the team objective and the success comparison is
+empty. I kept 80 ticks to match the earlier single runs; the scaled default would have been 320. The rerun
+should use it.
+
+**Distance from the exit decides who gets out.** Agents whose spawn was at most 25 moves from the exit reached it
+in 11 of 12 cases. Agents 27 or more moves away managed 7 of 42. The one near-miss: seed 202611017, `radio_on`
+replicate 2, agent A spawned 5 moves out. It went E first while the reading rose, wandered, and then sat on a
+cell 2.0 from the exit in a straight line and 4 moves away by path, from about t40 to t80. This is the same
+local-minimum trap as before, with the v3 rule present.
+
+**Radio made no detectable difference to outcomes, but it changed behaviour.**
+- **Outcomes:** every outcome interval spans zero. With 3 seeds a moderate effect can't be ruled out either way.
+- **Waiting:** with radio on, agents that never reached the exit stood still far more. They averaged 21, 14
+  and 42 STAYs per seed, against 6, 3 and 16 with radio off; the paired difference is −17 [−26, −11] stays per
+  agent. Holding position "to coordinate" spends turns that could go on exploring, and the extra coordination
+  bought no measurable progress.
+- **Cost:** 296 messages in 9 runs, about 33 per run, at roughly 15% extra cost.
+
+**Some single-run anomalies didn't generalise.**
+- **Note-taking lapses were rare.** B's no-notes back-and-forth from the radio-off pilot showed up in only 2
+  of 27 radio-off agents, and in no radio-on agent: a run of 10 or more moving ticks without a notebook write.
+- **Walking into visible walls is now rare:** 2 blocked moves in 4,320 decisions, all with radio on. The v1
+  pilot had 8 in 240. This fits the v2/v3 prompt layout, which puts the current observation in its own final
+  block, but it hasn't been tested as a controlled comparison.
+- **Greedy reversals and back-and-forth are routine and equal across conditions.** A greedy reversal is a
+  move that raised the distance reading, undone on the next move; agents averaged about 3. A back-and-forth
+  is returning to the cell of two moves ago; they averaged about 4.5.
+
+**Hidden thinking can use up the output budget.** The single failed decision had `output_tokens` at the
+2,048-token cap but only 127 characters of visible output: a JSON object cut off mid-string. Haiku 5.5 thinks
+by default and the provider doesn't report thinking tokens separately, so this showed up as a schema failure.
+The adapter now records it as "output truncated at max_tokens". It happened once in 4,320 decisions; raising
+`max_output_tokens` would remove it, at some cost.
+
+**Next:**
+1. Rerun the same design with the default horizon (320 ticks on 12×12) and about 5 seeds, so success and
+   completion time can actually differ.
+2. Track "STAYs before reaching the exit" as a standard metric; it moved more than anything else here.
+3. Landmarks remain the main structural fix for the local-minimum stalls.
+
 ## Prompt caching (added after the pilot, prompt `maze_agent_v2`)
 The pilot sent each observation as one JSON blob, so no part of the prompt was reusable between ticks. Version 2
 splits the user message into three blocks, from most to least stable:
