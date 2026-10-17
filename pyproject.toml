@@ -12,6 +12,7 @@ dependencies = [
     "pydantic-ai-slim[anthropic,openai]>=2.57.0",
     "python-dotenv>=1.2.4",
     "uvicorn>=0.54.0",
+    "websockets>=17.2",
 ]
 
 [project.scripts]

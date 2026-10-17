@@ -31,6 +31,13 @@ uv run maze-lab schema           # regenerate schemas/openapi.json and agent-con
 LLM agents read provider keys from `.env` by variable name (e.g. `ANTHROPIC_API_KEY`); see
 `configs/pilot_haiku.json` for an LLM run config.
 
+## Viewer
+
+```bash
+cd ui && npm install && npm run build   # then `uv run maze-lab serve` serves it at /
+cd ui && npm run dev                     # dev server on :5173, proxies the API on :8000
+```
+
 ## Layout
 
 - `src/maze_lab/agent_contracts.py` – everything an agent sees or emits
@@ -43,3 +50,4 @@ LLM agents read provider keys from `.env` by variable name (e.g. `ANTHROPIC_API_
 - `src/maze_lab/metrics/` – ground-truth scoring
 - `src/maze_lab/replay.py`, `runs.py`, `cli.py` – replay/export, run creation, CLI
 - `src/maze_lab/service.py`, `src/maze_lab/api/` – run ownership, commands, REST + SSE/WebSocket
+- `ui/` – React + TypeScript spectator viewer

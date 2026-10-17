@@ -55,5 +55,15 @@ Server: `uv run maze-lab serve` (single process, loopback by default; set `MAZE_
 
 
 ## Phase 5 — React viewer
-- [ ] Maze SVG, agent inspectors, notebooks, radio archive
-- [ ] Timeline / replay scrubber, live follow, metrics panel
+- [x] Maze SVG, agent inspectors, notebooks, radio archive
+- [x] Timeline / replay scrubber, live follow, metrics panel
+
+Viewer: `ui/` (Vite + React + TS, types generated from `schemas/openapi.json`). `npm run build` in `ui/`, then
+`uv run maze-lab serve` serves it at http://127.0.0.1:8000/. Live updates use SSE; the WebSocket endpoint is
+equivalent (needs the `websockets` package, now a dependency). Checked in a browser: pilot replay (tick-13 radio
+heard at decision 14, agent view, notebooks/diffs) and a live baseline run (follow, scrub without pausing,
+operator pause/step/resume). 11 vitest tests cover live follow, seek, duplicate delivery, and gap → resync.
+
+## Next (not started)
+- Phase 6: LangChain adapter, cooperative/frontier baselines, ablation conditions, paired batch runner.
+- Phase 7: PostgreSQL / separate coordinator, retention jobs, remote auth hardening.
