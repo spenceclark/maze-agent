@@ -134,7 +134,11 @@ export function AgentInspector({ runId, agent, tick, metrics }: Props) {
   // Decision t produced the receipt in state t; decision t+1 is what state t looks like to the agent.
   const [nextDecision, setNextDecision] = useState(true);
   const decisionTick = nextDecision ? tick + 1 : tick;
-  const obs = useRecorded(() => api.getObservation(runId, id, decisionTick), [runId, id, decisionTick]);
+  // At the head of a run, decision t+1 may not exist (yet); fall back to decision t.
+  const obs = useRecorded(
+    () => api.getObservation(runId, id, decisionTick).catch(() => api.getObservation(runId, id, tick)),
+    [runId, id, decisionTick, tick],
+  );
   const inv = useRecorded(() => api.getInvocations(runId, id, tick).then((items) => items.at(-1) ?? null), [runId, id, tick]);
   const m = metrics.agents[id];
 
@@ -169,10 +173,16 @@ export function AgentInspector({ runId, agent, tick, metrics }: Props) {
         <input type="checkbox" checked={nextDecision} onChange={(e) => setNextDecision(e.target.checked)} />
         Next decision (built from this tick&apos;s state); untick for the decision that led here
       </label>
-      <p className="muted">
-        Observation for decision tick {decisionTick} (state tick {decisionTick - 1})
-      </p>
-      {obs ? <ObservationView obs={obs.observation} /> : <p className="muted">No recorded observation.</p>}
+      {obs ? (
+        <>
+          <p className="muted">
+            Observation for decision tick {obs.decision_tick} (state tick {obs.decision_tick - 1})
+          </p>
+          <ObservationView obs={obs.observation} />
+        </>
+      ) : (
+        <p className="muted">No recorded observation.</p>
+      )}
     </section>
   );
 }
