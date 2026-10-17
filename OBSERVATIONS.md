@@ -428,6 +428,56 @@ untried exit leads anywhere, and the straight-line reading is a poor guide for t
 agents fixed reference points, are the next lever to test. The stall measure should also be tracked per tick,
 not only at the end.
 
+## Batch: landmarks, v4 vs v4 + 10 landmarks, 12 runs (`experiments/landmarks_v4.json`)
+Ten landmarks (unique labels such as "mirror" and "cactus") on random cells of the same 12×12 mazes; only
+`maze.landmark_count` differs. Prompt v4, 80 ticks, radio on, Haiku 5.5, seeds 202611017, 101 and 102 × 2
+replicates. Full table: `reports/landmarks_v4.md`. Intervals are 95% bootstrap over 3 seeds.
+
+| Measure (per run) | v4 | v4 + landmarks | Landmarks − v4, paired by seed |
+| --- | --- | --- | --- |
+| Progress to exit (best fraction of path closed) | 0.672 | 0.737 | **+0.065 [0.027, 0.106]** |
+| Agents reaching the exit | 1.17 | 1.00 | −0.17 [−0.5, 0] |
+| Coverage | 0.55 | 0.59 | +0.045 [−0.04, 0.14] |
+| Revisit fraction | 0.35 | 0.32 | −0.02 [−0.05, 0.03] |
+| STAYs before exiting (team) | 0.3 | 12.5 | +12 [−0.5, 37] |
+| Ticks since last new cell (agents that never exited) | 8 | 15 | +7 [−5, 20] |
+| Team success | 0 / 6 | 0 / 6 | 0 |
+| Cost | $0.085 | $0.090 | +$0.005 [−0.002, 0.010] |
+
+**Agents got closer, but not out.** With landmarks they closed about 6.5 percentage points more of their path to
+the exit at their best, an interval that excludes zero. No more of them actually reached it, and no team
+finished in 80 ticks. The other differences are within noise at n = 3 seeds.
+
+**Landmarks became place names, combined with the junction habit.**
+- **Seen and kept:** 13 of 18 agents stood on at least one landmark, and 10 of them still had it in their final
+  notebook.
+- **Used as cell names:** "T48: at guitar cell (open S,W; walls N,E)". This replaces the distance-based names
+  from earlier runs, such as "the 7.3 cell".
+- **The clearest use**, by agent C in `77f80e3a3946`: "North corridor above mirror is exhausted (dead ends).
+  Next: cell south of mirror (N,E,S open) has untried E". That is the v4 junction habit anchored to a landmark,
+  exactly the combination hoped for.
+
+**They rarely shared landmarks.** Only 10 of 155 radio messages named one. Agent A did ask peers to "post your
+landmarks and exit distances", but the replies garbled it: B wrote "Peer A's clock/basket hints noted" when
+A had said cactus and basket. That is the same retelling drift seen with routes.
+
+**Viewer:** landmarks are drawn as small labels (◆ tree) and included in each cell's screen-reader label.
+
+**Process note:** I accidentally ran this batch twice at once. The coordinators' fencing kept the data
+intact, but 4 cells ended up as excluded recovered runs. Batches now give each cell a deterministic run id,
+so duplicate invocations converge on the same run, and `--rerun-invalid` replaced those cells. The numbers
+above come from the final 12 valid runs.
+
+**Overall pattern across the last three batches:**
+- **What worked:** prompt-level habits (v4) and landmarks both moved exploration in the intended direction,
+  cheaply.
+- **What didn't move:** whether agents actually reached the exit within 80 ticks.
+- **Where the bottleneck is:** choosing which untried branch to take, and then committing to it while the
+  straight-line reading gets worse.
+
+Two next steps would show whether these gains turn into exits: a longer horizon (320 ticks) now that
+exploration is more systematic, and a stronger model on the same specs.
+
 ## Prompt caching (added after the pilot, prompt `maze_agent_v2`)
 The pilot sent each observation as one JSON blob, so no part of the prompt was reusable between ticks. Version 2
 splits the user message into three blocks, from most to least stable:
