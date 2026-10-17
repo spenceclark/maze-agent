@@ -262,6 +262,59 @@ roughly 3× the omniscient minimum on 12×12, so even the new 320-tick default i
 - Several replicates per prompt version on this seed, before crediting B's improvement to v3.
 - Landmarks would let C tell the (1,8) area apart and plan around it, rather than relying on distance alone.
 
+## Fourth pilot: radio off, run `3cd5200d82ce` (same maze and prompt v3 as `74ee0f522f1a`)
+Config: `configs/pilot_haiku_radio_off.json`. It is the v3 run's resolved config with only
+`radio_enabled: false` and `radio_message_bytes: 0` changed. Same seed, maze hash, spawns, model and horizon.
+Replay verification matched all 80 ticks, and no agent tried to transmit.
+
+| Agent | Radio on: exit | Radio off: exit | Radio on: moves / stays | Radio off: moves / stays | Radio on: revisit | Radio off: revisit |
+| --- | --- | --- | --- | --- | --- | --- |
+| A | t5 | t5 | 5 / 75 | 5 / 75 | 0.00 | 0.00 |
+| B | **t30** | **never** | 30 / 50 | 80 / 0 | 0.03 | 0.69 |
+| C | never | never | 64 / 16 | 78 / 2 | 0.73 | 0.60 |
+
+Team coverage was 64 cells with radio off against 48 with radio on. Cost was $0.064 against $0.089: no
+messages, and A's notebook stayed at 359 bytes.
+
+**Removing the greedy advice did not free the agents from greed.** The radio-on run suggested peer hints such as
+"avoid E" were holding C back. Without them, both B and C still rejected moves because the distance reading rose:
+- **B** reached (4,10), 8 steps from the exit, at t27. The way on was S, but its reading there was 4.0 against
+  3.0 one cell back, so it wrote "dist 4.0 (up). Returning W to the dist 3.0 cell". In the radio-on run B took
+  that same S step at t23 and finished at t30. The greedy habit comes from the model itself, not just from its
+  peers.
+- **C** explored a little further than with radio. It reached path distance 34 at t54, against 36 in the radio-on
+  run, then turned back when the reading climbed to 5.7. The rule sentence (prompt v3) was present in both runs.
+
+**B stopped taking notes, then swung back and forth for 38 ticks.** B made 31 notebook writes up to t42 and none
+afterwards. Its last entry was "t42: at N/W open, E/S walls, dist 4.1. Trying N." From t40 to t80 it alternated
+between (4,8) and (4,9) on almost every tick, about 18 round trips, with only short excursions. Each decision read
+the stale last line, judged the direction it had just come from as "unexplored", and went back. With nothing
+written about what had just happened, it lost even that one step of memory.
+
+This is a sharper version of the first pilot's copy-forward failure. There the notes overrode what the agent
+could see; here the notes stopped, and the agent had nothing to break the loop. A notebook-churn metric would
+flag it: a long run of ticks with no writes while the agent keeps moving.
+
+**C swung between two goals.** From t64 to t80 C walked (1,8) → (3,8) → (1,8), the same three cells, five times.
+On the way east its notes said "probe the unexplored 4.2 east exit"; on the way back, "Moving W toward 2.2 area".
+The low-distance cell kept pulling it back before the probe went anywhere.
+
+**First moves vary between runs on the same prompt.** This run's C went E on its first move, into the same
+dead-end branch v2-C wasted 50 ticks in. It left after 25 ticks this time. The radio-on v3-C went W at t2. With
+identical inputs, Haiku's first move differs from run to run, so single runs per condition can't separate a
+condition's effect from these early random choices.
+
+**What these three runs on this maze suggest:**
+- **The dominant failure is greedy distance-following.** It survives a rules sentence warning about it and the
+  removal of peer advice that encouraged it.
+- **Radio helped B here, probably by chance:** the radio-on B took the right step at the same decision point.
+  Radio clearly cost money and produced much repeated advice. Telling chance from effect needs replicates.
+- **Notebook discipline matters as much as strategy.** Agents that stop writing, or write stale lines, lose the
+  little state that keeps them from looping.
+
+**Next:** the phase 6 batch runner, to run about 5 replicates per condition on this seed plus a few other seeds,
+before changing prompts again. Landmarks are the most promising structural fix for the local-minimum trap.
+
 ## Prompt caching (added after the pilot, prompt `maze_agent_v2`)
 The pilot sent each observation as one JSON blob, so no part of the prompt was reusable between ticks. Version 2
 splits the user message into three blocks, from most to least stable:
