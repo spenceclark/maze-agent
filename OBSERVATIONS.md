@@ -17,6 +17,7 @@ Batches use 3 seeds, so intervals are wide.
 | 6 | All of the above | **Swap model:** Sonnet 5.5 with no prompt changes (1 single run, then a 6-run batch) | Teams met the objective in **3 of 6** batch runs, against 0 of 12 for Haiku. 85% of agents reached the exit, against 36%. Far fewer back-and-forth moves (1.8 vs 4.3 per agent) and no waiting | Cost ~16–20×. **Landmarks didn't matter for Sonnet** (2 of 3 succeeded without them, 1 of 3 with). The model, not the scaffolding, made the difference |
 | 7a | Can context alone push Haiku into Sonnet's habits? | Prompt v5: spell out coordinates, exit estimation and landmark-anchored routes | **Adopted in form by 100% of agents** (0% before); 83% estimated the exit's position | **Progress got worse (−0.10).** The coordinates drifted (only 28% of noted positions correct), and agents then distrusted their own maps |
 | 7b | Is it a matter of reasoning budget? | Higher thinking effort (`effort: high`), with v4 and with v5 | Haiku's first team successes: 2 of 12 runs, both on the easiest seed. +0.5 agents reaching the exit per run. With v5, coordinates were more accurate (42%) | The extra thinking overflowed the 2,048-token cap: 34 and 74 cut-off decisions became forced STAYs. Cost +40–57% |
+| 8 | Does a cheap reasoning model already have Sonnet's habits? | DeepSeek v4.1 Flash via OpenRouter, plain v4 + landmarks, 8k cap (3 runs) | **Unprompted, every agent kept coordinates and estimated the exit's position,** and shared routes from landmarks about as often as Sonnet. Cost $0.30 per run | **Too slow for the 60 s window:** ~44% of turns lost to timeouts and truncations. 0 of 3 teams succeeded; outcomes at Haiku level. Needs a longer window to judge fairly |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -727,6 +728,53 @@ start, kept them about 98% right. Extra reasoning budget doesn't substitute for 
 each. Sonnet spent $8.93 on 6 batch runs for 3, about $3.00 each. Despite costing ~16× more per run, the
 stronger model is the cheaper way to get a team out. These figures exclude the re-run cells and the duplicate
 runs from the accidental double batch.
+
+## DeepSeek v4.1 Flash via OpenRouter, 2k and 8k caps (`experiments/landmarks_v4_deepseek*.json`)
+Model `deepseek/deepseek-v4.1-flash-1017` through OpenRouter on the same cells as the Haiku and Sonnet landmark
+runs: plain v4 + 10 landmarks, 12×12, 80 ticks, barrier timing with a 60 s ceiling, seeds 202611017, 101 and
+102 × 1. The settings differ from the Anthropic runs in two ways:
+- **Output mode is `tool`:** PydanticAI's profile says native structured output isn't supported for this model.
+- **Costs are OpenRouter's billed amounts** (usage accounting), not estimates. Prices are $0.15 / $0.60 per
+  million input / output tokens, $0.003 per million for cached input, doubling at some weekday hours. These
+  runs were on a Saturday.
+
+Full tables: `reports/landmarks_v4_deepseek.md` (2k) and `reports/landmarks_v4_deepseek_8k.md` (8k).
+
+| Same cells (v4 + landmarks) | Team success | Agents exited | Progress | Forced STAYs (cause) | Output tokens per decision | Latency p50 / p90 | Cost per run |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Haiku, medium effort, 2k (6 runs) | 0 / 6 | 1.00 | 0.74 | ~0 | 401 | 2.7 / 4.0 s | $0.09 |
+| Haiku, high effort, 8k (6 runs) | 0 / 6 | 1.17 | 0.68 | ~0.5 | 545 | 3.3 / 6.5 s | $0.14 |
+| Sonnet, default effort, 2k (3 runs) | 1 / 3 | 2.33 | 0.90 | ~0.7 | 221 | 3.0 / 4.8 s | $1.62 |
+| DeepSeek, 2k (3 runs) | 0 / 3 | 0.67 | 0.50 | 406 of 720 decisions (cut off) | 2,048 (the cap) | 14.3 / 20.7 s | $0.23 |
+| DeepSeek, 8k (3 runs) | 0 / 3 | 1.33 | 0.68 | **~61 per run** (274 timeouts, 43 cut off) | 1,789 (1,506 reasoning) | 16.1 / **49.8 s** | $0.30 |
+
+**At a 2k cap, the cap is all you measure.** DeepSeek reasons at length (median ~1,500 reasoning tokens per
+decision at 8k), so at 2,048 tokens 56% of decisions were cut off. Each cut-off answer is still billed in full,
+so the 2k runs cost more than the smoke test suggested ($0.23 against ~$0.04 per run). Any comparison with
+reasoning models needs a cap well above their typical reasoning length.
+
+**At 8k, the clock is the limit.** With room to reason, decisions took 16 s at the median and 50 s at the 90th
+percentile. Under barrier timing every tick waits for the slowest agent, up to the 60 s ceiling, after which an
+unanswered agent is forced to STAY. 274 decisions timed out and 43 were still cut off even at 8k: about 44% of
+all turns lost. Outcomes (1.33 agents exited, progress 0.68) landed at Haiku's level, but with nearly half the
+turns forfeited that says little about the model.
+
+**The habits are there without prompting.** Under plain v4, which only asks for junction notes:
+- **Coordinates and exit estimates:** all 9 DeepSeek agents kept coordinates and estimated the exit's
+  position. Haiku needed v5 to do either, and only 22–33% of Sonnet agents did.
+- **Landmark routes:** it shared routes anchored on landmarks 1.1 times per agent, against Sonnet's 1.7 and
+  Haiku's 0.1.
+- **Distance reasoning:** an example note: "T2… exitD=92 (spawn was 85) => distance rose moving E, so exit
+  lies WEST. Returning W", followed by a structured coordinate log per cell ("(-1,0) d78: N open…").
+- **Accuracy is uncertain.** The coordinate-accuracy heuristic gives ~30%, but DeepSeek notes list many cells
+  per line, so a first-match check is unreliable here. Treat that figure loosely.
+
+**Cost.** $0.30 per run at 8k, about 2× Haiku at high effort and a fifth of Sonnet, almost all of it output and
+reasoning tokens. Automatic prefix caching worked through OpenRouter (cache reads on most calls).
+
+**Next, for a fair comparison:** rerun at 8k with a much longer barrier ceiling, say 180–300 s, so slow
+reasoning isn't scored as forfeits. This costs nothing extra in tokens but takes much longer: probably 1–2 hours
+for 3 runs. The same applies to local models, whose throughput will also decide how many turns they lose.
 
 ## Prompt caching (added after the pilot, prompt `maze_agent_v2`)
 The pilot sent each observation as one JSON blob, so no part of the prompt was reusable between ticks. Version 2
