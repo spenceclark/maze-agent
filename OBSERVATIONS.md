@@ -14,7 +14,7 @@ Batches use 3 seeds, so intervals are wide.
 | 3 | Agents on the exit radioed greedy advice ("avoid E", "hold at 5.0") and camped there as "beacons" | Radio-off ablation (18 runs) | No change in outcomes. With radio, agents still searching stood still ~17 more turns, and cost was ~15% higher | **Removing bad advice didn't remove the greed**; it's the model's own habit. Radio mostly bought waiting |
 | 4 | Aimless re-exploration, with no record of which branches were tried | Prompt v4: note each junction and which exits were tried; prefer an untried one | Habit adopted by 17 of 18 agents (1 of 18 before). Coverage +9.5 points, revisits −6.8 points, ~16 fewer STAYs | **Progress toward the exit unchanged.** Better bookkeeping, same stalls |
 | 5 | Cells all look alike, and routes told "from my spawn" are useless to anyone else | Landmarks: 10 unique labels on fixed cells | Used as place names ("north corridor above mirror is exhausted"). Best progress toward the exit +6.5 points | **No more agents exited.** Landmarks were rarely shared (10 of 155 radio messages) |
-| 6 | All of the above | **Swap model:** Sonnet 5.5, same config (single run) | **Team objective met at t70**, the first LLM success. It built landmark-anchored coordinates, estimated the exit's position, took detours, and followed a peer's route from a landmark | Cost ~22×. Batch replication pending |
+| 6 | All of the above | **Swap model:** Sonnet 5.5 with no prompt changes (1 single run, then a 6-run batch) | Teams met the objective in **3 of 6** batch runs, against 0 of 12 for Haiku. 85% of agents reached the exit, against 36%. Far fewer back-and-forth moves (1.8 vs 4.3 per agent) and no waiting | Cost ~16–20×. **Landmarks didn't matter for Sonnet** (2 of 3 succeeded without them, 1 of 3 with). The model, not the scaffolding, made the difference |
 | 7 | Can Haiku be pushed into Sonnet's habits? | Prompt v5: spell out coordinates, exit estimation and landmark-anchored routes; plus higher thinking effort | *Pending (`experiments/haiku_pattern.json`)* | — |
 
 **What Haiku did well unprompted:**
@@ -586,6 +586,51 @@ and were re-written to the cache. It never came near the 2,048-token cap; the la
 **Next:** a small Sonnet batch (`landmarks_v4` with the model swapped, 3 seeds × 1 replicate, about $5) to see
 whether this holds beyond one seed and one run. Sonnet with landmarks off would isolate how much of the gain is
 the model and how much is landmarks.
+
+## Batch: Sonnet 5.5, landmarks on and off, 6 runs (`experiments/landmarks_v4_sonnet.json`)
+The configs are identical to the Haiku `landmarks_v4` batch except `model: claude-sonnet-5-5`: same seeds
+(202611017, 101, 102), 12×12 maze, prompt v4, 80 ticks, radio on, 2,048-token output cap. There is 1
+replicate per cell. Full table: `reports/landmarks_v4_sonnet.md`. The Haiku comparison is across two
+experiments, but configs and seeds match.
+
+| Per run | Haiku v4 | Haiku v4 + landmarks | Sonnet v4 | Sonnet v4 + landmarks |
+| --- | --- | --- | --- | --- |
+| Team success | 0 / 6 | 0 / 6 | **2 / 3** (t68, t71) | **1 / 3** (t73) |
+| Agents reaching the exit (of 3) | 1.17 | 1.00 | 2.67 | 2.33 |
+| Progress to exit (best fraction of path closed) | 0.67 | 0.74 | 0.98 | 0.90 |
+| Revisit fraction | 0.35 | 0.32 | 0.14 | 0.21 |
+| STAYs before exiting (team) | 0.3 | 12.5 | 0 | 0 |
+| Cost | $0.085 | $0.090 | $1.36 | $1.62 |
+
+**The model is the big lever; landmarks were not essential.**
+- **Sonnet without landmarks** met the objective in 2 of 3 runs, more than with them (1 of 3). The difference
+  is within noise at this n.
+- **The single Sonnet run's win** relied on a route anchored on a landmark, but Sonnet succeeds by other routes
+  too.
+- **The same cell can go either way:** the batch's own run of seed 202611017 with landmarks (`73b66b4e6638`)
+  hit the tick limit, while the earlier single run on that cell (`ac57358e8053`) succeeded.
+
+**How Sonnet differs, per agent:**
+
+| Habit | Haiku | Sonnet |
+| --- | --- | --- |
+| Greedy reversals (a move that raised the reading, undone at once) | 2.3 | **1.4** |
+| Back-and-forth moves (returning to the cell of two moves ago) | 4.3 | **1.8** |
+| Keeps coordinates (notebook has (x, y) pairs) | 0–6% of agents | 22–33% |
+| Estimates the exit's position | 0% | 22–33% |
+| Routes shared from a landmark (radio, with landmarks on) | 0.11 per agent | **1.67 per agent** |
+| Share of moves that raised the straight-line reading | 0.41 | 0.38 |
+| Median output tokens per decision | 386 | **225** |
+
+The difference is not more willingness to walk away from the exit: both models raised the reading on about 40%
+of their moves. Sonnet's moves were decisive: fewer reversals, far fewer back-and-forth moves, no waiting,
+and less text. Only a minority of Sonnet agents kept explicit coordinates, so coordinates aren't required
+either; most Sonnet agents just explored without dithering. When landmarks existed, Sonnet used them to share
+routes about 15× more often than Haiku.
+
+**Cost and reliability.** About $1.36–1.62 per run, against $0.09 for Haiku: 16–18× per run, roughly $3 per
+team success. Two Sonnet decisions in 1,440 were cut off at the 2,048-token cap, both from one agent on
+consecutive turns, presumably hidden thinking at Sonnet's default "high" effort. Haiku had one in 2,880.
 
 ## Prompt caching (added after the pilot, prompt `maze_agent_v2`)
 The pilot sent each observation as one JSON blob, so no part of the prompt was reusable between ticks. Version 2
