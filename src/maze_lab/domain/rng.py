@@ -40,3 +40,20 @@ class SeededStream:
             j = i + self.below(len(pool) - i)
             pool[i], pool[j] = pool[j], pool[i]
         return pool[:k]
+
+
+class KeyedSampler:
+    """Stateless categorical draws keyed by (tick, draw index) for stochastic baselines.
+
+    The key is derived from the root seed by the harness; a policy never sees
+    the seed itself. Because each draw is addressed, call order cannot change results.
+    """
+
+    VERSION = "keyed_sampler_v1"
+
+    def __init__(self, key: str) -> None:
+        self._key = key
+
+    def below(self, n: int, tick: int, draw: int = 0) -> int:
+        stream = SeededStream(0, f"{self._key}:{tick}:{draw}")
+        return stream.below(n)
