@@ -13,9 +13,22 @@ uv run ruff check src tests
 uv run pyright src tests
 ```
 
+## Running headless
+
+```bash
+uv run maze-lab run --policy dfs_bounded_v1 --seed 1   # baseline run, barrier timing
+uv run maze-lab verify <run_id>                         # re-execute and check every state hash
+uv run maze-lab export <run_id> run.zip                 # replay ZIP with checksums
+```
+
 ## Layout
 
 - `src/maze_lab/agent_contracts.py` – everything an agent sees or emits
 - `src/maze_lab/config.py` – run configuration
 - `src/maze_lab/domain/` – pure simulation: geometry, generation, state, reducer
 - `src/maze_lab/observation.py` – the only ground-truth → agent projection
+- `src/maze_lab/coordinator.py` – autonomous tick clock, dispatch, atomic commit
+- `src/maze_lab/policies/` – policy protocol and baselines
+- `src/maze_lab/persistence/` – SQLite journal, snapshots, invocation ledger
+- `src/maze_lab/metrics/` – ground-truth scoring
+- `src/maze_lab/replay.py`, `runs.py`, `cli.py` – replay/export, run creation, CLI

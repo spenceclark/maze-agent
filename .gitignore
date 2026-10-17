@@ -27,3 +27,8 @@ htmlcov/
 .DS_Store
 
 diagnostics/
+# Local run data / agent worktrees
+*.db
+*.db-wal
+*.db-shm
+.claude/worktrees/
