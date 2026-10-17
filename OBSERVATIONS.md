@@ -197,6 +197,71 @@ from that corner.
 - Record which junction edges have been tried, as the DFS baseline does. Neither LLM agent recorded this
   reliably.
 
+## Third pilot: run `74ee0f522f1a`, same maze as the second, prompt v3
+Same seed (202611017), 12×12 maze, spawns and 80-tick horizon as `6c7068296716`. The only change is the v3
+rules sentence: because distance ignores walls, a cell where every move raises the reading can be a dead end.
+Replay verification matched all 80 ticks. One run per prompt, so differences may be chance.
+
+| Agent | v2 exit | v3 exit | v2 moves / stays | v3 moves / stays | v2 path efficiency | v3 path efficiency |
+| --- | --- | --- | --- | --- | --- | --- |
+| A | t5 | t5 | 5 / 75 | 5 / 75 | 1.00 | 1.00 |
+| B | t75 | **t30** | 58 / 22 | 30 / 50 | 0.48 | **0.93** |
+| C | never | never | 75 / 5 | 64 / 16 | — | — |
+
+Total cost $0.078 (v2) vs $0.089 (v3). C's growing notebook accounts for most of the difference.
+
+**B solved its maze, but not visibly because of the rule.** B's first 10 moves matched the v2 run. At t11 it
+went W where v2-B had gone E, and at the (5,8) junction that trapped v2-B it tried W at once: "Trying W to test
+whether it lowers distance". It did lower it (5.4 → 4.5), and B was on the exit by t30, two moves off the
+shortest path. Its notes never cite the new sentence, and its stated reasoning is still "does this lower
+distance?". So this may be luck as much as the rule.
+
+**C went the right way at first, then stalled at the same dead end.**
+- **Start:** unlike v2-C, it headed west at t2 and reached path distance 38 by t16, a point v2-C only reached
+  at t66.
+- **Stall:** it then spent most of the remaining 64 ticks around the (1,8) cell. That cell is 2.2 from the exit
+  in a straight line but 39 moves away by path, the same trap as in v2. It reasoned "Both neighbors tested
+  worse earlier (N 3.2, E 2.8). Holding STAY", and held there 11 times.
+- **Turning back:** twice it set out east ("look for a southern route", t33–35; "probe the unexplored
+  opening", t65–67). Each time it turned back after a step or two because the reading rose.
+
+The rule sentence made C willing to test, but not to keep going while the distance rose.
+
+**Peer advice cancelled out the new rule.** A and B, standing on the exit, broadcast 18 hints in total, most of
+them greedy:
+- "Move only when distance drops. Hold if stuck." (A, t65)
+- "W and S lowered distance… avoid E." (B, t61, t67, t73, t79)
+
+They turned the compass directions of their own successful routes into general advice for C, who was somewhere
+else entirely, so "avoid E" was the opposite of what C needed. A even quoted the rule ("Exit reading is
+straight-line only") in the same message as greedy advice. At t57 C was the one proposing the right strategy:
+"Others, try unexplored far east or far north routes and report dist each step". No one did.
+
+**Routes drift as they're retold.** A's notebook records its route correctly as N, N, W, S, W. Its radio told it
+correctly at t11 and t29, then as "N, W, S, W (exit is 2 cells west of spawn)" from t47, dropping a step and
+mis-stating the offset. At t79 B relayed that shortened version as "Route that worked for A and B", though B's
+own route was quite different. The notebook was right; the retelling from memory was not.
+
+**Sensor cross-checks, done right and wrong.**
+- **C:** "My exit dist 3.2 equals my range to A, so A on exit is consistent". This correctly uses the peer
+  range to verify A's claim to be on the exit.
+- **B:** "A's radio says A is on exit but peer range shows A 5.4, so the readings conflict". This is wrong: B's
+  own exit distance was 5.4, so a 5.4 range to A is exactly what being on the exit predicts.
+
+**C's notebook nearly hit the cap.** It grew to 7,558 of 8,192 bytes with no compaction, and C's prompt tripled
+from 1.9 k to 5.8 k input tokens. A slightly longer run would have produced its first `notebook_cap_exceeded`
+rejections.
+
+**Baseline reference on a different 12×12 maze** (run `2588cc541340`, seed 4224, horizon 200, oracle 57):
+bounded DFS reached the exit at t167, the wall follower at t157, and random moves never did. The baselines need
+roughly 3× the omniscient minimum on 12×12, so even the new 320-tick default is not generous for a weak policy.
+
+**Next experiments suggested:**
+- The rule moved behaviour less than the peers' advice did. Test an ablation with radio off on this maze: does C
+  explore further when nobody tells it to "avoid E"?
+- Several replicates per prompt version on this seed, before crediting B's improvement to v3.
+- Landmarks would let C tell the (1,8) area apart and plan around it, rather than relying on distance alone.
+
 ## Prompt caching (added after the pilot, prompt `maze_agent_v2`)
 The pilot sent each observation as one JSON blob, so no part of the prompt was reusable between ticks. Version 2
 splits the user message into three blocks, from most to least stable:
