@@ -1,0 +1,55 @@
+{
+  "name": "landmarks_v4_deepseek",
+  "experiment_seed": 7,
+  "base_config_file": "../configs/pilot_haiku.json",
+  "base_config": {
+    "maze": {
+      "width": 12,
+      "height": 12,
+      "landmark_count": 10
+    },
+    "horizon_ticks": 80,
+    "prompt_version": "maze_agent_v4",
+    "agents": [
+      {
+        "id": "A",
+        "kind": "llm",
+        "adapter": "pydantic_ai",
+        "provider": "openrouter",
+        "model": "deepseek/deepseek-v4.1-flash-1017",
+        "output_mode": "tool",
+        "context_window_tokens": 1048576,
+        "max_output_tokens": 2048
+      },
+      {
+        "id": "B",
+        "kind": "llm",
+        "adapter": "pydantic_ai",
+        "provider": "openrouter",
+        "model": "deepseek/deepseek-v4.1-flash-1017",
+        "output_mode": "tool",
+        "context_window_tokens": 1048576,
+        "max_output_tokens": 2048
+      },
+      {
+        "id": "C",
+        "kind": "llm",
+        "adapter": "pydantic_ai",
+        "provider": "openrouter",
+        "model": "deepseek/deepseek-v4.1-flash-1017",
+        "output_mode": "tool",
+        "context_window_tokens": 1048576,
+        "max_output_tokens": 2048
+      }
+    ]
+  },
+  "seeds": [
+    202611017,
+    101,
+    102
+  ],
+  "replicates": 1,
+  "conditions": {
+    "v4_landmarks": {}
+  }
+}

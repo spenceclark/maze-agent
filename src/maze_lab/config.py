@@ -9,7 +9,9 @@ from maze_lab.agent_contracts import AGENT_IDS, AgentId, Contract, Objective
 
 BaselinePolicyName = Literal["random_open_v1", "wall_follower_v1", "dfs_bounded_v1"]
 LlmAdapter = Literal["pydantic_ai"]
-LlmProvider = Literal["anthropic", "openai", "ollama"]  # "openai" = any OpenAI-compatible endpoint
+LlmProvider = Literal[
+    "anthropic", "openai", "ollama", "openrouter"
+]  # "openai" = any OpenAI-compatible endpoint
 LlmOutputMode = Literal["tool", "native", "prompted"]
 Effort = Literal["low", "medium", "high", "xhigh", "max"]
 TimingMode = Literal["fixed_deadline", "barrier", "manual"]
@@ -64,6 +66,7 @@ PROVIDER_DEFAULTS: dict[str, dict[str, str | None]] = {
     "anthropic": {"base_url": None, "api_key_env": "ANTHROPIC_API_KEY"},
     "openai": {"base_url": None, "api_key_env": "OPENAI_API_KEY"},
     "ollama": {"base_url": "http://localhost:11434/v1", "api_key_env": None},
+    "openrouter": {"base_url": "https://openrouter.ai/api/v1", "api_key_env": "OPENROUTER_API_KEY"},
 }
 
 

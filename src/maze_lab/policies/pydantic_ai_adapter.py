@@ -19,9 +19,11 @@ from pydantic_ai.messages import CachePoint, ModelMessage, ModelResponse, TextPa
 from pydantic_ai.models import Model
 from pydantic_ai.models.anthropic import AnthropicModel, AnthropicModelSettings
 from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.models.openrouter import OpenRouterModel, OpenRouterModelSettings
 from pydantic_ai.output import NativeOutput, PromptedOutput, ToolOutput
 from pydantic_ai.providers.anthropic import AnthropicProvider
 from pydantic_ai.providers.openai import OpenAIProvider
+from pydantic_ai.providers.openrouter import OpenRouterProvider
 
 from maze_lab.agent_contracts import (
     AgentRules,
@@ -54,8 +56,10 @@ def build_model(config: LlmAgentConfig) -> Model:
     if config.provider == "anthropic":
         client = AsyncAnthropic(api_key=key, base_url=config.base_url, max_retries=0)
         return AnthropicModel(config.model, provider=AnthropicProvider(anthropic_client=client))
-    # OpenAI and Ollama both speak the OpenAI chat-completions protocol.
+    # OpenAI, Ollama and OpenRouter all speak the OpenAI chat-completions protocol.
     client = AsyncOpenAI(api_key=key or "unused", base_url=config.base_url, max_retries=0)
+    if config.provider == "openrouter":
+        return OpenRouterModel(config.model, provider=OpenRouterProvider(openai_client=client))
     return OpenAIChatModel(config.model, provider=OpenAIProvider(openai_client=client))
 
 
@@ -98,11 +102,20 @@ def _usage(responses: list[ModelResponse]) -> Usage:
 
 
 def _cost(responses: list[ModelResponse]) -> float | None:
-    """Priced from the provider's usage, so cache reads and writes are charged at their own rates."""
+    """The provider's own charge when it reports one (OpenRouter does); otherwise priced from
+    usage with the genai-prices table, so cache reads and writes get their own rates."""
     try:
-        return float(sum(r.cost().total_price for r in responses))
+        total = 0.0
+        for r in responses:
+            billed = (r.provider_details or {}).get("cost")
+            total += float(billed) if billed is not None else float(r.cost().total_price)
+        return total
     except Exception:  # unknown model in the price table, or no model name
         return None
+
+
+class _Settings(AnthropicModelSettings, OpenRouterModelSettings, total=False):
+    """Provider settings are key-prefixed, so one dict can carry any provider's options."""
 
 
 class PydanticAiPolicy:
@@ -117,7 +130,7 @@ class PydanticAiPolicy:
         self.prompt_version = prompt_version
         self.model = model or build_model(config)  # reusable client: allowed, holds no memory
         self.output = _output_spec(config)
-        settings: AnthropicModelSettings = {"max_tokens": config.max_output_tokens, "timeout": timeout_s}
+        settings: _Settings = {"max_tokens": config.max_output_tokens, "timeout": timeout_s}
         if config.sampling.temperature is not None:
             settings["temperature"] = config.sampling.temperature
         if config.sampling.top_p is not None:
@@ -130,6 +143,8 @@ class PydanticAiPolicy:
             settings["anthropic_cache_instructions"] = True
             if config.effort is not None:
                 settings["anthropic_effort"] = config.effort
+        if config.provider == "openrouter":
+            settings["openrouter_usage"] = {"include": True}  # report the billed cost of each call
         self.settings = settings
 
     def request_text(self, system: str, blocks: list[str]) -> str:
