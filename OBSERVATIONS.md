@@ -1143,6 +1143,26 @@ junction revisits, so there was no gap for it to close.
   "too short" was wrong because agents stalled by t24. Now they explore steadily, so the horizon is the
   constraint.
 
+**The same setup on Qwen (`015888b15e1b`, through Vessel), against Qwen + coordinates with v4 and the old
+wording (`bb8677c622e6`):**
+
+| Qwen + coordinates | Exits | Coverage | Distinct cells | Back-and-forth | Wall moves | Used-exit choices at junction revisits | Notes doubting the trail |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| v4, old wording | A t69 | 0.26 | 37 | 49 | 36.8% | 6 of 11 | 1 |
+| **v7, fixed wording** | none | **0.31** | **45** | **75** | **27.5%** | 4 of 8 | 0 |
+
+- **The wording fix didn't touch Qwen's problem.** Qwen had never doubted the trail (1 note in the earlier
+  game), so there was nothing for the fix to remove.
+- **The best Qwen exploration so far:** 45 distinct cells, against 35–37 in the other rolling-log games.
+  Wall moves were the lowest of the coordinates games.
+- **Loops got worse:** A, five cells from the exit, ping-ponged for up to 10 turns (41 reversals) and never
+  got there.
+- **v7 changed nothing at junction revisits:** Qwen still took an already-used exit about half the time,
+  which is its long-run rate (58%).
+- **Single games swing this much,** so read this as no clear change. Qwen's bottleneck is still acting on
+  what it writes, not what it's told.
+
+
 
 
 
