@@ -26,6 +26,7 @@ Batches use 3 seeds, so intervals are wide.
 | 14 | Why is route-finding so poor? Measured at junction revisits | Ground truth from trajectories: when back on a junction with an untried open exit, how often does the agent take one it has already used? | **Sonnet 3%, DeepSeek 27%, Haiku 40%, Qwen 58%.** In Haiku's bad choices, it wrote "Trying X (untried)" about an exit it had used | **Two bookkeeping gaps:** (1) cells have no identity, so a revisit is logged as a new cell; (2) the exit it arrived through is never marked tried. Stale duplicate lines aren't the main issue. Sonnet names cells (W1, W2…) and recognises them. Haiku with coordinates: 0 of 8 (small sample) |
 | 15 | Our own wording hamstrung them: "trail lists where you were on each of the last 30 turns" | Prompt v7 (the exit you arrived through counts as tried), then the trail rule reworded: "ends with last turn's cell, never includes where you are now" (Haiku + coordinates, same seed) | v7 was adopted ("E open (came from)") but measured nothing new: used-exit choices were already 0%. **The wording fix removed all doubt notes (22 per game → 0)** and gave the best exploration so far: 110 distinct cells (85–92 before), coverage 0.45, back-and-forth 11 (19–22) | Still only A exits. C needs 52 moves even with a perfect map and was still finding new cells at t80. **The 80-turn horizon now binds**; the default for 12×12 is 320 |
 | 16 | Are the distance readings making them bounce? About 60% of Haiku's reversals came straight after a move that raised the exit reading | `distance_sensors: none`: no exit distance and no peer ranges, and the distance rule replaced by "you have no distance sensors" (Haiku, v7 + coordinates, same seed; one game) | **Coverage 0.53, the best Haiku game yet** (0.45 with distances), 115 distinct cells, back-and-forth about the same (14 against 11). Landmarks were mentioned far more (16 notes and 8 radio messages, against 6 and 1), because they became the only shared reference | Still only A exits, and nobody meets. Without distances, B and C can't locate the exit, so A's route home in A's frame is useless until they find a shared cell. The horizon still binds: C was finding new cells at t80 |
+| 17 | Agents who reach the exit camp on it as a "beacon" and help nobody. Agents swap landmark coordinates but never do the subtraction | Prompt v8 = v7 plus "once you have reached the exit, standing on it helps nobody… head back along your known route to find a teammate… compare positions… give them the route in their own frame" (Haiku, no distances, coordinates; one game) | **A left the exit** (STAYs 42 against 75). **The first explicit landmark calibration:** at t51 B worked out "B = C + (0,4)" (correct) and converted C's landmarks into its own frame. Coverage 0.62, the best Haiku game | A walked out, then waited at its own start (unknown to anyone else) for the last 37 turns, radioing the same route 13 times. It never went to a landmark, so nobody could convert A's exit into their frame. Still only A exits |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -1198,6 +1199,50 @@ wording (`bb8677c622e6`):**
 
 Haiku understood the frames from the rule. Qwen sends bare coordinates, so its teammates can't tell they're
 in someone else's frame.
+
+## Landmark calibration, and prompt v8: go back and help (no distances)
+**Without v8, the data for calibration was there but nobody used it (`a5e568c02c88`).**
+- **Shared landmarks:** B and C both stood on four of the same landmarks (ladder, piano, fountain, statue).
+- **Both radioed them in their own frames:** fountain at B [-6,1] and C [-6,-3]; statue at B [2,0] and
+  C [2,-4]. That gives C = B + (0,-4), confirmed twice, available from t53.
+- **C noticed but stopped there.** At t47 it wrote "B reports fountain at its [-6,1], so frames may
+  differ by an offset".
+- **Neither did the subtraction.** For the rest of the game both asked each other to "send your landmark
+  coords to align frames", data they already had.
+- **A couldn't help.** It camped on the exit as a "beacon", visited no landmarks, and so its exit
+  position could never be converted into anyone else's frame.
+
+**Prompt v8 (`d974c5320ad8`) = v7 plus:** "Once you have reached the exit, standing on it helps nobody:
+the others cannot see you there, and the goal only needs each agent to visit it once. Instead, head back
+along your known route to find a teammate. When you meet on a cell or both stand on the same landmark,
+compare positions to work out the offset between your frames, then give them the route to the exit in their
+own frame."
+
+| Haiku, coordinates, no distances | Exits | Coverage | Distinct cells | STAYs | Meetings | Explicit offsets worked out |
+| --- | --- | --- | --- | --- | --- | --- |
+| v7 (`a5e568c02c88`) | A t5 | 0.53 | 115 | 75 | 0 | 0 |
+| **v8** (`d974c5320ad8`) | A t5 | **0.62** | **129** | 42 | B–C once | **1** (B, t51) |
+
+- **A did leave the exit,** reaching cells up to 16 moves away by t25.
+- **Then A swapped one fixed post for another.** From t43 it waited at its own start, "A at start [0,0],
+  waiting for C", for 37 turns, and radioed the same route 13 times. Nobody else knows where A's start is.
+- **A never went to a landmark,** the one move that would have let others convert A's coordinates.
+- **B did the calibration v7 runs never did.** At t51: "Offset from C's statue: B = C + (0,4), so C ladder
+  [-1,-1] is B [-1,3], C piano [-3,-3] is B [-3,1]…". It's correct, and it was radioed at t64.
+- **Exploration was the best of any Haiku game** (0.62), but B and C still ended 44 and 36 moves from the
+  exit.
+- **What's missing:** the helper needs a shared reference, not just a route. A useful next nudge would be
+  "radio the exit's position relative to a landmark", which doesn't depend on any frame.
+
+**Qwen without distances (`f5313c5666ee`, v7 + coordinates), against the same with distances
+(`015888b15e1b`):**
+- **Wall moves rose:** 33.6% against 27.5%.
+- **Exploration fell:** 35 distinct cells against 45, coverage 0.24 against 0.31.
+- **Ping-pong fell:** A's runs were 1 turn at most, against 10.
+- **No exits:** A ended 2 moves from the exit.
+- **Conclusion:** removing distances doesn't help Qwen. Its problems are wall moves and acting against its
+  own notes, not chasing a reading.
+
 
 
 
