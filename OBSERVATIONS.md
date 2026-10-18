@@ -33,6 +33,7 @@ Batches use 3 seeds, so intervals are wide.
 | 21 | Is the Unsloth IQ4_XS quant the problem? The official build and OpenRouter's Qwen3.5-9B both chose S on a replayed decision where Unsloth chose N into a wall | Same game (v10, coordinates, no distances, 80 turns) on the official `qwen3.5:9b` (Q4_K_M; its Modelfile sets temperature 1, presence_penalty 1.5, top_k 20, top_p 0.95) | A exited at t50 (Unsloth's A never did). It emits keys in **schema order**, not alphabetically | **No real change:** 37.5% wall moves (39.7%), coverage 0.26 (0.25). 26 of 90 blocked moves went in a direction that turn's own note called a wall (Unsloth: 19 of 95). The one-decision test didn't generalise; the quant isn't the main cause |
 | 22 | Qwen commits to a move before writing anything about its cell | `action_field_order: note_first`: the schema asks for `notebook_append` before `move`, and the official `qwen3.5:9b` writes keys in schema order (one game, same v10 setup) | **On turns where it wrote a note, wall moves fell from 39% to 14%** (13 of 96, against 45 of 115). Moves against that turn's own note fell from 26 to 3. Overall 29.4% against 37.5%; A exited at t22 (t50) | **On turns with a null note it still hit walls 40% of the time** (57 of 142), and it skipped the note on 60% of turns, encouraged by the rolling log's "write only when you learn something new". No exits for B or C |
 | 23 | Note-first only helps on turns where Qwen writes a note | `action_field_order: check_first`: a required, unstored `check` line before the note and the move ("restate this turn's four edges, the direction you arrived from, and which open direction you will take and why"); one game | **Wall moves 7.5%** (18 of 240), against 37.5% move-first and 29.4% note-first, the lowest Qwen has ever managed. **66 distinct cells** (38 and 32), coverage 0.40 | **No exits:** A wandered 31 moves from the exit. At junction revisits Qwen took an already-used exit 88% of the time (23 of 26). Its moves now match its cell; its route choices are still poor. Twice the output tokens; game 25 minutes against 11 |
+| 24 | With the check, Qwen still re-enters branches it has just explored | The check also lists "which of this cell's exits you have already taken", read from the trail (north of [x, y] is [x, y+1]), and the move should prefer one not taken (one game) | **The best Qwen exploration yet:** 87 distinct cells (66), coverage 0.46 (0.40). Immediate backtracks fell from 35% to 26% of moves, and used exits at junction revisits from 88% to 73% | **Still no exits.** 19% of checks after t2 said "Exits taken: None", although every agent had arrived from somewhere, and some then moved straight back the way they came. Wall moves 12.1% (7.5%). Output tokens +42% |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -1399,6 +1400,29 @@ log. A live reply confirmed the new order: `{"schema_version", "tick", "notebook
 - **The cost:** output tokens doubled (about 165 per decision), and the game took 25 minutes against 11.
 - **Next lever:** extend the check to the trail ("which exits here have I already taken, per my trail?"),
   so the scratch line covers the junction choice too.
+
+**Check with taken exits (`6630a25324ab`), against the first check-first game (`4a196f67ca00`).** The check
+instruction now also asks for "which of this cell's exits you have already taken: an exit is taken if your
+trail (or notebook) holds the neighbouring cell that way… preferring one you have not taken."
+
+| qwen3.5:9b, check first | Wall moves | Distinct cells | Coverage | Straight back the way it came | Used exits at junction revisits | Output tokens | Exits |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Edges and plan (`4a196f67ca00`) | 7.5% | 66 | 0.40 | 76 of 216 (35%) | 23 of 26 | 39.6k | none |
+| **+ taken exits** (`6630a25324ab`) | 12.1% | **87** | **0.46** | **54 of 205 (26%)** | **19 of 26** | 56.2k | none |
+
+- **It helped, partly.** Fewer immediate U-turns and fewer re-entered branches gave the most cells any Qwen
+  game has reached. It's still far from Haiku with coordinates, which took 0% used exits.
+- **The arrival exit is still the blind spot, even when written down.** 45 of 234 checks after t2 said
+  "Exits taken: None", although after t1 every agent has come in from somewhere. For example, A at t4:
+  "Came from South. Exits taken: None yet". At t6 B wrote "Arrived from East… Exits taken: None… Move
+  East" and walked back. Reading the trail to work out the taken exits is too much arithmetic for one
+  line.
+- **Single games, again:** wall moves rose from 7.5% to 12.1%, which could be noise or the longer check
+  crowding out the edge restatement.
+- **Next lever if wanted:** take the arithmetic away. The engine could include, for the current cell, the
+  directions the agent has already used from or into it, a fact derived from its own trail. That moves the
+  bookkeeping from the model to the harness, the way coordinates did for Haiku.
+
 
 
 
