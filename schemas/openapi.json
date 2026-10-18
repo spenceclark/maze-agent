@@ -1614,7 +1614,7 @@
             "type": "string",
             "enum": [
               "splice",
-              "append_rewrite"
+              "append_log"
             ],
             "title": "Notebook Ops",
             "default": "splice"
@@ -1731,6 +1731,64 @@
           "agents"
         ],
         "title": "AgentsResponse"
+      },
+      "AppendTurnAction": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "1.2",
+            "title": "Schema Version"
+          },
+          "tick": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Tick"
+          },
+          "move": {
+            "type": "string",
+            "enum": [
+              "N",
+              "E",
+              "S",
+              "W",
+              "STAY"
+            ],
+            "title": "Move"
+          },
+          "notebook_append": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notebook Append"
+          },
+          "radio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Radio"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema_version",
+          "tick",
+          "move",
+          "notebook_append",
+          "radio"
+        ],
+        "title": "AppendTurnAction",
+        "description": "Action variant for `notebook_ops=\"append_log\"` (not in spec \u00a77, a declared rules variant).\n\nThe notebook is a rolling log: the engine adds the note on a new line and drops the oldest\nlines when the cap would be exceeded, so agents never compute offsets, revisions or compactions.\nBlank text or \"null\" counts as no note."
       },
       "BaselineAgentConfig": {
         "properties": {
@@ -2007,14 +2065,14 @@
                     "$ref": "#/components/schemas/TurnAction"
                   },
                   {
-                    "$ref": "#/components/schemas/SimpleTurnAction"
+                    "$ref": "#/components/schemas/AppendTurnAction"
                   }
                 ],
                 "discriminator": {
                   "propertyName": "schema_version",
                   "mapping": {
                     "1.0": "#/components/schemas/TurnAction",
-                    "1.1": "#/components/schemas/SimpleTurnAction"
+                    "1.2": "#/components/schemas/AppendTurnAction"
                   }
                 }
               },
@@ -2128,14 +2186,14 @@
                     "$ref": "#/components/schemas/TurnAction"
                   },
                   {
-                    "$ref": "#/components/schemas/SimpleTurnAction"
+                    "$ref": "#/components/schemas/AppendTurnAction"
                   }
                 ],
                 "discriminator": {
                   "propertyName": "schema_version",
                   "mapping": {
                     "1.0": "#/components/schemas/TurnAction",
-                    "1.1": "#/components/schemas/SimpleTurnAction"
+                    "1.2": "#/components/schemas/AppendTurnAction"
                   }
                 }
               },
@@ -3125,6 +3183,12 @@
           "splice": {
             "$ref": "#/components/schemas/NotebookEdit"
           },
+          "dropped_codepoints": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Dropped Codepoints",
+            "default": 0
+          },
           "text": {
             "type": "string",
             "title": "Text"
@@ -3747,7 +3811,7 @@
             "type": "string",
             "enum": [
               "splice",
-              "append_rewrite"
+              "append_log"
             ],
             "title": "Notebook Ops",
             "default": "splice"
@@ -4374,76 +4438,6 @@
         "additionalProperties": false,
         "type": "object",
         "title": "Sampling"
-      },
-      "SimpleTurnAction": {
-        "properties": {
-          "schema_version": {
-            "type": "string",
-            "const": "1.1",
-            "title": "Schema Version"
-          },
-          "tick": {
-            "type": "integer",
-            "minimum": 1.0,
-            "title": "Tick"
-          },
-          "move": {
-            "type": "string",
-            "enum": [
-              "N",
-              "E",
-              "S",
-              "W",
-              "STAY"
-            ],
-            "title": "Move"
-          },
-          "notebook_append": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Notebook Append"
-          },
-          "notebook_rewrite": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Notebook Rewrite"
-          },
-          "radio": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Radio"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "schema_version",
-          "tick",
-          "move",
-          "notebook_append",
-          "notebook_rewrite",
-          "radio"
-        ],
-        "title": "SimpleTurnAction",
-        "description": "Action variant for `notebook_ops=\"append_rewrite\"` (not in spec \u00a77, a declared rules variant).\n\nThe engine places the text itself, so agents never compute offsets or revisions.\nSetting both notebook fields rejects the notebook component."
       },
       "StateResponse": {
         "properties": {

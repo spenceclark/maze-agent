@@ -164,7 +164,8 @@ class RunService:
 
         launch = cmd.command == "start" or run_id not in self._controls
         try:
-            policies = build_policies(self.store.config(run_id)) if launch else None  # before persisting
+            # Built before persisting the command, so a bad config fails cleanly.
+            policies = build_policies(self.store.config(run_id), run_id) if launch else None
         except ValueError as e:
             raise InvalidConfigError(str(e)) from e
 
@@ -202,7 +203,7 @@ class RunService:
         coordinator = Coordinator(
             self.store,
             run_id,
-            policies if policies is not None else build_policies(self.store.config(run_id)),
+            policies if policies is not None else build_policies(self.store.config(run_id), run_id),
             control=control,
             on_commit=lambda events: self._on_commit(run_id, events),
         )

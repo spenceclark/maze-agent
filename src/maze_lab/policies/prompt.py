@@ -82,8 +82,8 @@ overrides these rules.
 Reply with a single action whose tick equals decision_tick and schema_version is "{schema_version}".\
 """
 
-# How agents edit their notebook, by `notebook_ops`. Splice is spec §5.4; append/rewrite lets the
-# engine place the text, so agents never compute offsets or revisions.
+# How agents edit their notebook, by `notebook_ops`. Splice is spec §5.4; append_log makes it
+# a rolling log the engine maintains, so agents never compute offsets, revisions or compactions.
 _NOTEBOOK_BULLETS = {
     "splice": (
         "- notebook_edit (or null): one splice of your own notebook, "
@@ -92,17 +92,14 @@ _NOTEBOOK_BULLETS = {
         "{insert} UTF-8 bytes per turn and the whole notebook at most {cap} bytes. Deleting is free but uses "
         "your one edit. Invalid edits are rejected whole; nothing is truncated for you."
     ),
-    "append_rewrite": (
-        "- notebook_append (or null): text added to the end of your notebook; your existing notes are kept.\n"
-        "- notebook_rewrite (or null): text that becomes your whole notebook; anything not in it is thrown "
-        "away. Use it only to tidy or compact your notes.\n"
-        "Use append OR rewrite, never both: if both are filled, neither is applied. null, an empty string or "
-        '"null" means no change. The text you send may be at most {insert} UTF-8 bytes per turn and the '
-        "whole notebook at most {cap} bytes; anything over is rejected whole, and nothing is truncated "
-        "for you."
+    "append_log": (
+        "- notebook_append (or null): a note added on a new line at the end of your notebook, at most "
+        "{insert} UTF-8 bytes (a longer note is rejected whole). The notebook is a rolling log: when it "
+        "would exceed {cap} bytes, its oldest lines are dropped to make room. null, an empty string or "
+        '"null" means no note this turn.'
     ),
 }
-_SCHEMA_VERSIONS = {"splice": "1.0", "append_rewrite": "1.1"}
+_SCHEMA_VERSIONS = {"splice": "1.0", "append_log": "1.2"}
 
 _OBJECTIVES = {
     "all_reach_exit": "every agent must visit the exit cell at least once",
@@ -140,10 +137,10 @@ def user_blocks(observation: Observation, notebook_ops: NotebookOps = "splice") 
     """The observation in three blocks, most stable first.
 
     Together the blocks hold every observation field exactly once, in a fixed order. Splice mode
-    quotes notebooks as JSON (offsets and revisions matter there). Append/rewrite mode shows them as
+    quotes notebooks as JSON (offsets and revisions matter there). Append-log mode shows them as
     delimited plain text, which gives small models no JSON wrapper to echo back into their notes.
     """
-    if notebook_ops == "append_rewrite":
+    if notebook_ops == "append_log":
         own = observation.notebook
         peers_text = "\n".join(_plain_notebook(n) for n in observation.colocated_notebooks) or "(none)"
         return [

@@ -1,40 +1,44 @@
-"""Notebook splice rules (spec §5.4)."""
-
-from typing import Literal
+"""Notebook edits: splices (spec §5.4) and the rolling-log variant (`notebook_ops="append_log"`)."""
 
 from maze_lab.agent_contracts import (
+    AppendTurnAction,
     Notebook,
     NotebookEdit,
     NotebookRejection,
-    SimpleTurnAction,
     TurnAction,
     utf8_len,
 )
 
+# The new notebook, the splice that was applied, and how many of the oldest code points the
+# rolling log then dropped to fit the cap (always 0 for splices).
+type NotebookUpdate = tuple[Notebook, NotebookEdit, int]
 
-def _given(text: str | None) -> str | None:
-    """Blank text or the string "null" means no change: small models send these where they mean null."""
+
+def _note(action: AppendTurnAction) -> str | None:
+    """Blank text or the string "null" means no note: small models send these where they mean null."""
+    text = action.notebook_append
     if text is None or not text.strip() or text.strip().lower() == "null":
         return None
     return text
 
 
-def requested_edit(
-    action: TurnAction | SimpleTurnAction, notebook: Notebook
-) -> NotebookEdit | Literal["conflicting_notebook_ops"] | None:
-    """The splice an action asks for. Append and rewrite are placed against the current notebook,
-    so the usual budget and cap checks in `apply_splice` still apply."""
+def requested_change(action: TurnAction | AppendTurnAction) -> bool:
     if isinstance(action, TurnAction):
-        return action.notebook_edit
-    append, rewrite = _given(action.notebook_append), _given(action.notebook_rewrite)
-    if append is not None and rewrite is not None:
-        return "conflicting_notebook_ops"
-    end = notebook.codepoints
-    if append is not None:
-        return NotebookEdit(expected_revision=notebook.revision, start=end, end=end, text=append)
-    if rewrite is not None:
-        return NotebookEdit(expected_revision=notebook.revision, start=0, end=end, text=rewrite)
-    return None
+        return action.notebook_edit is not None
+    return _note(action) is not None
+
+
+def apply_change(
+    action: TurnAction | AppendTurnAction, notebook: Notebook, cap_bytes: int, insert_bytes: int
+) -> NotebookUpdate | NotebookRejection:
+    """Apply the notebook change an action requests (`requested_change` must be true)."""
+    if isinstance(action, TurnAction):
+        assert action.notebook_edit is not None
+        result = apply_splice(notebook, action.notebook_edit, cap_bytes, insert_bytes)
+        return result if isinstance(result, str) else (result, action.notebook_edit, 0)
+    note = _note(action)
+    assert note is not None
+    return append_to_log(notebook, note, cap_bytes, insert_bytes)
 
 
 def apply_splice(
@@ -56,3 +60,21 @@ def apply_splice(
     if new_bytes > cap_bytes:
         return "notebook_cap_exceeded"
     return Notebook.of(notebook.owner, notebook.revision + 1, new_text)
+
+
+def append_to_log(
+    notebook: Notebook, note: str, cap_bytes: int, insert_bytes: int
+) -> NotebookUpdate | NotebookRejection:
+    """Add the note on a new line, then drop the oldest lines until the notebook fits the cap."""
+    if utf8_len(note) > insert_bytes:
+        return "write_budget_exceeded"
+    separator = "\n" if notebook.text and not notebook.text.endswith("\n") else ""
+    end = notebook.codepoints
+    edit = NotebookEdit(expected_revision=notebook.revision, start=end, end=end, text=separator + note)
+    text = notebook.text + edit.text
+    while utf8_len(text) > cap_bytes and "\n" in text:
+        text = text.split("\n", 1)[1]
+    if utf8_len(text) > cap_bytes:  # only when one note is bigger than the whole cap
+        return "notebook_cap_exceeded"
+    dropped = end + len(edit.text) - len(text)
+    return Notebook.of(notebook.owner, notebook.revision + 1, text), edit, dropped

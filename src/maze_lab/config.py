@@ -122,7 +122,7 @@ class RulesConfig(Contract):
     radio_message_bytes: int = Field(default=280, ge=0)
     radio_cooldown_ticks: int = Field(default=5, ge=0)
     meeting_notebooks_enabled: bool = True
-    # "splice" is spec §5.4; "append_rewrite" lets agents append or replace while the engine handles offsets.
+    # "splice" is spec §5.4; "append_log" makes the notebook a rolling log agents only append to.
     notebook_ops: NotebookOps = "splice"
     distance_sensors: Literal["exit_and_peers"] = "exit_and_peers"  # variants: phase 6
     distance_quantization: Literal["tenths"] = "tenths"

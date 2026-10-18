@@ -967,6 +967,14 @@ record anything new.
 - **Keep appends at the end.** Newest notes then sit right before the observation, and the notebook's
   prefix stays stable for prompt caching. Prepending would rewrite the start of the notebook block every turn.
 
+**Follow-up: append/rewrite replaced by a rolling log (`notebook_ops = "append_log"`, schema `1.2`).**
+- **One field:** each response carries a single `notebook_append`. Rewrite and compaction are gone.
+- **The engine maintains the log:** it adds each note on a new line and drops the oldest lines once the
+  notebook would pass the cap. `notebook.updated` events record how much was dropped
+  (`dropped_codepoints`).
+- **Old games need the old code:** the two append/rewrite games above recorded schema `1.1`, which the
+  current code no longer reads; replay them at commit `a4b2bcb`.
+
 ## Prompt caching (added after the pilot, prompt `maze_agent_v2`)
 The pilot sent each observation as one JSON blob, so no part of the prompt was reusable between ticks. Version 2
 splits the user message into three blocks, from most to least stable:

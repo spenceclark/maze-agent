@@ -148,13 +148,17 @@ def baseline_sampler(root_seed: int, agent_id: AgentId) -> KeyedSampler:
     return KeyedSampler(hashlib.sha256(f"{root_seed}:baseline:{agent_id}".encode()).hexdigest())
 
 
-def build_policies(config: RunConfig) -> dict[AgentId, AgentPolicy]:
+def build_policies(config: RunConfig, run_id: str | None = None) -> dict[AgentId, AgentPolicy]:
+    """Policies for a run; LLM requests carry `run_id` as their Vessel session when given."""
     policies: dict[AgentId, AgentPolicy] = {}
     for agent in config.agents:
         if agent.kind == "baseline":
             policies[agent.id] = make_baseline(agent.policy, baseline_sampler(config.root_seed, agent.id))
         else:
             policies[agent.id] = PydanticAiPolicy(
-                agent, timeout_s=config.timing.decision_window_ms / 1000, prompt_version=config.prompt_version
+                agent,
+                timeout_s=config.timing.decision_window_ms / 1000,
+                prompt_version=config.prompt_version,
+                session=run_id,
             )
     return policies

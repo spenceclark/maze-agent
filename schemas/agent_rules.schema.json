@@ -84,7 +84,7 @@
       "default": "splice",
       "enum": [
         "splice",
-        "append_rewrite"
+        "append_log"
       ],
       "title": "Notebook Ops",
       "type": "string"

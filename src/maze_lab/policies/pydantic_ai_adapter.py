@@ -28,10 +28,10 @@ from pydantic_ai.providers.openrouter import OpenRouterProvider
 from maze_lab.agent_contracts import (
     ACTION_MODELS,
     AgentRules,
+    AppendTurnAction,
     ForcedStayCause,
     InvalidActionError,
     Observation,
-    SimpleTurnAction,
     TurnAction,
     parse_turn_action,
 )
@@ -65,7 +65,7 @@ def build_model(config: LlmAgentConfig) -> Model:
     return OpenAIChatModel(config.model, provider=OpenAIProvider(openai_client=client))
 
 
-type _Action = TurnAction | SimpleTurnAction
+type _Action = TurnAction | AppendTurnAction
 
 
 def _output_spec(
@@ -130,6 +130,7 @@ class PydanticAiPolicy:
         timeout_s: float,
         prompt_version: str = PROMPT_VERSION,
         model: Model | None = None,
+        session: str | None = None,
     ) -> None:
         self.config = config
         self.prompt_version = prompt_version
@@ -141,6 +142,9 @@ class PydanticAiPolicy:
             settings["top_p"] = config.sampling.top_p
         if config.sampling.seed is not None:
             settings["seed"] = config.sampling.seed
+        if session is not None:
+            # Groups requests in a Vessel proxy: one session per run, tagged by agent. Others ignore them.
+            settings["extra_headers"] = {"X-Vessel-Session": session, "X-Vessel-Tags": config.id}
         if config.provider == "anthropic":
             # Breakpoint after the system instruction; the user prompt adds one after the notebooks.
             # OpenAI-compatible servers and Ollama reuse matching prompt prefixes on their own.

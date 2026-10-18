@@ -230,7 +230,9 @@ class MetricsTracker:
     def _count_splice(t: _AgentTally, prev: WorldState, event: NotebookUpdated) -> None:
         old_text = prev.agent(event.agent_id).notebook.text
         t.notebook_inserted += utf8_len(event.splice.text)
+        spliced = old_text[: event.splice.start] + event.splice.text + old_text[event.splice.end :]
         t.notebook_deleted += utf8_len(old_text[event.splice.start : event.splice.end])
+        t.notebook_deleted += utf8_len(spliced[: event.dropped_codepoints])
 
     @staticmethod
     def _update_usage(t: _AgentTally, usage: Usage) -> None:

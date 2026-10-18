@@ -28,7 +28,6 @@ NotebookRejection = Literal[
     "notebook_cap_exceeded",
     "feature_disabled",
     "action_rejected",
-    "conflicting_notebook_ops",
 ]
 RadioRejection = Literal[
     "radio_cooldown",
@@ -85,26 +84,26 @@ class TurnAction(Contract):
     radio: str | None
 
 
-class SimpleTurnAction(Contract):
-    """Action variant for `notebook_ops="append_rewrite"` (not in spec §7, a declared rules variant).
+class AppendTurnAction(Contract):
+    """Action variant for `notebook_ops="append_log"` (not in spec §7, a declared rules variant).
 
-    The engine places the text itself, so agents never compute offsets or revisions.
-    Blank text or "null" counts as no change; setting both fields rejects the notebook component.
+    The notebook is a rolling log: the engine adds the note on a new line and drops the oldest
+    lines when the cap would be exceeded, so agents never compute offsets, revisions or compactions.
+    Blank text or "null" counts as no note.
     """
 
-    schema_version: Literal["1.1"]
+    schema_version: Literal["1.2"]
     tick: int = Field(ge=1)
     move: Move
-    notebook_append: str | None  # added to the end of the notebook
-    notebook_rewrite: str | None  # replaces the whole notebook
+    notebook_append: str | None
     radio: str | None
 
 
-AnyTurnAction = Annotated[TurnAction | SimpleTurnAction, Field(discriminator="schema_version")]
-NotebookOps = Literal["splice", "append_rewrite"]
-ACTION_MODELS: dict[NotebookOps, type[TurnAction] | type[SimpleTurnAction]] = {
+AnyTurnAction = Annotated[TurnAction | AppendTurnAction, Field(discriminator="schema_version")]
+NotebookOps = Literal["splice", "append_log"]
+ACTION_MODELS: dict[NotebookOps, type[TurnAction] | type[AppendTurnAction]] = {
     "splice": TurnAction,
-    "append_rewrite": SimpleTurnAction,
+    "append_log": AppendTurnAction,
 }
 
 
@@ -265,7 +264,7 @@ def _check_strings_encodable(value: object) -> None:
             _check_strings_encodable(v)
 
 
-def parse_turn_action(raw: str, notebook_ops: NotebookOps = "splice") -> TurnAction | SimpleTurnAction:
+def parse_turn_action(raw: str, notebook_ops: NotebookOps = "splice") -> TurnAction | AppendTurnAction:
     """Strictly parse one complete JSON object into the run's action model (spec §7).
 
     Rejects oversized output, duplicate keys, NaN/Infinity, lone surrogates,

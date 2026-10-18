@@ -163,7 +163,7 @@ async def run_batch(
                     store.set_experiment_run(spec.name, cell.condition, cell.seed, cell.replicate, run_id)
                     summary = store.summary(run_id)
                 if summary is not None and summary.status not in TERMINAL:
-                    policies = build_policies(store.config(run_id))
+                    policies = build_policies(store.config(run_id), run_id)
                     summary = await Coordinator(store, run_id, policies).run()
                 if progress:
                     progress(cell, summary, None)

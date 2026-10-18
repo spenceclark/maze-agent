@@ -46,7 +46,7 @@ def _print(obj: object) -> None:
 
 async def _drive(store: RunStore, run_id: str) -> None:
     config = store.config(run_id)
-    summary = await Coordinator(store, run_id, build_policies(config)).run()
+    summary = await Coordinator(store, run_id, build_policies(config, run_id)).run()
     final = store.tick_commit(run_id, summary.committed_tick)
     _print(
         {
@@ -58,7 +58,7 @@ async def _drive(store: RunStore, run_id: str) -> None:
 
 def _write_schemas(out: Path) -> None:
     """Published contracts: the API (OpenAPI) and what agents see and emit (JSON Schema)."""
-    from maze_lab.agent_contracts import AgentRules, Observation, SimpleTurnAction, TurnAction
+    from maze_lab.agent_contracts import AgentRules, AppendTurnAction, Observation, TurnAction
     from maze_lab.api.app import create_app
 
     out.mkdir(parents=True, exist_ok=True)
@@ -66,7 +66,7 @@ def _write_schemas(out: Path) -> None:
         "openapi.json": create_app(":memory:").openapi(),
         "observation.schema.json": Observation.model_json_schema(),
         "turn_action.schema.json": TurnAction.model_json_schema(),
-        "simple_turn_action.schema.json": SimpleTurnAction.model_json_schema(),
+        "append_turn_action.schema.json": AppendTurnAction.model_json_schema(),
         "agent_rules.schema.json": AgentRules.model_json_schema(),
         "run_config.schema.json": RunConfig.model_json_schema(),
     }

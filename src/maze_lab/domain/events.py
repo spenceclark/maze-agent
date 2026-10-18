@@ -26,6 +26,7 @@ class NotebookUpdated(Contract):
     previous_revision: int
     new_revision: int
     splice: NotebookEdit
+    dropped_codepoints: int = Field(default=0, ge=0)  # append_log: oldest text dropped after the splice
     text: str
     sha256: str
 

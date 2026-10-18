@@ -1,9 +1,9 @@
 {
   "additionalProperties": false,
-  "description": "Action variant for `notebook_ops=\"append_rewrite\"` (not in spec \u00a77, a declared rules variant).\n\nThe engine places the text itself, so agents never compute offsets or revisions.\nSetting both notebook fields rejects the notebook component.",
+  "description": "Action variant for `notebook_ops=\"append_log\"` (not in spec \u00a77, a declared rules variant).\n\nThe notebook is a rolling log: the engine adds the note on a new line and drops the oldest\nlines when the cap would be exceeded, so agents never compute offsets, revisions or compactions.\nBlank text or \"null\" counts as no note.",
   "properties": {
     "schema_version": {
-      "const": "1.1",
+      "const": "1.2",
       "title": "Schema Version",
       "type": "string"
     },
@@ -34,17 +34,6 @@
       ],
       "title": "Notebook Append"
     },
-    "notebook_rewrite": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "title": "Notebook Rewrite"
-    },
     "radio": {
       "anyOf": [
         {
@@ -62,9 +51,8 @@
     "tick",
     "move",
     "notebook_append",
-    "notebook_rewrite",
     "radio"
   ],
-  "title": "SimpleTurnAction",
+  "title": "AppendTurnAction",
   "type": "object"
 }

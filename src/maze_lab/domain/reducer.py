@@ -35,7 +35,7 @@ from maze_lab.domain.events import (
     RadioSent,
 )
 from maze_lab.domain.maze import MazeDefinition
-from maze_lab.domain.notebook import apply_splice, requested_edit
+from maze_lab.domain.notebook import apply_change, requested_change
 from maze_lab.domain.radio import check_radio
 from maze_lab.domain.state import AgentState, WorldState, meeting_groups
 from maze_lab.hashing import sha256_hex
@@ -80,7 +80,7 @@ def _resolve_agent(
     if failure is not None:
         # Whole action rejected: no partial effects.
         attempted, outcome, cause = (action.move if action else None), "forced_stay", failure
-        if action is not None and requested_edit(action, notebook) is not None:
+        if action is not None and requested_change(action):
             nb_receipt = _rejected("action_rejected")
         if action is not None and action.radio is not None:
             radio_receipt = _rejected("action_rejected")
@@ -96,29 +96,28 @@ def _resolve_agent(
         else:
             outcome, cause = "blocked", "wall"
 
-        edit = requested_edit(action, notebook)
-        if isinstance(edit, str):
-            nb_receipt = _rejected(edit)
-        elif edit is not None:
+        if requested_change(action):
             result = (
-                apply_splice(notebook, edit, rules.notebook_cap_bytes, rules.notebook_insert_bytes)
+                apply_change(action, notebook, rules.notebook_cap_bytes, rules.notebook_insert_bytes)
                 if rules.notebook_enabled
                 else "feature_disabled"
             )
             if isinstance(result, str):
                 nb_receipt = _rejected(result)
             else:
+                updated, edit, dropped = result
                 events.append(
                     NotebookUpdated(
                         agent_id=prev.agent_id,
                         previous_revision=notebook.revision,
-                        new_revision=result.revision,
+                        new_revision=updated.revision,
                         splice=edit,
-                        text=result.text,
-                        sha256=sha256_hex(result.text),
+                        dropped_codepoints=dropped,
+                        text=updated.text,
+                        sha256=sha256_hex(updated.text),
                     )
                 )
-                notebook, nb_receipt = result, ACCEPTED
+                notebook, nb_receipt = updated, ACCEPTED
 
         if (text := action.radio) is not None:
             code = (

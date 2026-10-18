@@ -273,24 +273,24 @@ def test_v6_adds_the_edge_restating_check_on_top_of_v4():
     assert "keep your own coordinates" not in v6  # v6 builds on v4, not v5
 
 
-def test_append_rewrite_runs_request_and_parse_the_simple_action():
-    rules = public_rules(RulesConfig(notebook_ops="append_rewrite"))
+def test_append_log_runs_request_and_parse_the_append_action():
+    rules = public_rules(RulesConfig(notebook_ops="append_log"))
     seen: list[dict[str, object]] = []
 
     def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
         seen.append(info.output_tools[0].parameters_json_schema)
-        args = {
-            "schema_version": "1.1",
-            "tick": 1,
-            "move": "S",
-            "notebook_append": "hi",
-            "notebook_rewrite": None,
-            "radio": None,
-        }
+        args = {"schema_version": "1.2", "tick": 1, "move": "S", "notebook_append": "hi", "radio": None}
         return ModelResponse(parts=[ToolCallPart(tool_name=info.output_tools[0].name, args=args)])
 
     policy = PydanticAiPolicy(llm_config(), timeout_s=5, model=FunctionModel(respond))
     attempt = asyncio.run(policy.decide(OBS, rules))
     assert attempt.failure is None and attempt.action is not None
     assert "notebook_append" in json.dumps(seen[0]) and "notebook_edit" not in json.dumps(seen[0])
-    assert '"1.1"' in json.loads(attempt.request_text or "")["system"]
+    assert '"1.2"' in json.loads(attempt.request_text or "")["system"]
+
+
+def test_vessel_headers_name_the_run_and_agent():
+    plain = PydanticAiPolicy(llm_config(), timeout_s=5, model=FunctionModel(tool_call({})))
+    assert "extra_headers" not in plain.settings
+    tagged = PydanticAiPolicy(llm_config(), timeout_s=5, model=FunctionModel(tool_call({})), session="run123")
+    assert tagged.settings.get("extra_headers") == {"X-Vessel-Session": "run123", "X-Vessel-Tags": "A"}
