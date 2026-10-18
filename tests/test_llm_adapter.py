@@ -363,7 +363,7 @@ def test_note_first_needs_the_append_log_notebook():
     config["agents"][0]["action_field_order"] = "note_first"
     RunConfig.model_validate(config)  # append_log: fine
     config["rules"]["notebook_ops"] = "splice"
-    with pytest.raises(ValidationError, match="needs rules.notebook_ops .append_log."):
+    with pytest.raises(ValidationError, match=r"needs rules.notebook_ops 'append_log'"):
         RunConfig.model_validate(config)
 
 

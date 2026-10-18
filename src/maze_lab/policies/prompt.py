@@ -98,10 +98,14 @@ _DISTANCE_NOTES = {
     ),
 }
 # For agents with action_field_order "check_first": a scratch line written before the move every turn.
+# It also lists the exits the trail shows were taken: with only the edges restated, Qwen kept re-entering
+# branches it had just explored (23 of 26 junction revisits in run 4a196f67ca00).
 _CHECK_BULLET = (
     "- check (required, written first): one short line restating this turn's four edges, the direction you"
-    " arrived from, and which open direction you will take and why. It is not stored anywhere; it only"
-    " helps you choose this turn's move.\n"
+    " arrived from, and which of this cell's exits you have already taken: an exit is taken if your trail"
+    " (or notebook) holds the neighbouring cell that way, where north of [x, y] is [x, y+1] and east is"
+    " [x+1, y]. Then say which open direction you will take and why, preferring one you have not taken."
+    " The check is not stored anywhere; it only helps you choose this turn's move.\n"
 )
 _NOTEBOOKS = TypeAdapter(list[Notebook])
 
