@@ -30,6 +30,7 @@ Batches use 3 seeds, so intervals are wide.
 | 18 | The exit-finder never gives others a reference they can use | Prompt v9 = v8 plus "give positions relative to a landmark… if you know where the exit is, visiting a landmark… is one of the most useful things you can do" (Haiku, no distances; one game) | **The searchers adopted it:** C asked A for "your exit position relative to the piano", B for A's position "relative to the statue" | **The exit-finder didn't.** A went straight back to its own start and waited there for 69 turns "as rendezvous". It described the exit relative to its start ("2 west and 1 north of A's start"), a place only A can find, and never visited a landmark. Coverage fell to 0.44 (0.62 with v8). Still only A exits |
 | 19 | The exit-finder anchors on its own start | Prompt v10 = v9 plus "Your own start is not a landmark: only you know where it is… Go to a real landmark and describe the exit from that" (Haiku, no distances; one game) | **A stopped camping (2 STAYs in 80 turns) and went landmark-hunting.** It visited picture, key, drum and kettle, and radioed the exit relative to each: "10 west and 3 south of the key", "8 south of the kettle". All exact. Coverage 0.81, the best of any Haiku game. C did the conversion ("A's exit = key A[8,4] + (-10,-3)") | **The landmark sets never overlapped.** A found 4 landmarks in its half of the maze; B and C found the other 4 in theirs. A frame-free description only helps someone who has found that landmark. Still only A exits; C ended 28 moves away |
 | 20 | Does the v8–v10 helper prompting do anything for Qwen? | Qwen, v10, coordinates, no distances, 80 turns (one game, through Vessel) | Nothing measurable: coverage 0.25 (0.24 with v7), 36 distinct cells | **Worse on the basics:** 39.7% wall moves, and A, five moves from the exit at spawn, never reached it. **21 of 28 radio messages were the string "null".** Only 2 landmarks found; no landmark-relative positions, no frames named |
+| 21 | Is the Unsloth IQ4_XS quant the problem? The official build and OpenRouter's Qwen3.5-9B both chose S on a replayed decision where Unsloth chose N into a wall | Same game (v10, coordinates, no distances, 80 turns) on the official `qwen3.5:9b` (Q4_K_M; its Modelfile sets temperature 1, presence_penalty 1.5, top_k 20, top_p 0.95) | A exited at t50 (Unsloth's A never did). It emits keys in **schema order**, not alphabetically | **No real change:** 37.5% wall moves (39.7%), coverage 0.26 (0.25). 26 of 90 blocked moves went in a direction that turn's own note called a wall (Unsloth: 19 of 95). The one-decision test didn't generalise; the quant isn't the main cause |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -1321,6 +1322,30 @@ The last link is luck about which landmarks two agents share. Possible levers:
 - **The "null" radio quirk took over the channel.** 21 of 28 broadcasts were the literal string "null",
   which the engine accepts as a message and delivers to both teammates. The rolling log already treats
   "null" as no note. Radio could do the same.
+
+**Official `qwen3.5:9b` against the Unsloth build (`e8d0d98506f7` against `391fd4168a78`).**
+- **The trigger:** a single replayed decision. The same request went to the official build, to
+  OpenRouter's `qwen/qwen3.5-9b`, and to Unsloth. Unsloth answered N (into a wall its own note named);
+  both others answered S.
+- **The setup:** a full game on the official build with the v10 setup.
+- **The two builds also differ in sampling defaults:** the official Modelfile sets temperature 1 and
+  presence_penalty 1.5; Unsloth sets none, so it ran on Ollama's defaults.
+
+| Qwen3.5-9B, v10, coordinates, no distances | Exits | Wall moves | Wall moves the same turn's note called a wall | Coverage | Distinct cells | Radio messages that were "null" |
+| --- | --- | --- | --- | --- | --- | --- |
+| Unsloth IQ4_XS (`391fd4168a78`) | none | 39.7% | 19 of 95 | 0.25 | 36 | 22 of 27 |
+| Official Q4_K_M (`e8d0d98506f7`) | A t50 | 37.5% | 26 of 90 | 0.26 | 38 | 10 of 17 |
+
+- **The quant isn't the main cause.** Over 240 decisions the official build walks into walls about as
+  often. It also contradicts its own note just as often. For example, C at t2 noted "North wall" and
+  moved N.
+- **The one decision didn't generalise.** That decision was one draw from a noisy distribution, the same
+  lesson as the temperature replay.
+- **Key order differs, which opens a real test.** The official build emits JSON keys in schema order
+  (`schema_version, tick, move, notebook_append, radio`); the Unsloth build wrote them alphabetically.
+  Putting `notebook_append` before `move` in the action schema would make it write its note before
+  choosing a direction. That's the "think, then act" test that couldn't be run before.
+
 
 
 
