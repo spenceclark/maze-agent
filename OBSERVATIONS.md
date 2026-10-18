@@ -32,6 +32,7 @@ Batches use 3 seeds, so intervals are wide.
 | 20 | Does the v8–v10 helper prompting do anything for Qwen? | Qwen, v10, coordinates, no distances, 80 turns (one game, through Vessel) | Nothing measurable: coverage 0.25 (0.24 with v7), 36 distinct cells | **Worse on the basics:** 39.7% wall moves, and A, five moves from the exit at spawn, never reached it. **21 of 28 radio messages were the string "null".** Only 2 landmarks found; no landmark-relative positions, no frames named |
 | 21 | Is the Unsloth IQ4_XS quant the problem? The official build and OpenRouter's Qwen3.5-9B both chose S on a replayed decision where Unsloth chose N into a wall | Same game (v10, coordinates, no distances, 80 turns) on the official `qwen3.5:9b` (Q4_K_M; its Modelfile sets temperature 1, presence_penalty 1.5, top_k 20, top_p 0.95) | A exited at t50 (Unsloth's A never did). It emits keys in **schema order**, not alphabetically | **No real change:** 37.5% wall moves (39.7%), coverage 0.26 (0.25). 26 of 90 blocked moves went in a direction that turn's own note called a wall (Unsloth: 19 of 95). The one-decision test didn't generalise; the quant isn't the main cause |
 | 22 | Qwen commits to a move before writing anything about its cell | `action_field_order: note_first`: the schema asks for `notebook_append` before `move`, and the official `qwen3.5:9b` writes keys in schema order (one game, same v10 setup) | **On turns where it wrote a note, wall moves fell from 39% to 14%** (13 of 96, against 45 of 115). Moves against that turn's own note fell from 26 to 3. Overall 29.4% against 37.5%; A exited at t22 (t50) | **On turns with a null note it still hit walls 40% of the time** (57 of 142), and it skipped the note on 60% of turns, encouraged by the rolling log's "write only when you learn something new". No exits for B or C |
+| 23 | Note-first only helps on turns where Qwen writes a note | `action_field_order: check_first`: a required, unstored `check` line before the note and the move ("restate this turn's four edges, the direction you arrived from, and which open direction you will take and why"); one game | **Wall moves 7.5%** (18 of 240), against 37.5% move-first and 29.4% note-first, the lowest Qwen has ever managed. **66 distinct cells** (38 and 32), coverage 0.40 | **No exits:** A wandered 31 moves from the exit. At junction revisits Qwen took an already-used exit 88% of the time (23 of 26). Its moves now match its cell; its route choices are still poor. Twice the output tokens; game 25 minutes against 11 |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -1368,6 +1369,37 @@ log. A live reply confirmed the new order: `{"schema_version", "tick", "notebook
 - **Next step:** a required scratch field before `move`, written every turn and never stored ("check: my
   edges are…, I came from…, so I go…"). That would give the benefit on every turn without filling the
   notebook. It's chain-of-thought in one field, without turning reasoning on.
+
+**A required check line before the move (`4a196f67ca00`, `action_field_order: check_first`).**
+- **The new field:** `check: str`, required, first in the reply. The prompt asks for one line restating
+  this turn's four edges, the direction arrived from, and the open direction to take and why.
+- **Unstored:** the parser drops it, so it never reaches the notebook or the engine, but the raw reply in
+  the invocation record keeps it.
+- **Same setup otherwise:** official `qwen3.5:9b`, v10, coordinates, no distances, rolling log; the note
+  still comes before the move.
+- **A typical first reply:** "Edges: N-open, E-wall, S-open, W-wall. Arrived from null (spawn)… I will
+  move North to explore."
+
+| qwen3.5:9b, v10, no distances | Wall moves | Distinct cells | Coverage | Back-and-forth | Used exits at junction revisits | Exits | Output tokens | Game time |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Move first (`e8d0d98506f7`) | 37.5% | 38 | 0.26 | 51 | 3 of 5 | A t50 | — | ~15 min |
+| Note first (`c6eb407ec363`) | 29.4% | 32 | 0.22 | 63 | — | A t22 | 19.6k | 11 min |
+| **Check first** (`4a196f67ca00`) | **7.5%** | **66** | **0.40** | 76 | **23 of 26** | none | 39.6k | 25 min |
+
+- **The wall-walking is fixed.** Qwen ran at 25–40% wall moves in every earlier setup and is now at 7.5%.
+  Of the 18 that remain, 15 came from a check that named the wall and picked it anyway, for example C at
+  t7: "W-interior_wall… I will try moving West". 3 were edge misreadings. Restating the cell every turn,
+  before choosing, does what reasoning mode did, at a fraction of the cost, and without the half of replies
+  that never finished.
+- **Exploration roughly doubled** (66 distinct cells), because moves stopped being wasted on walls.
+- **The remaining problem is route choice, not perception.** Back at a junction with an untried exit, it
+  took one it had already used 23 times out of 26, worse than its 58% average. The check covers this cell
+  only; nothing in it asks "have I been down that way?". A, which started 5 moves from the exit, explored
+  away and ended 31 moves from it.
+- **The cost:** output tokens doubled (about 165 per decision), and the game took 25 minutes against 11.
+- **Next lever:** extend the check to the trail ("which exits here have I already taken, per my trail?"),
+  so the scratch line covers the junction choice too.
+
 
 
 
