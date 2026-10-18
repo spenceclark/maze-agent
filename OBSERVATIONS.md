@@ -926,8 +926,27 @@ so teammates got "null" messages.
 - **What does help is thinking time, then sampling.**
   - Reasoning on, with a big enough output cap. The 8k context leaves ~2.5k output tokens beside a worst-case
     prompt, so the notebook cap would need shrinking.
-  - Lower sampling temperature with reasoning off. Untested; it's the obvious next check, given the replay
-    showed mostly random errors.
+  - Lower sampling temperature with reasoning off. Tested below: it cuts wall moves about threefold.
+
+**Temperature replay (reasoning off, recorded v6 prompts replayed through Vessel, session `temperature-replay`).**
+Two sets from the v6 batch: 60 random decisions, and the 40 that went through an edge the agent's own note
+called closed.
+
+| Temperature | Random decisions: moves into walls | The 40 bad decisions: moves into walls | Unparseable replies (random set) |
+| --- | --- | --- | --- |
+| Ollama default (as run) | 14 of 58 (24%) | 32 of 119 (27%), 3 samples each | 1 |
+| 0.2 | **5 of 56 (9%)** | 16 of 120 (13%), 3 samples each | 4 |
+| 0 (greedy) | **4 of 58 (7%)** | 8 of 40 (20%), 1 sample | 2 |
+
+- **Most wall-walking is sampling noise.** On random decisions the rate fell from 24% to 7–9%, close to a
+  third.
+- **A hard core remains.** About 8 of the 40 bad decisions go into the wall even greedily. That's the plan
+  inertia seen in Vessel #5870: the model's top choice is the move its notes planned.
+- **Correction to the earlier replay.** Its "12% repeat" came from one sample per decision. With 3 samples the
+  default rate on those 40 is 27%, about the base rate, so they weren't unusually random.
+- **Costs seen so far.** Unparseable replies rose slightly at low temperature (2–4 in 60, against 1); I didn't
+  inspect them. Single replayed decisions can't show whether near-greedy play makes back-and-forth loops
+  worse. That needs a full game.
 
 ## Qwen3.5-9B: append/rewrite instead of splices (single games via Vessel)
 Splices need exact code-point offsets and the current revision. Qwen got these wrong often, and the rejected
