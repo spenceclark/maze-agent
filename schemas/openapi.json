@@ -2730,6 +2730,15 @@
               }
             ],
             "title": "Effort"
+          },
+          "action_field_order": {
+            "type": "string",
+            "enum": [
+              "move_first",
+              "note_first"
+            ],
+            "title": "Action Field Order",
+            "default": "move_first"
           }
         },
         "additionalProperties": false,

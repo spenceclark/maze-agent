@@ -28,6 +28,7 @@ from pydantic_ai.providers.openrouter import OpenRouterProvider
 from maze_lab.agent_contracts import (
     ACTION_MODELS,
     AgentRules,
+    AppendNoteFirstTurnAction,
     AppendTurnAction,
     ForcedStayCause,
     InvalidActionError,
@@ -65,7 +66,7 @@ def build_model(config: LlmAgentConfig) -> Model:
     return OpenAIChatModel(config.model, provider=OpenAIProvider(openai_client=client))
 
 
-type _Action = TurnAction | AppendTurnAction
+type _Action = TurnAction | AppendTurnAction | AppendNoteFirstTurnAction
 
 
 def _output_spec(
@@ -174,7 +175,9 @@ class PydanticAiPolicy:
     async def decide(self, observation: Observation, rules: AgentRules) -> DecisionAttempt:
         system = system_instruction(rules, observation.agent_id, self.prompt_version)
         blocks = user_blocks(observation, rules.notebook_ops)
-        action_model = ACTION_MODELS[rules.notebook_ops]
+        action_model: type[_Action] = ACTION_MODELS[rules.notebook_ops]
+        if self.config.action_field_order == "note_first":
+            action_model = AppendNoteFirstTurnAction  # only the requested key order changes
         request_text = self.request_text(system, blocks, action_model)
         if (too_big := check_prompt(self.config, system, blocks)) is not None:
             # Never send a prompt a provider might truncate; this is a forced no-op, not a request.
@@ -201,7 +204,7 @@ class PydanticAiPolicy:
         responses = [m for m in messages if isinstance(m, ModelResponse)]
         last = responses[-1] if responses else None
         raw = _raw_output(last)
-        action: _Action | None = None
+        action: TurnAction | AppendTurnAction | None = None
         truncated = last is not None and last.finish_reason == "length"
         if truncated and failure in (None, "invalid_action"):
             # Hidden reasoning counts against max_tokens and can leave the action cut off.

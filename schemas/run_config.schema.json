@@ -183,6 +183,15 @@
           ],
           "default": null,
           "title": "Effort"
+        },
+        "action_field_order": {
+          "default": "move_first",
+          "enum": [
+            "move_first",
+            "note_first"
+          ],
+          "title": "Action Field Order",
+          "type": "string"
         }
       },
       "required": [

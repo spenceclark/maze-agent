@@ -7,6 +7,7 @@ the strict parser applied to whatever the model returned.
 import asyncio
 import json
 from collections.abc import Callable
+from pathlib import Path
 
 import pytest
 from helpers import RULES, P, act, grid, step
@@ -23,7 +24,7 @@ from pydantic_ai.messages import (
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.usage import RequestUsage
 
-from maze_lab.agent_contracts import Observation
+from maze_lab.agent_contracts import AppendTurnAction, Observation
 from maze_lab.config import LlmAgentConfig, RulesConfig, RunConfig
 from maze_lab.domain.state import initial_state
 from maze_lab.observation import observe, public_rules
@@ -329,3 +330,38 @@ def test_v10_says_your_start_is_not_a_landmark_on_top_of_v9():
     v10 = system_instruction(AGENT_RULES, "A", "maze_agent_v10")
     assert "relative to a landmark" in v10 and "Your own start is not a landmark" in v10
     assert "Your own start is not a landmark" not in v9
+
+
+def test_note_first_requests_the_note_before_the_move_and_parses_the_usual_action():
+    rules = public_rules(RulesConfig(notebook_ops="append_log"))
+    seen: list[dict[str, object]] = []
+
+    def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        seen.append(info.output_tools[0].parameters_json_schema)
+        args = {
+            "schema_version": "1.2",
+            "tick": 1,
+            "notebook_append": "S is open",
+            "move": "S",
+            "radio": None,
+        }
+        return ModelResponse(parts=[ToolCallPart(tool_name=info.output_tools[0].name, args=args)])
+
+    config = llm_config(action_field_order="note_first")
+    attempt = asyncio.run(
+        PydanticAiPolicy(config, timeout_s=5, model=FunctionModel(respond)).decide(OBS, rules)
+    )
+    keys = list(seen[0]["properties"])  # type: ignore[call-overload]
+    assert keys.index("notebook_append") < keys.index("move")
+    assert isinstance(attempt.action, AppendTurnAction) and attempt.action.move == "S"
+
+
+def test_note_first_needs_the_append_log_notebook():
+    config = json.loads(
+        (Path(__file__).parents[1] / "configs/haiku_v10_landmarks_coords_nodist.json").read_text()
+    )
+    config["agents"][0]["action_field_order"] = "note_first"
+    RunConfig.model_validate(config)  # append_log: fine
+    config["rules"]["notebook_ops"] = "splice"
+    with pytest.raises(ValidationError, match="note_first"):
+        RunConfig.model_validate(config)

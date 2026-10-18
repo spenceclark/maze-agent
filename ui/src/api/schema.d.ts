@@ -837,6 +837,12 @@ export interface components {
             max_output_tokens: number;
             /** Effort */
             effort?: ("none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max") | null;
+            /**
+             * Action Field Order
+             * @default move_first
+             * @enum {string}
+             */
+            action_field_order: "move_first" | "note_first";
         };
         /** LocalCell */
         LocalCell: {

@@ -88,6 +88,9 @@ class LlmAgentConfig(Contract):
     max_output_tokens: int = Field(default=2048, ge=1)
     # Reasoning effort; None keeps the model's default. "none" turns reasoning off (OpenAI-compatible/Ollama).
     effort: Effort | None = None
+    # Key order of the requested action. Models that write keys in schema order then write their
+    # note before choosing a move ("note_first", append_log runs only).
+    action_field_order: Literal["move_first", "note_first"] = "move_first"
 
     @model_validator(mode="after")
     def _effort_supported(self) -> Self:
@@ -178,4 +181,11 @@ class RunConfig(Contract):
     def _three_agents(self) -> Self:
         if tuple(a.id for a in self.agents) != AGENT_IDS:
             raise ValueError("agents must be exactly A, B, C in that order")
+        return self
+
+    @model_validator(mode="after")
+    def _note_first_needs_append_log(self) -> Self:
+        note_first = any(a.kind == "llm" and a.action_field_order == "note_first" for a in self.agents)
+        if note_first and self.rules.notebook_ops != "append_log":
+            raise ValueError("action_field_order 'note_first' needs rules.notebook_ops 'append_log'")
         return self

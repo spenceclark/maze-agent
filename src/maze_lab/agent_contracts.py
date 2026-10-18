@@ -101,6 +101,18 @@ class AppendTurnAction(Contract):
     radio: str | None
 
 
+class AppendNoteFirstTurnAction(Contract):
+    """`AppendTurnAction` with the note before the move. Only the requested output shape differs: a
+    model that writes keys in schema order then writes its note before choosing a direction. Parsed
+    replies are converted to `AppendTurnAction`, so the engine and the record never see this class."""
+
+    schema_version: Literal["1.2"]
+    tick: int = Field(ge=1)
+    notebook_append: str | None
+    move: Move
+    radio: str | None
+
+
 AnyTurnAction = Annotated[TurnAction | AppendTurnAction, Field(discriminator="schema_version")]
 NotebookOps = Literal["splice", "append_log"]
 ACTION_MODELS: dict[NotebookOps, type[TurnAction] | type[AppendTurnAction]] = {
