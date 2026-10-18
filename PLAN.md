@@ -79,7 +79,19 @@ operator pause/step/resume). 11 vitest tests cover live follow, seek, duplicate 
 - [ ] Cooperative / frontier baselines
 - [x] Landmarks: `maze.landmark_count`, seeded placement on a separate stream (maze unchanged), unique labels,
   visible on the current cell only, rules sentence when enabled, drawn in the viewer
-- [ ] Remaining ablation variants (checkpoints, sensor variants)
+- [x] Sensor variant: `rules.distance_sensors = "none"` (no exit distance or peer ranges)
+- [x] Rules variants for weaker models, all off by default with default prompts byte-identical:
+  `notebook_ops = "append_log"` (rolling log), `coordinates_enabled` (position from own start + 30-turn
+  trail), `used_exits_enabled` (current cell's already-used directions)
+- [x] Output-shape options per LLM agent: `action_field_order` = `note_first` / `check_first` (required,
+  unstored scratch line before the move)
+- [x] Prompt versions v6–v10 (restate edges; arrival exit counts as tried; go back and help; landmark-relative
+  positions; your start is not a landmark)
+- [x] Vessel proxy headers on every LLM request (session = run id, tag = agent)
+- [x] Baseline on current code, one game each: Haiku, Sonnet 5.5, Opus 5.5; local reference: qwen3.5:9b,
+  lfm2.5, command-r7b (see OBSERVATIONS.md rows 21–26)
+- [ ] 320-turn horizon runs of the current setup (agents now explore steadily; 80 turns is the limit)
+- [ ] Remaining ablation variants (checkpoints)
 
 ## Next (not started)
 - Phase 7: PostgreSQL / separate coordinator, retention jobs, remote auth hardening.
