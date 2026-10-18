@@ -22,6 +22,7 @@ Batches use 3 seeds, so intervals are wide.
 | 10 | Qwen's splices missed: 30 of 240 notebook edits rejected for a stale revision or a bad offset, leaving notes out of order | `notebook_ops: append_rewrite`: append or rewrite fields, and the engine places the text (single games, same seed) | No more offset or revision errors. After hardening (plain-text notebooks, `"null"` counts as no change), no notebook wipes | **Qwen filled both fields in 20 of 240 decisions despite the rule, so 21 of 22 rewrites were cancelled.** Notebooks filled to the cap by t34–49 and the final 84 appends were rejected. **Then a rolling log (`append_log`, one field): 206 of 240 notes accepted, 12 rejections, no wipes; the oldest lines rolled off from t30–54.** Wall hits 23%, no exits, coverage 0.24 (splice 25%, A exited, 0.26). The bookkeeping is fixed; navigation isn't. Single games, not a controlled comparison |
 | 11 | Qwen walks into walls ~25% of the time, much of it sampling noise | Temperature 0.2, reasoning still off (replay of 100 recorded decisions, then one full rolling-log game) | In replay, wall moves fell from 24% to 9% | **In a real game they rose to 56%.** With little randomness the agent copies its last note and repeats the same blocked move: C walked W into a wall it had written down 71 turns in a row, B 35. Exploration collapsed (coverage 0.17, team distinct cells 24 against 35). Default temperature was what broke these loops |
 | 12 | Did the Qwen fixes help Haiku? | Rolling-log notebook on Haiku, otherwise the same config as the earlier Haiku runs (v4 + landmarks, seed 202611017; one game against 5 earlier splice runs) | Nothing to fix: Haiku's splices were never rejected, and walls stayed near zero | **No gain, maybe worse.** Only A (5 cells from the exit) got out; B had exited in 3 of 5 splice runs. Coverage 0.35 (0.36–0.76 before), reversals 26 (4–14). It wrote a note every turn, so notebooks filled and every prompt changed at the notebook block. **Cost $0.14 against $0.07–0.09**, with cache writes tripled |
+| 13 | No shared frame, and no memory of where they've been | `coordinates_enabled`: exact [x, y] from each agent's own start plus a 30-turn trail, a rule on lining frames up via a shared landmark or cell, and a quieter rolling log (one game each, Haiku and Qwen) | **Haiku solved the 'where':** B and C each placed the exit exactly in their own frames from distance readings. B found the exact offset to A's frame by using the exit as the shared cell. Exploration rose (92 cells against 58, back-and-forth 19 against 26) and notes fell from 238 to 170 | **No one new reached the exit:** B knew the exit was at (-6,-2) but found no route to it in 80 turns. Qwen wrote 'Must break out of this loop' 59 times and kept looping; its wall hits were 37%. The bottleneck is now route-finding |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -999,6 +1000,63 @@ earlier Haiku runs with the same settings and splices (`landmarks_v4` v4_landmar
     editorial choice of what to keep.
   - **For a fair comparison:** run it as a per-model setting, not a new default.
   - **On Anthropic:** drop the second cache breakpoint when notebooks change every turn.
+
+## Coordinates, a trail and a quieter log (`coordinates_enabled`, one game each)
+- **What the variant adds:** with `rules.coordinates_enabled`, each observation carries
+  `coordinates: {position, trail}`. The position is the agent's exact [x, y] counted from its own start (x
+  east, y north). The trail holds its positions over the last 30 turns.
+- **Two new rules sentences:** they explain these fields and say that the agents' frames differ by a fixed
+  offset, which a shared landmark or meeting cell reveals.
+- **One rolling-log change:** its rule now says to write only when you learn something new.
+- **Setup:** same maze as before (seed 202611017, v4 + 10 landmarks, rolling log).
+- **Comparisons:** Haiku against `5d7b5b34b201`, Qwen through Vessel against `bed2ae3c16c5`.
+
+| Game | Exits | Coverage | Distinct cells (team) | Back-and-forth moves | Wall moves | Notes written | Notes with coordinates | Cost |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Haiku, rolling log | A t5 | 0.35 | 58 | 26 | 2 | 238 | 0 | $0.14 |
+| **Haiku + coordinates** (`1fd674ac2892`) | A t5 | 0.41 | **92** | 19 | 2 | **170** | **169** | $0.11 |
+| Qwen, rolling log | none | 0.24 | 35 | 51 | 23.0% | 206 | 0 | $0 |
+| **Qwen + coordinates** (`bb8677c622e6`) | A t69 | 0.26 | 37 | 49 | **36.8%** | 163 | 163 | $0 |
+
+**Haiku turned the coordinates into exact exit positions, and the frames into a negotiation.**
+- **Coordinates everywhere:** every radio message and nearly every note carried coordinates in the agent's
+  own frame ("A-frame [-2,1]").
+- **Calibration became the main radio topic:** 33 of 33 messages discussed frames, for example C at t7 asking
+  for "the exit cell in my frame, using a landmark or a shared cell".
+- **Exact exit estimates:** B and C each estimated the exit from distance readings at several known
+  positions. Both were exactly right: B (-6,-2), C (-6,-6).
+- **Calibration without meeting:** at t73 B used the exit as the shared cell, combining A's exit at A-frame
+  [-2,1] with its own estimate. "B = A + (-4,-3)" is exactly the true offset. C's guess of A's offset,
+  (-4,-7), was also right, but C never trusted it.
+- **No landmark meeting happened:** B found the piano at t26 and reported it in its own frame at t80. No one
+  else saw it, and A sat on the exit throughout.
+- **The bottleneck moved from "where" to "how":** B knew the exit's exact cell from t31 and spent the rest of
+  the game hunting for a route ("the x=-6 column has no southern route"). B and C were still finding new cells
+  at t80. Exploration improved, but not enough for 80 turns.
+- **The quieter-notes rule half worked:** 170 notes against 238, and A stopped writing once settled on the
+  exit.
+
+**Qwen saw its loops in the trail and kept looping.**
+- **Loop awareness:** 59 notes talked about loops. For example, C at t32: "Trail shows repeated loop at
+  [2,-2]".
+- **No change in behaviour:** at t37 it was "Moving South to [2,-3] to escape loop", into the dead end it had
+  marked at t34. At t39: "Must break out of this loop".
+- **No improvement:** back-and-forth moves (49 against 51) and distinct cells (37 against 35) barely changed.
+  Wall moves rose to 37% (23% before); with one game each that may be noise. A exited at t69.
+- **Timeouts:** longer prompts brought the first decision-window timeouts (4).
+- **Same pattern as plan inertia:** like the wall-walking, the model reports the state correctly and then
+  doesn't act on it.
+
+**Takeaways:**
+- **Coordinates are the biggest single lift for Haiku's spatial reasoning so far.** v5 asked it to track its
+  own position and only 28% of positions were right. Given exact positions, it did Sonnet-level exit estimation
+  and cross-frame arithmetic.
+- **They don't fix navigation.** Knowing where the exit is doesn't find a corridor to it. Natural next
+  steps:
+  - a longer horizon, since B and C were still finding new cells at t80;
+  - a way to remember which cells' walls are known, so a route can be planned.
+- **For Qwen, more information isn't the lever.** It already narrates its loops correctly.
+
 
 
 
