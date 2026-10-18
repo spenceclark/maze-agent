@@ -17,7 +17,8 @@ Batches use 3 seeds, so intervals are wide.
 | 6 | All of the above | **Swap model:** Sonnet 5.5 with no prompt changes (1 single run, then a 6-run batch) | Teams met the objective in **3 of 6** batch runs, against 0 of 12 for Haiku. 85% of agents reached the exit, against 36%. Far fewer back-and-forth moves (1.8 vs 4.3 per agent) and no waiting | Cost ~16–20×. **Landmarks didn't matter for Sonnet** (2 of 3 succeeded without them, 1 of 3 with). The model, not the scaffolding, made the difference |
 | 7a | Can context alone push Haiku into Sonnet's habits? | Prompt v5: spell out coordinates, exit estimation and landmark-anchored routes | **Adopted in form by 100% of agents** (0% before); 83% estimated the exit's position | **Progress got worse (−0.10).** The coordinates drifted (only 28% of noted positions correct), and agents then distrusted their own maps |
 | 7b | Is it a matter of reasoning budget? | Higher thinking effort (`effort: high`), with v4 and with v5 | Haiku's first team successes: 2 of 12 runs, both on the easiest seed. +0.5 agents reaching the exit per run. With v5, coordinates were more accurate (42%) | The extra thinking overflowed the 2,048-token cap: 34 and 74 cut-off decisions became forced STAYs. Cost +40–57% |
-| 8 | Does a cheap reasoning model already have Sonnet's habits? | DeepSeek v4.1 Flash via OpenRouter, plain v4 + landmarks, 8k cap (3 runs) | **Unprompted, every agent kept coordinates and estimated the exit's position,** and shared routes from landmarks about as often as Sonnet. Cost $0.30 per run | **Too slow for the 60 s window:** ~44% of turns lost to timeouts and truncations. 0 of 3 teams succeeded; outcomes at Haiku level. Needs a longer window to judge fairly |
+| 8 | Does a cheap reasoning model already have Sonnet's habits? | DeepSeek v4.1 Flash via OpenRouter, plain v4 + landmarks, 8k cap (3 runs) | **Unprompted, every agent kept coordinates and estimated the exit's position,** and shared routes from landmarks about as often as Sonnet. Cost $0.30 per run | **Too slow for the 60 s window:** ~25% of turns lost to timeouts and truncations. 0 of 3 teams succeeded; outcomes at Haiku level. Needs a longer window to judge fairly |
+| 9 | How does a strong local model do? | Qwen3.5-9B (Unsloth IQ4) on Ollama, reasoning off, 8k context, v4 + landmarks (3 runs; meeting notebooks off to fit 8k) | Ran reliably: 4 failed decisions in 720, about 25 s per decision with 9 requests queued on one GPU, $0 | **Couldn't read its own observation.** 33% of decisions walked into a visible wall (other models ≤0.3%), and edges were miscopied into notes. No agent reached the exit; progress 0.29 |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -746,7 +747,7 @@ Full tables: `reports/landmarks_v4_deepseek.md` (2k) and `reports/landmarks_v4_d
 | Haiku, high effort, 8k (6 runs) | 0 / 6 | 1.17 | 0.68 | ~0.5 | 545 | 3.3 / 6.5 s | $0.14 |
 | Sonnet, default effort, 2k (3 runs) | 1 / 3 | 2.33 | 0.90 | ~0.7 | 221 | 3.0 / 4.8 s | $1.62 |
 | DeepSeek, 2k (3 runs) | 0 / 3 | 0.67 | 0.50 | 406 of 720 decisions (cut off) | 2,048 (the cap) | 14.3 / 20.7 s | $0.23 |
-| DeepSeek, 8k (3 runs) | 0 / 3 | 1.33 | 0.68 | **~61 per run** (274 timeouts, 43 cut off) | 1,789 (1,506 reasoning) | 16.1 / **49.8 s** | $0.30 |
+| DeepSeek, 8k (3 runs) | 0 / 3 | 1.33 | 0.68 | **~61 per run** (137 timeouts, 43 cut off, 2 schema failures) | 1,789 (1,506 reasoning) | 16.1 / **49.8 s** | $0.30 |
 
 **At a 2k cap, the cap is all you measure.** DeepSeek reasons at length (median ~1,500 reasoning tokens per
 decision at 8k), so at 2,048 tokens 56% of decisions were cut off. Each cut-off answer is still billed in full,
@@ -755,9 +756,10 @@ reasoning models needs a cap well above their typical reasoning length.
 
 **At 8k, the clock is the limit.** With room to reason, decisions took 16 s at the median and 50 s at the 90th
 percentile. Under barrier timing every tick waits for the slowest agent, up to the 60 s ceiling, after which an
-unanswered agent is forced to STAY. 274 decisions timed out and 43 were still cut off even at 8k: about 44% of
-all turns lost. Outcomes (1.33 agents exited, progress 0.68) landed at Haiku's level, but with nearly half the
-turns forfeited that says little about the model.
+unanswered agent is forced to STAY. 137 decisions timed out, 43 were still cut off even at 8k, and 2 failed the
+schema: 182 of 720 turns lost, about 25%. (An earlier version of this note double-counted the timeouts as 274
+and ~44%.) Outcomes (1.33 agents exited, progress 0.68) landed at Haiku's level, but with a quarter of turns
+forfeited that says little about the model.
 
 **The habits are there without prompting.** Under plain v4, which only asks for junction notes:
 - **Coordinates and exit estimates:** all 9 DeepSeek agents kept coordinates and estimated the exit's
@@ -775,6 +777,57 @@ reasoning tokens. Automatic prefix caching worked through OpenRouter (cache read
 **Next, for a fair comparison:** rerun at 8k with a much longer barrier ceiling, say 180–300 s, so slow
 reasoning isn't scored as forfeits. This costs nothing extra in tokens but takes much longer: probably 1–2 hours
 for 3 runs. The same applies to local models, whose throughput will also decide how many turns they lose.
+
+## Local: Qwen3.5-9B (Unsloth IQ4) on Ollama, 3 runs (`experiments/landmarks_v4_qwen35_9b.json`)
+Same cells as the Haiku, Sonnet and DeepSeek landmark runs: v4 + 10 landmarks, 12×12, 80 ticks, seeds 202611017,
+101 and 102. Settings for the local model:
+- **Context:** Ollama runs it with an 8,192-token context (server-side).
+- **Reasoning off:** `effort: "none"`, sent as `reasoning_effort: "none"`. Its thinking is on by default; a
+  one-word reply took 122 reasoning tokens.
+- **Output:** native structured output. Tool mode failed, because Qwen left required fields out of the tool
+  arguments.
+- **Limits:** 1,024-token output cap; barrier ceiling 180 s, because 3 games × 3 agents share one GPU.
+
+**Fitting 8k.**
+- **Tokenizer:** Qwen's tokenizer is denser on our prompts, at 3.1–3.8 bytes per token measured on recorded
+  prompts (Haiku: 1.7–1.9). The config uses `context_bytes_per_token: 3.0`.
+- **Meeting notebooks off:** even so, three full 8 KB notebooks (own plus two co-located) don't fit, so meeting
+  notebooks are off; the worst case is then 5.6k input + 1k output.
+- **Why that's harmless here:** in every earlier Haiku and Sonnet landmark run, the only agents who ever read
+  a teammate's notebook had already reached the exit and were standing on it. Switching them off removes
+  nothing that affected navigation.
+
+Full table: `reports/landmarks_v4_qwen35_9b.md`.
+
+| Same cells (v4 + landmarks) | Team success | Agents exited | Progress | Coverage | Revisit | Moves into visible walls | Back-and-forth per agent | Output tokens | Latency p50 | Cost per run |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Haiku 5.5 (6 runs) | 0 / 6 | 1.00 | 0.74 | 0.59 | 0.32 | 0.1% of decisions | 4.2 | 401 | 2.7 s | $0.09 |
+| Sonnet 5.5 (3 runs) | 1 / 3 | 2.33 | 0.90 | 0.62 | 0.21 | 0% | 1.8 | 221 | 3.0 s | $1.62 |
+| DeepSeek v4.1 Flash, 8k (3 runs) | 0 / 3 | 1.33 | 0.68 | 0.53 | 0.49 | 0.3% | 3.9 | 1,789 | 16.1 s | $0.30 |
+| **Qwen3.5-9B local (3 runs)** | **0 / 3** | **0.00** | **0.29** | 0.29 | 0.75 | **32.8%** | **14.1** | 99 | 25.3 s (queued) | $0 |
+
+**Reliable infrastructure, unreliable perception.** The local setup itself worked: 4 failed decisions in 720
+(all cut off at 1,024 tokens), no context overflows, no timeouts. The model's play was the problem.
+- **Walls:** one decision in three walked into a wall that was visible in the same turn's observation.
+- **Ignoring feedback:** 50 of those 236 blocked moves repeated the exact direction that had just been
+  reported as blocked.
+- **Miscopying the observation:** the notes show it copying the JSON edges wrongly. At t17 it received `E:
+  interior_wall` and wrote "E-Open… Attempting E again". At t30 it received `W: outer_brick` and wrote
+  "W-Open".
+- **The result:** back-and-forth moves were 3–8× higher than any other model, only 29% of the maze was
+  covered, and no agent reached the exit.
+
+**What it did get.** It used the notebook every turn, kept short journals (median 99 output tokens per
+decision), and 2 of 9 agents tried coordinates. It never estimated the exit's position, and never radioed a
+landmark-anchored route.
+
+**Interpretation.** For this 9B model at IQ4 with reasoning off, the first rung of the ladder (reading the
+current observation correctly) isn't reliable, so none of the higher-level shepherding can matter yet. Worth
+trying next, cheaply and locally:
+- **Turn its reasoning back on,** with a larger output cap. It thinks by default, and the earlier models that
+  did best all reasoned.
+- **Simplify the observation:** a plainer edge format, or a prompt v6 that asks the agent to restate the four
+  edges before choosing a move. That would be the first rung's shepherding, applied to a smaller model.
 
 ## Prompt caching (added after the pilot, prompt `maze_agent_v2`)
 The pilot sent each observation as one JSON blob, so no part of the prompt was reusable between ticks. Version 2
