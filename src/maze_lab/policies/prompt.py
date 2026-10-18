@@ -55,8 +55,10 @@ _LANDMARK_NOTE = (
 _COORDINATES_VIEW = "You never see the map size or a map; your coordinates count from your own start."
 _COORDINATES_NOTE = (
     "\n- coordinates.position is your exact cell as [x, y] counted from your own start [0, 0]: x grows east,"
-    " y grows north. coordinates.trail lists where you were on each of the last {trail} turns, oldest first."
-    " A repeated entry means you stayed or were blocked; a repeating pattern means you are going in circles."
+    " y grows north; it is always current and exact. coordinates.trail lists the cells you stood on during"
+    " the previous {trail} turns, oldest first; it ends with last turn's cell, so it never includes where"
+    " you are now. A repeated entry means you stayed or were blocked; a repeating pattern means you are going"
+    " in circles."
     "\n- The other agents count from their own starts, so their coordinates differ from yours by a fixed"
     " offset. When two of you stand on the same landmark or meet on the same cell, comparing your positions"
     " there gives that offset, after which you can share places and routes in one frame."
