@@ -21,6 +21,7 @@ Batches use 3 seeds, so intervals are wide.
 | 9 | How does a strong local model do? | Qwen3.5-9B (Unsloth IQ4) on Ollama, reasoning off, 8k context, v4 + landmarks (3 runs; meeting notebooks off to fit 8k) | Ran reliably: 4 failed decisions in 720, about 25 s per decision with 9 requests queued on one GPU, $0 **33% of decisions walked into a visible wall** (other models ≤0.3%); no agent reached the exit. Follow-ups: queuing ruled out, and the restate-edges prompt (v6) didn't help. Output field order is untested: Ollama emits keys alphabetically, so `move` always comes first. With reasoning on, wall moves vanished, but half the decisions never finished (see below) |
 | 10 | Qwen's splices missed: 30 of 240 notebook edits rejected for a stale revision or a bad offset, leaving notes out of order | `notebook_ops: append_rewrite`: append or rewrite fields, and the engine places the text (single games, same seed) | No more offset or revision errors. After hardening (plain-text notebooks, `"null"` counts as no change), no notebook wipes | **Qwen filled both fields in 20 of 240 decisions despite the rule, so 21 of 22 rewrites were cancelled.** Notebooks filled to the cap by t34–49 and the final 84 appends were rejected. **Then a rolling log (`append_log`, one field): 206 of 240 notes accepted, 12 rejections, no wipes; the oldest lines rolled off from t30–54.** Wall hits 23%, no exits, coverage 0.24 (splice 25%, A exited, 0.26). The bookkeeping is fixed; navigation isn't. Single games, not a controlled comparison |
 | 11 | Qwen walks into walls ~25% of the time, much of it sampling noise | Temperature 0.2, reasoning still off (replay of 100 recorded decisions, then one full rolling-log game) | In replay, wall moves fell from 24% to 9% | **In a real game they rose to 56%.** With little randomness the agent copies its last note and repeats the same blocked move: C walked W into a wall it had written down 71 turns in a row, B 35. Exploration collapsed (coverage 0.17, team distinct cells 24 against 35). Default temperature was what broke these loops |
+| 12 | Did the Qwen fixes help Haiku? | Rolling-log notebook on Haiku, otherwise the same config as the earlier Haiku runs (v4 + landmarks, seed 202611017; one game against 5 earlier splice runs) | Nothing to fix: Haiku's splices were never rejected, and walls stayed near zero | **No gain, maybe worse.** Only A (5 cells from the exit) got out; B had exited in 3 of 5 splice runs. Coverage 0.35 (0.36–0.76 before), reversals 26 (4–14). It wrote a note every turn, so notebooks filled and every prompt changed at the notebook block. **Cost $0.14 against $0.07–0.09**, with cache writes tripled |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -970,6 +971,35 @@ called closed.
   - an engine-side nudge, such as "your last N moves were blocked" in the observation;
   - a moderate temperature;
   - a structure that makes the model look at `last_action` before `move`.
+
+## Haiku on the rolling log (`5d7b5b34b201`, `configs/haiku_v4_landmarks_append_log.json`)
+Did the notebook changes made for Qwen help Haiku? Same maze (seed 202611017, 12×12, v4 + 10 landmarks, meeting
+notebooks on, 2,048-token cap). The only change is `notebook_ops: append_log`. It's compared with the 5
+earlier Haiku runs with the same settings and splices (`landmarks_v4` v4_landmarks ×3, `haiku_pattern` v4 ×2).
+
+| Haiku | Exits | Coverage | Moves into walls | Rejected notebook edits | Reversals (A→B→A) | Distinct cells (team) | Notebook writes | Cost |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Splice, 5 runs | A in all (t5–t18); B in 3 of 5 (t32, t32, t64) | 0.36–0.76 | 0–1 | 0 | 4–14 | 66–125 | 6–71 per agent | $0.07–0.09 |
+| **Rolling log** | A t5 only | 0.35 | 2 | 0 | **26** | 58 | **78–80 per agent** | **$0.14** |
+
+- **Haiku had no notebook problem to fix.** Across the 5 splice runs, no edit was rejected and none was ever
+  deleted. It only ever inserted, and peaked at 0.5–6.8 KB, under the cap.
+- **No sign it helped.** This is one game, so it can't show harm, but every measure is at or below the worst splice run:
+  - **exits:** B never got out (it did in 3 of 5 before);
+  - **coverage:** at the bottom of the earlier range;
+  - **reversals:** twice the highest earlier count.
+- **It writes every turn.** With splices Haiku skipped many turns. Offered a plain append field, it filled it
+  every turn, including A's 75 turns standing on the exit. B's and C's logs hit the cap at t49–51 and started
+  dropping their earliest lines, the ones about junctions and spawn.
+- **It's twice as expensive.** The notebook block now changes every turn, so the prompt-cache breakpoint after
+  the notebooks is rewritten each time. Cache writes went from 176–203k to 612k tokens, and cache reads
+  halved. Total input also rose (1.03M against 0.74–0.87M tokens), because notebooks sit near the cap.
+- **Takeaway:**
+  - **Model-specific:** the rolling log fixes a small model's offset errors, but costs a capable model its
+    editorial choice of what to keep.
+  - **For a fair comparison:** run it as a per-model setting, not a new default.
+  - **On Anthropic:** drop the second cache breakpoint when notebooks change every turn.
+
 
 
 ## Qwen3.5-9B: append/rewrite instead of splices (single games via Vessel)
