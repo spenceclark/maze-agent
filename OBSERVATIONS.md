@@ -23,6 +23,7 @@ Batches use 3 seeds, so intervals are wide.
 | 11 | Qwen walks into walls ~25% of the time, much of it sampling noise | Temperature 0.2, reasoning still off (replay of 100 recorded decisions, then one full rolling-log game) | In replay, wall moves fell from 24% to 9% | **In a real game they rose to 56%.** With little randomness the agent copies its last note and repeats the same blocked move: C walked W into a wall it had written down 71 turns in a row, B 35. Exploration collapsed (coverage 0.17, team distinct cells 24 against 35). Default temperature was what broke these loops |
 | 12 | Did the Qwen fixes help Haiku? | Rolling-log notebook on Haiku, otherwise the same config as the earlier Haiku runs (v4 + landmarks, seed 202611017; one game against 5 earlier splice runs) | Nothing to fix: Haiku's splices were never rejected, and walls stayed near zero | **No gain, maybe worse.** Only A (5 cells from the exit) got out; B had exited in 3 of 5 splice runs. Coverage 0.35 (0.36–0.76 before), reversals 26 (4–14). It wrote a note every turn, so notebooks filled and every prompt changed at the notebook block. **Cost $0.14 against $0.07–0.09**, with cache writes tripled |
 | 13 | No shared frame, and no memory of where they've been | `coordinates_enabled`: exact [x, y] from each agent's own start plus a 30-turn trail, a rule on lining frames up via a shared landmark or cell, and a quieter rolling log (one game each, Haiku and Qwen) | **Haiku solved the 'where':** B and C each placed the exit exactly in their own frames from distance readings. B found the exact offset to A's frame by using the exit as the shared cell. Exploration rose (92 cells against 58, back-and-forth 19 against 26) and notes fell from 238 to 170 | **No one new reached the exit:** B knew the exit was at (-6,-2) but found no route to it in 80 turns. Qwen wrote 'Must break out of this loop' 59 times and kept looping; its wall hits were 37%. The bottleneck is now route-finding |
+| 14 | Why is route-finding so poor? Measured at junction revisits | Ground truth from trajectories: when back on a junction with an untried open exit, how often does the agent take one it has already used? | **Sonnet 3%, DeepSeek 27%, Haiku 40%, Qwen 58%.** In Haiku's bad choices, it wrote "Trying X (untried)" about an exit it had used | **Two bookkeeping gaps:** (1) cells have no identity, so a revisit is logged as a new cell; (2) the exit it arrived through is never marked tried. Stale duplicate lines aren't the main issue. Sonnet names cells (W1, W2…) and recognises them. Haiku with coordinates: 0 of 8 (small sample) |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -1056,6 +1057,55 @@ earlier Haiku runs with the same settings and splices (`landmarks_v4` v4_landmar
   - a longer horizon, since B and C were still finding new cells at t80;
   - a way to remember which cells' walls are known, so a route can be planned.
 - **For Qwen, more information isn't the lever.** It already narrates its loops correctly.
+
+## Junction bookkeeping: where route-finding breaks
+- **The question:** v4 tells agents to note each junction's tried exits and prefer an untried one. Are they
+  doing it, and do stale or conflicting notes undermine it?
+- **The measure (ground truth, all runs):** at each decision on a junction the agent has stood on before,
+  with at least one open exit it has neither left nor arrived through, did it move through an exit it had
+  already used?
+
+| Model | Runs | Moves at such revisits | Took an already-used exit |
+| --- | --- | --- | --- |
+| Sonnet 5.5 | 7 | 29 | **3%** |
+| DeepSeek v4.1 Flash | 9 | 63 | 27% |
+| Haiku 5.5 | 87 | 568 | **40%** |
+| Qwen3.5-9B | 14 | 119 | 58% |
+| Haiku + coordinates | 1 | 8 | 0% |
+
+Many of these decisions were STAYs (camping), which are left out of the percentages.
+
+**Reading 8 random Haiku cases (v4) gave the same picture each time.** Haiku labelled an exit it had already
+used as untried. For example:
+- **77f80e3a3946 t34:** "at junction (N,E,W open, S wall)… Untried: E and W. Trying E." At t25 it had
+  logged entering this same cell from the east ("moved W from E-side corridor into cell (N,E,W open, S
+  wall), dist 6.0").
+- **e56b8582aa5c t49:** "Here N wall, E open, S open, W open. Dist 5.0. Trying W (untried)". At t25 it had
+  logged arriving in this exact cell from the west.
+- **14f70a14e29d t45:** "at N-brick cell; E,S,W open. Dist 6.4… Trying S (untried)". At t28 it had logged
+  coming up from the south into it.
+
+**Two gaps, and stale lines are only part of it:**
+- **Every revisit becomes a fresh line.** No model ever deleted notebook text (0 bytes deleted in every
+  Haiku and Sonnet run), so a junction's history is spread across journal lines from different ticks.
+- **The failure is earlier than reconciling those lines:** the agent doesn't recognise the cell. It
+  describes it from scratch by edges and distance, which many cells share, and declares exits untried.
+- **Arrival directions aren't counted.** Agents log "Trying N" for exits they leave by, but the exit they
+  came in through, equally explored, is never marked tried. Most bad choices re-entered a branch the agent
+  had arrived from.
+- **Sonnet also only appends,** but it names cells as it goes ("W2 … W is dead", "back at start") and
+  recognises them on return. Identity is the difference, not the notebook format.
+
+**Implication:**
+- **Coordinates give cells identity,** which is probably why Haiku with coordinates took no used exits
+  (8 moves, one game).
+- **The remaining gap is planning a route from a scattered journal in one pass without thinking:** B knew
+  the exit cell exactly and still couldn't find a way there.
+- **Two cheap levers to test:**
+  - a rule that the exit you arrived through counts as tried;
+  - an engine-kept record of the edges seen at each visited coordinate. That's a "known map", a bigger
+    change to what the experiment measures.
+
 
 
 
