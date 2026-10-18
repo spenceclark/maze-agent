@@ -1,0 +1,98 @@
+{
+  "schema_version": "1.0",
+  "root_seed": 202611017,
+  "condition": "haiku_v10_landmarks_coords_nodist",
+  "maze": {
+    "width": 12,
+    "height": 12,
+    "generator": "dfs_v1",
+    "extra_open_edges": 0,
+    "exit_policy": "uniform_perimeter_cell",
+    "spawn_policy": "uniform_distinct_non_exit",
+    "landmark_count": 10,
+    "checkpoint_count": 0
+  },
+  "agents": [
+    {
+      "id": "A",
+      "kind": "llm",
+      "policy": null,
+      "adapter": "pydantic_ai",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "base_url": null,
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "output_mode": "native",
+      "context_window_tokens": 1000000,
+      "context_bytes_per_token": 1.5,
+      "sampling": {
+        "temperature": null,
+        "top_p": null,
+        "seed": null
+      },
+      "max_output_tokens": 2048
+    },
+    {
+      "id": "B",
+      "kind": "llm",
+      "policy": null,
+      "adapter": "pydantic_ai",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "base_url": null,
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "output_mode": "native",
+      "context_window_tokens": 1000000,
+      "context_bytes_per_token": 1.5,
+      "sampling": {
+        "temperature": null,
+        "top_p": null,
+        "seed": null
+      },
+      "max_output_tokens": 2048
+    },
+    {
+      "id": "C",
+      "kind": "llm",
+      "policy": null,
+      "adapter": "pydantic_ai",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "base_url": null,
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "output_mode": "native",
+      "context_window_tokens": 1000000,
+      "context_bytes_per_token": 1.5,
+      "sampling": {
+        "temperature": null,
+        "top_p": null,
+        "seed": null
+      },
+      "max_output_tokens": 2048
+    }
+  ],
+  "rules": {
+    "version": "rules_v1",
+    "objective": "all_reach_exit",
+    "allow_stay": true,
+    "notebook_enabled": true,
+    "notebook_cap_bytes": 8192,
+    "notebook_insert_bytes": 1024,
+    "radio_enabled": true,
+    "radio_message_bytes": 280,
+    "radio_cooldown_ticks": 5,
+    "meeting_notebooks_enabled": true,
+    "distance_sensors": "none",
+    "distance_quantization": "tenths",
+    "notebook_ops": "append_log",
+    "coordinates_enabled": true
+  },
+  "timing": {
+    "mode": "barrier",
+    "decision_window_ms": 60000
+  },
+  "horizon_ticks": 80,
+  "prompt_version": "maze_agent_v10",
+  "max_provider_requests_per_turn": 1,
+  "snapshot_interval_ticks": 25
+}

@@ -322,3 +322,10 @@ def test_v9_adds_landmark_relative_positions_on_top_of_v8():
     v9 = system_instruction(AGENT_RULES, "A", "maze_agent_v9")
     assert "head back along your known route" in v9 and "relative to a landmark" in v9
     assert "relative to a landmark" not in v8
+
+
+def test_v10_says_your_start_is_not_a_landmark_on_top_of_v9():
+    v9 = system_instruction(AGENT_RULES, "A", "maze_agent_v9")
+    v10 = system_instruction(AGENT_RULES, "A", "maze_agent_v10")
+    assert "relative to a landmark" in v10 and "Your own start is not a landmark" in v10
+    assert "Your own start is not a landmark" not in v9

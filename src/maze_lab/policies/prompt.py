@@ -64,6 +64,12 @@ PROMPT_MEMORY_NOTES["maze_agent_v9"] = PROMPT_MEMORY_NOTES["maze_agent_v8"] + (
     " can use it at once, without knowing your frame. If you know where the exit is, visiting a landmark so"
     " you can describe the exit from it is one of the most useful things you can do."
 )
+# v10 = v9 plus "your start is not a landmark": under v8 and v9 the exit-finder described the exit from
+# its own start and waited there as a "rendezvous" that nobody else could locate.
+PROMPT_MEMORY_NOTES["maze_agent_v10"] = PROMPT_MEMORY_NOTES["maze_agent_v9"] + (
+    " Your own start is not a landmark: only you know where it is, so a position given from it, or an offer"
+    " to meet there, is useless to the others. Go to a real landmark and describe the exit from that."
+)
 _LANDMARK_NOTE = (
     '\n- Some cells carry a landmark: local.landmarks lists the label (for example "clock") of any'
     " landmark on your cell. Each label is unique and fixed to one cell, and you see it only while"
