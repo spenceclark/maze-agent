@@ -18,7 +18,7 @@ Batches use 3 seeds, so intervals are wide.
 | 7a | Can context alone push Haiku into Sonnet's habits? | Prompt v5: spell out coordinates, exit estimation and landmark-anchored routes | **Adopted in form by 100% of agents** (0% before); 83% estimated the exit's position | **Progress got worse (−0.10).** The coordinates drifted (only 28% of noted positions correct), and agents then distrusted their own maps |
 | 7b | Is it a matter of reasoning budget? | Higher thinking effort (`effort: high`), with v4 and with v5 | Haiku's first team successes: 2 of 12 runs, both on the easiest seed. +0.5 agents reaching the exit per run. With v5, coordinates were more accurate (42%) | The extra thinking overflowed the 2,048-token cap: 34 and 74 cut-off decisions became forced STAYs. Cost +40–57% |
 | 8 | Does a cheap reasoning model already have Sonnet's habits? | DeepSeek v4.1 Flash via OpenRouter, plain v4 + landmarks, 8k cap (3 runs) | **Unprompted, every agent kept coordinates and estimated the exit's position,** and shared routes from landmarks about as often as Sonnet. Cost $0.30 per run | At a 60 s window, ~25% of turns were lost to timeouts and truncations (0 of 3). **With a 600 s window: no timeouts, 1 of 3 teams succeeded (t53, the fastest finish of any model)**, 1.67 agents exited. Still ~13% of turns lost to truncation at 8k. $0.38 per run |
-| 9 | How does a strong local model do? | Qwen3.5-9B (Unsloth IQ4) on Ollama, reasoning off, 8k context, v4 + landmarks (3 runs; meeting notebooks off to fit 8k) | Ran reliably: 4 failed decisions in 720, about 25 s per decision with 9 requests queued on one GPU, $0 **33% of decisions walked into a visible wall** (other models ≤0.3%); no agent reached the exit. Follow-ups: queuing ruled out, the restate-edges prompt (v6) didn't help, and field order wasn't the cause. With reasoning on, wall moves vanished, but half the decisions never finished (see below) |
+| 9 | How does a strong local model do? | Qwen3.5-9B (Unsloth IQ4) on Ollama, reasoning off, 8k context, v4 + landmarks (3 runs; meeting notebooks off to fit 8k) | Ran reliably: 4 failed decisions in 720, about 25 s per decision with 9 requests queued on one GPU, $0 **33% of decisions walked into a visible wall** (other models ≤0.3%); no agent reached the exit. Follow-ups: queuing ruled out, and the restate-edges prompt (v6) didn't help. Output field order is untested: Ollama emits keys alphabetically, so `move` always comes first. With reasoning on, wall moves vanished, but half the decisions never finished (see below) |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -894,10 +894,26 @@ the exact recorded prompts:
 - **Mostly random sampling error.** Replayed with identical inputs, only 12% of the bad decisions went wrong
   again. The wall-walking is sampling noise at a high base rate (Ollama's default temperature), not a fixed
   misreading of particular cells.
-- **Field order doesn't matter.** Putting the note first didn't help (22%).
+- **Field order: test invalid.** Putting the note first appeared not to help (22%). But a captured request
+  (Vessel #5870) shows Ollama's structured output emitting keys in **alphabetical order** whatever the schema
+  says: `move`, `notebook_edit`, `radio`, `schema_version`, `tick`, and inside the edit `end`,
+  `expected_revision`, `start`, `text`. Reordering the schema therefore couldn't put the note first, so this
+  replay didn't test the hypothesis. A real test needs the note under a key that sorts before `move`, or
+  reasoning on.
 - **Reasoning fixes the moves but often doesn't finish.** With thinking on, none of the 18 answers went into a
   wall. But 22 of 40 returned no parseable move within 4,096 tokens, presumably because thinking used up the
   budget; I didn't diagnose this further.
+
+**One captured example** (Vessel #5870, run `dbef9cc1d9b9`, agent A, decision tick 74). The observation
+said `north: interior_wall, east: interior_wall, south: open, west: outer_brick`. Qwen replied `move: "N"` with
+the note "Walls: N-int, E-int, S-open, W-brick… Continuing N".
+- **Plan inertia:** it named the wall correctly and still followed its previous note's plan ("Moving N to keep
+  moving away…").
+- **Its correction was lost:** the note's splice (start 2582, end 2583 on a 2,582-character notebook) was
+  rejected as `invalid_span`.
+- **A wasted broadcast:** it radioed "No change.".
+- **A long-running mess:** earlier notebook lines were already out of order (ticks 28, 22, 21, 20, 23…) from
+  wrong insert offsets, and tick 45 had recorded this same dead end.
 
 **The 'null' radio quirk.** Under native structured output, Qwen often sent the radio field as the string
 `"null"` instead of JSON null: 20–28 times per three-game batch. The engine accepts that as a real broadcast,
