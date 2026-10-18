@@ -28,6 +28,7 @@ from pydantic_ai.providers.openrouter import OpenRouterProvider
 from maze_lab.agent_contracts import (
     ACTION_MODELS,
     AgentRules,
+    AppendCheckFirstTurnAction,
     AppendNoteFirstTurnAction,
     AppendTurnAction,
     ForcedStayCause,
@@ -66,7 +67,7 @@ def build_model(config: LlmAgentConfig) -> Model:
     return OpenAIChatModel(config.model, provider=OpenAIProvider(openai_client=client))
 
 
-type _Action = TurnAction | AppendTurnAction | AppendNoteFirstTurnAction
+type _Action = TurnAction | AppendTurnAction | AppendNoteFirstTurnAction | AppendCheckFirstTurnAction
 
 
 def _output_spec(
@@ -173,11 +174,15 @@ class PydanticAiPolicy:
         )
 
     async def decide(self, observation: Observation, rules: AgentRules) -> DecisionAttempt:
-        system = system_instruction(rules, observation.agent_id, self.prompt_version)
+        system = system_instruction(
+            rules, observation.agent_id, self.prompt_version, self.config.action_field_order == "check_first"
+        )
         blocks = user_blocks(observation, rules.notebook_ops)
         action_model: type[_Action] = ACTION_MODELS[rules.notebook_ops]
         if self.config.action_field_order == "note_first":
             action_model = AppendNoteFirstTurnAction  # only the requested key order changes
+        elif self.config.action_field_order == "check_first":
+            action_model = AppendCheckFirstTurnAction
         request_text = self.request_text(system, blocks, action_model)
         if (too_big := check_prompt(self.config, system, blocks)) is not None:
             # Never send a prompt a provider might truncate; this is a forced no-op, not a request.
@@ -211,7 +216,9 @@ class PydanticAiPolicy:
             failure, detail = "invalid_action", "output truncated at max_tokens"
         elif failure is None:
             try:
-                action = parse_turn_action(raw or "", rules.notebook_ops)
+                action = parse_turn_action(
+                    raw or "", rules.notebook_ops, self.config.action_field_order == "check_first"
+                )
             except InvalidActionError as e:
                 failure, detail = "invalid_action", str(e)
 

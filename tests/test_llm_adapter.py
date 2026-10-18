@@ -363,5 +363,34 @@ def test_note_first_needs_the_append_log_notebook():
     config["agents"][0]["action_field_order"] = "note_first"
     RunConfig.model_validate(config)  # append_log: fine
     config["rules"]["notebook_ops"] = "splice"
-    with pytest.raises(ValidationError, match="note_first"):
+    with pytest.raises(ValidationError, match="needs rules.notebook_ops .append_log."):
         RunConfig.model_validate(config)
+
+
+def test_check_first_requires_an_unstored_check_before_the_note_and_move():
+    rules = public_rules(RulesConfig(notebook_ops="append_log"))
+    seen: list[dict[str, object]] = []
+    reply = {
+        "schema_version": "1.2",
+        "tick": 1,
+        "check": "N wall, E wall, S open, W open; came from W; going S",
+        "notebook_append": None,
+        "move": "S",
+        "radio": None,
+    }
+
+    def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        seen.append(info.output_tools[0].parameters_json_schema)
+        return ModelResponse(parts=[ToolCallPart(tool_name=info.output_tools[0].name, args=reply)])
+
+    config = llm_config(action_field_order="check_first")
+    attempt = asyncio.run(
+        PydanticAiPolicy(config, timeout_s=5, model=FunctionModel(respond)).decide(OBS, rules)
+    )
+    keys = list(seen[0]["properties"])  # type: ignore[call-overload]
+    assert keys.index("check") < keys.index("notebook_append") < keys.index("move")
+    assert "check" in seen[0]["required"]  # type: ignore[operator]
+    assert isinstance(attempt.action, AppendTurnAction) and attempt.action.move == "S"  # check dropped
+    assert "going S" in (attempt.response_text or "")  # but kept in the record
+    assert "- check (required, written first)" in json.loads(attempt.request_text or "")["system"]
+    assert "- check (required" not in system_instruction(rules, "A")

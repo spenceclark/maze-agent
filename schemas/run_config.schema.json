@@ -188,7 +188,8 @@
           "default": "move_first",
           "enum": [
             "move_first",
-            "note_first"
+            "note_first",
+            "check_first"
           ],
           "title": "Action Field Order",
           "type": "string"

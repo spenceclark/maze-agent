@@ -842,7 +842,7 @@ export interface components {
              * @default move_first
              * @enum {string}
              */
-            action_field_order: "move_first" | "note_first";
+            action_field_order: "move_first" | "note_first" | "check_first";
         };
         /** LocalCell */
         LocalCell: {

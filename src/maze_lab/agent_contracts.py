@@ -113,6 +113,19 @@ class AppendNoteFirstTurnAction(Contract):
     radio: str | None
 
 
+class AppendCheckFirstTurnAction(Contract):
+    """`AppendNoteFirstTurnAction` led by a required one-line `check` of the agent's cell: a scratchpad
+    written before the move on every turn, without reasoning mode. It is dropped on parse, so it never
+    reaches the notebook or the engine; the raw reply keeps it."""
+
+    schema_version: Literal["1.2"]
+    tick: int = Field(ge=1)
+    check: str
+    notebook_append: str | None
+    move: Move
+    radio: str | None
+
+
 AnyTurnAction = Annotated[TurnAction | AppendTurnAction, Field(discriminator="schema_version")]
 NotebookOps = Literal["splice", "append_log"]
 ACTION_MODELS: dict[NotebookOps, type[TurnAction] | type[AppendTurnAction]] = {
@@ -294,11 +307,14 @@ def _check_strings_encodable(value: object) -> None:
             _check_strings_encodable(v)
 
 
-def parse_turn_action(raw: str, notebook_ops: NotebookOps = "splice") -> TurnAction | AppendTurnAction:
+def parse_turn_action(
+    raw: str, notebook_ops: NotebookOps = "splice", with_check: bool = False
+) -> TurnAction | AppendTurnAction:
     """Strictly parse one complete JSON object into the run's action model (spec §7).
 
     Rejects oversized output, duplicate keys, NaN/Infinity, lone surrogates,
-    trailing prose, and extra fields. Raises InvalidActionError.
+    trailing prose, and extra fields. Raises InvalidActionError. With `with_check`, the reply must
+    carry the `check` scratch field (append_log only), which is validated and then dropped.
     """
     try:
         if utf8_len(raw) > MAX_RAW_OUTPUT_BYTES:
@@ -312,6 +328,9 @@ def parse_turn_action(raw: str, notebook_ops: NotebookOps = "splice") -> TurnAct
         raise InvalidActionError("top-level JSON value must be an object")
     _check_strings_encodable(parsed)
     try:
+        if with_check:
+            checked = AppendCheckFirstTurnAction.model_validate_json(raw)
+            return AppendTurnAction.model_validate(checked.model_dump(exclude={"check"}))
         return ACTION_MODELS[notebook_ops].model_validate_json(raw)
     except ValueError as e:
         raise InvalidActionError(str(e)) from e

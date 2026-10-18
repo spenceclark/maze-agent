@@ -89,8 +89,9 @@ class LlmAgentConfig(Contract):
     # Reasoning effort; None keeps the model's default. "none" turns reasoning off (OpenAI-compatible/Ollama).
     effort: Effort | None = None
     # Key order of the requested action. Models that write keys in schema order then write their
-    # note before choosing a move ("note_first", append_log runs only).
-    action_field_order: Literal["move_first", "note_first"] = "move_first"
+    # note before choosing a move ("note_first"); "check_first" also asks for a required, unstored
+    # one-line check of the cell before both. append_log runs only.
+    action_field_order: Literal["move_first", "note_first", "check_first"] = "move_first"
 
     @model_validator(mode="after")
     def _effort_supported(self) -> Self:
@@ -184,8 +185,10 @@ class RunConfig(Contract):
         return self
 
     @model_validator(mode="after")
-    def _note_first_needs_append_log(self) -> Self:
-        note_first = any(a.kind == "llm" and a.action_field_order == "note_first" for a in self.agents)
-        if note_first and self.rules.notebook_ops != "append_log":
-            raise ValueError("action_field_order 'note_first' needs rules.notebook_ops 'append_log'")
+    def _reordered_actions_need_append_log(self) -> Self:
+        reordered = any(a.kind == "llm" and a.action_field_order != "move_first" for a in self.agents)
+        if reordered and self.rules.notebook_ops != "append_log":
+            raise ValueError(
+                "action_field_order other than 'move_first' needs rules.notebook_ops 'append_log'"
+            )
         return self

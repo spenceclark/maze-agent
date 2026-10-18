@@ -97,6 +97,12 @@ _DISTANCE_NOTES = {
         "- You have no distance sensors: nothing tells you how far away the exit or the other agents are."
     ),
 }
+# For agents with action_field_order "check_first": a scratch line written before the move every turn.
+_CHECK_BULLET = (
+    "- check (required, written first): one short line restating this turn's four edges, the direction you"
+    " arrived from, and which open direction you will take and why. It is not stored anywhere; it only"
+    " helps you choose this turn's move.\n"
+)
 _NOTEBOOKS = TypeAdapter(list[Notebook])
 
 _SYSTEM = """\
@@ -117,7 +123,7 @@ there).
 full notebooks on the next turn (colocated_notebooks). Reading copies nothing into your notebook.
 
 EACH TURN you submit one action. All agents act simultaneously; moves resolve together.
-- move: one of N, E, S, W (north is up, east is right) or STAY{stay_note}. Moving into a wall \
+{check_bullet}- move: one of N, E, S, W (north is up, east is right) or STAY{stay_note}. Moving into a wall \
 leaves you in place. You learn the result next turn in last_action.
 {notebook_bullet}{notebook_note}
 - radio (or null): one broadcast heard by both other agents on their next turn only, at most \
@@ -159,7 +165,9 @@ _OBJECTIVES = {
 }
 
 
-def system_instruction(rules: AgentRules, agent_id: str, version: str = PROMPT_VERSION) -> str:
+def system_instruction(
+    rules: AgentRules, agent_id: str, version: str = PROMPT_VERSION, with_check: bool = False
+) -> str:
     if version not in PROMPT_MEMORY_NOTES:
         raise ValueError(f"unsupported prompt_version {version!r}; runnable: {sorted(PROMPT_MEMORY_NOTES)}")
     return _SYSTEM.format(
@@ -178,6 +186,7 @@ def system_instruction(rules: AgentRules, agent_id: str, version: str = PROMPT_V
         memory_note=PROMPT_MEMORY_NOTES[version],
         landmark_note=_LANDMARK_NOTE if rules.landmarks_enabled else "",
         distance_note=_DISTANCE_NOTES[rules.distance_sensors],
+        check_bullet=_CHECK_BULLET if with_check else "",
         world_view=_COORDINATES_VIEW
         if rules.coordinates_enabled
         else "You never see coordinates, the map size, or a map.",
