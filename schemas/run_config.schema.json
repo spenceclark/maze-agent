@@ -331,8 +331,11 @@
           "type": "boolean"
         },
         "distance_sensors": {
-          "const": "exit_and_peers",
           "default": "exit_and_peers",
+          "enum": [
+            "exit_and_peers",
+            "none"
+          ],
           "title": "Distance Sensors",
           "type": "string"
         },

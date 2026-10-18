@@ -40,6 +40,7 @@ def public_rules(rules: RulesConfig, landmarks_enabled: bool = False) -> AgentRu
         landmarks_enabled=landmarks_enabled,
         notebook_ops=rules.notebook_ops,
         coordinates_enabled=rules.coordinates_enabled,
+        distance_sensors=rules.distance_sensors,
     )
 
 
@@ -51,6 +52,7 @@ def _relative(p: Position, start: Position) -> tuple[int, int]:
 def observe(maze: MazeDefinition, rules: RulesConfig, state: WorldState, agent_id: AgentId) -> Observation:
     me = state.agent(agent_id)
     start = maze.spawns[AGENT_IDS.index(agent_id)]
+    sensors = rules.distance_sensors == "exit_and_peers"
     cell = maze.cell(me.position)
     group = next((g for g in state.meetings if agent_id in g), [])
     colocated = (
@@ -73,12 +75,14 @@ def observe(maze: MazeDefinition, rules: RulesConfig, state: WorldState, agent_i
             landmarks=maze.landmarks_at(me.position),
             checkpoints=[],
         ),
-        exit_distance_tenths=distance_tenths(me.position, maze.exit),
+        exit_distance_tenths=distance_tenths(me.position, maze.exit) if sensors else None,
         peer_ranges=[
             PeerRange(agent_id=p.agent_id, distance_tenths=distance_tenths(me.position, p.position))
             for p in state.agents
             if p.agent_id != agent_id
-        ],
+        ]
+        if sensors
+        else None,
         last_action=me.last_receipt,
         notebook=me.notebook,
         radio_inbox=[m for m in state.radio_batch if m.sender != agent_id],

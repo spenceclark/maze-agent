@@ -63,6 +63,17 @@ _COORDINATES_NOTE = (
     " offset. When two of you stand on the same landmark or meet on the same cell, comparing your positions"
     " there gives that offset, after which you can share places and routes in one frame."
 )
+_DISTANCE_NOTES = {
+    "exit_and_peers": (
+        "- exit_distance_tenths and peer_ranges give straight-line (Euclidean) distances in tenths of a cell,"
+        " ignoring walls. They are not path lengths and carry no direction. Because walls are ignored, a cell"
+        " where every move raises the reading can be a dead end, and the path to the exit may first lead away"
+        " from it."
+    ),
+    "none": (
+        "- You have no distance sensors: nothing tells you how far away the exit or the other agents are."
+    ),
+}
 _NOTEBOOKS = TypeAdapter(list[Notebook])
 
 _SYSTEM = """\
@@ -78,9 +89,7 @@ WORLD
 "interior_wall" (an internal wall), or "outer_brick" (the maze's outer boundary; brick appears only \
 there).
 - local.is_exit tells you whether you are standing on the exit.{landmark_note}{coordinates_note}
-- exit_distance_tenths and peer_ranges give straight-line (Euclidean) distances in tenths of a cell, \
-ignoring walls. They are not path lengths and carry no direction. Because walls are ignored, a cell \
-where every move raises the reading can be a dead end, and the path to the exit may first lead away from it.
+{distance_note}
 - Several agents may share a cell. Agents that end a turn on the same cell can read each other's \
 full notebooks on the next turn (colocated_notebooks). Reading copies nothing into your notebook.
 
@@ -145,6 +154,7 @@ def system_instruction(rules: AgentRules, agent_id: str, version: str = PROMPT_V
         radio_note="" if rules.radio_enabled else " Radio is disabled in this condition.",
         memory_note=PROMPT_MEMORY_NOTES[version],
         landmark_note=_LANDMARK_NOTE if rules.landmarks_enabled else "",
+        distance_note=_DISTANCE_NOTES[rules.distance_sensors],
         world_view=_COORDINATES_VIEW
         if rules.coordinates_enabled
         else "You never see coordinates, the map size, or a map.",

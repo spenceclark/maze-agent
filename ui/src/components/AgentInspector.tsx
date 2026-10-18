@@ -45,9 +45,13 @@ function ObservationView({ obs }: { obs: Observation }) {
           {obs.local.is_exit ? " — EXIT" : ""}
         </dd>
         <dt>Exit distance</dt>
-        <dd>{tenths(obs.exit_distance_tenths)}</dd>
+        <dd>{obs.exit_distance_tenths == null ? "off" : tenths(obs.exit_distance_tenths)}</dd>
         <dt>Peer ranges</dt>
-        <dd>{obs.peer_ranges.map((p) => `${p.agent_id} ${tenths(p.distance_tenths)}`).join(", ")}</dd>
+        <dd>
+          {obs.peer_ranges == null
+            ? "off"
+            : obs.peer_ranges.map((p) => `${p.agent_id} ${tenths(p.distance_tenths)}`).join(", ")}
+        </dd>
         <dt>Reached exit</dt>
         <dd>{obs.has_reached_exit ? "yes" : "no"}</dd>
         <dt>Radio</dt>

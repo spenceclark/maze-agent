@@ -5,9 +5,11 @@ import json
 from helpers import RULES, P, act, grid, step
 
 from maze_lab.agent_contracts import AGENT_IDS, AgentRules, Observation
+from maze_lab.config import RulesConfig
 from maze_lab.domain.generator import generate_maze
 from maze_lab.domain.state import initial_state
 from maze_lab.observation import observe, public_rules
+from maze_lab.policies.prompt import system_instruction, user_blocks
 
 FORBIDDEN_KEYS = {
     "x",
@@ -46,6 +48,7 @@ def test_initial_observation_shape():
     obs = observe(maze, RULES, initial_state(maze), "B")
     assert (obs.decision_tick, obs.state_tick) == (1, 0)
     assert obs.last_action.movement.outcome == "spawned"
+    assert obs.peer_ranges is not None
     assert [(p.agent_id, p.distance_tenths) for p in obs.peer_ranges] == [("A", 20), ("C", 28)]
     assert obs.exit_distance_tenths == 20
     assert (obs.local.north, obs.local.east, obs.local.south, obs.local.west) == (
@@ -67,3 +70,15 @@ def test_observation_round_trips_through_strict_json():
 def test_public_rules_projection():
     rules = public_rules(RULES)
     assert rules.agent_ids == ["A", "B", "C"] and rules.max_provider_requests_per_turn == 1
+
+
+def test_distance_sensors_off_leaves_distances_out():
+    maze = grid(3, 3, P(2, 2), [P(0, 0), P(2, 0), P(0, 2)])
+    off = RulesConfig(distance_sensors="none")
+    obs = observe(maze, off, initial_state(maze), "B")
+    assert obs.exit_distance_tenths is None and obs.peer_ranges is None
+    text = "".join(user_blocks(obs))
+    assert "exit_distance_tenths" not in text and "peer_ranges" not in text
+    rules = system_instruction(public_rules(off), "B")
+    assert "no distance sensors" in rules and "Euclidean" not in rules
+    assert "Euclidean" in system_instruction(public_rules(RULES), "B")

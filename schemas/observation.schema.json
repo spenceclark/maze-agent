@@ -421,16 +421,32 @@
       "$ref": "#/$defs/LocalCell"
     },
     "exit_distance_tenths": {
-      "minimum": 0,
-      "title": "Exit Distance Tenths",
-      "type": "integer"
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Exit Distance Tenths"
     },
     "peer_ranges": {
-      "items": {
-        "$ref": "#/$defs/PeerRange"
-      },
-      "title": "Peer Ranges",
-      "type": "array"
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/PeerRange"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Peer Ranges"
     },
     "last_action": {
       "$ref": "#/$defs/ActionReceipt"
@@ -474,8 +490,6 @@
     "state_tick",
     "has_reached_exit",
     "local",
-    "exit_distance_tenths",
-    "peer_ranges",
     "last_action",
     "notebook",
     "radio_inbox",

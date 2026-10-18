@@ -8,20 +8,14 @@ exception is a declared variant: `Coordinates`, relative to the agent's own star
 import json
 from typing import Annotated, Literal, Self
 
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    SerializerFunctionWrapHandler,
-    model_serializer,
-    model_validator,
-)
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 AgentId = Literal["A", "B", "C"]
 Direction = Literal["N", "E", "S", "W"]
 Move = Literal["N", "E", "S", "W", "STAY"]
 Edge = Literal["open", "interior_wall", "outer_brick"]
 Objective = Literal["all_reach_exit", "first_exit", "all_at_exit_simultaneously"]
+DistanceSensors = Literal["exit_and_peers", "none"]
 
 AGENT_IDS: tuple[AgentId, ...] = ("A", "B", "C")
 OPPOSITE: dict[Direction, Direction] = {"N": "S", "S": "N", "E": "W", "W": "E"}
@@ -186,6 +180,10 @@ class Budgets(Contract):
     allow_stay: bool
 
 
+def _absent(value: object) -> bool:
+    return value is None
+
+
 class Coordinates(Contract):
     """Variant `coordinates_enabled`: exact [x, y] relative to the agent's own start, x east, y north."""
 
@@ -200,22 +198,16 @@ class Observation(Contract):
     state_tick: int = Field(ge=0)
     has_reached_exit: bool
     local: LocalCell
-    exit_distance_tenths: int = Field(ge=0)
-    peer_ranges: list[PeerRange]
+    # Fields a rules variant switches off are left out of the JSON, not sent as null, so runs without
+    # any variant keep byte-identical observations and prompts.
+    exit_distance_tenths: int | None = Field(default=None, ge=0, exclude_if=_absent)  # sensors off
+    peer_ranges: list[PeerRange] | None = Field(default=None, exclude_if=_absent)
     last_action: ActionReceipt
     notebook: Notebook
     radio_inbox: list[RadioObservation]
     colocated_notebooks: list[Notebook]
     budgets: Budgets
-    coordinates: Coordinates | None = None
-
-    @model_serializer(mode="wrap")
-    def _omit_absent_coordinates(self, handler: SerializerFunctionWrapHandler) -> dict[str, object]:
-        """Runs without the variant keep byte-identical observations and prompts."""
-        data = handler(self)
-        if self.coordinates is None:
-            data.pop("coordinates", None)
-        return data
+    coordinates: Coordinates | None = Field(default=None, exclude_if=_absent)
 
     @model_validator(mode="after")
     def _invariants(self) -> Self:
@@ -224,7 +216,7 @@ class Observation(Contract):
             raise ValueError("decision_tick must equal state_tick + 1")
         if self.last_action.tick != self.state_tick:
             raise ValueError("last_action.tick must equal state_tick")
-        if [p.agent_id for p in self.peer_ranges] != peers:
+        if self.peer_ranges is not None and [p.agent_id for p in self.peer_ranges] != peers:
             raise ValueError("peer_ranges must list both peers once, in ID order")
         if self.notebook.owner != self.agent_id:
             raise ValueError("notebook must belong to the observing agent")
@@ -257,6 +249,7 @@ class AgentRules(Contract):
     landmarks_enabled: bool = False  # positions and labels are never public
     notebook_ops: NotebookOps = "splice"
     coordinates_enabled: bool = False
+    distance_sensors: DistanceSensors = "exit_and_peers"
 
 
 class InvalidActionError(ValueError):

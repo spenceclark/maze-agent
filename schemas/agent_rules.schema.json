@@ -93,6 +93,15 @@
       "default": false,
       "title": "Coordinates Enabled",
       "type": "boolean"
+    },
+    "distance_sensors": {
+      "default": "exit_and_peers",
+      "enum": [
+        "exit_and_peers",
+        "none"
+      ],
+      "title": "Distance Sensors",
+      "type": "string"
     }
   },
   "required": [

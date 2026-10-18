@@ -440,7 +440,18 @@ export interface components {
              * @default splice
              * @enum {string}
              */
-            notebook_ops: "splice" | "append_rewrite";
+            notebook_ops: "splice" | "append_log";
+            /**
+             * Coordinates Enabled
+             * @default false
+             */
+            coordinates_enabled: boolean;
+            /**
+             * Distance Sensors
+             * @default exit_and_peers
+             * @enum {string}
+             */
+            distance_sensors: "exit_and_peers" | "none";
         };
         /** AgentState */
         AgentState: {
@@ -458,6 +469,8 @@ export interface components {
             first_exit_tick: number | null;
             /** Successful Moves */
             successful_moves: number;
+            /** Trail */
+            trail?: components["schemas"]["Position"][];
         };
         /** AgentsResponse */
         AgentsResponse: {
@@ -469,6 +482,32 @@ export interface components {
             as_of_sequence: number;
             /** Agents */
             agents: components["schemas"]["AgentState"][];
+        };
+        /**
+         * AppendTurnAction
+         * @description Action variant for `notebook_ops="append_log"` (not in spec §7, a declared rules variant).
+         *
+         *     The notebook is a rolling log: the engine adds the note on a new line and drops the oldest
+         *     lines when the cap would be exceeded, so agents never compute offsets, revisions or compactions.
+         *     Blank text or "null" counts as no note.
+         */
+        AppendTurnAction: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            schema_version: "1.2";
+            /** Tick */
+            tick: number;
+            /**
+             * Move
+             * @enum {string}
+             */
+            move: "N" | "E" | "S" | "W" | "STAY";
+            /** Notebook Append */
+            notebook_append: string | null;
+            /** Radio */
+            radio: string | null;
         };
         /** BaselineAgentConfig */
         BaselineAgentConfig: {
@@ -579,12 +618,28 @@ export interface components {
             code: string | null;
         };
         /**
+         * Coordinates
+         * @description Variant `coordinates_enabled`: exact [x, y] relative to the agent's own start, x east, y north.
+         */
+        Coordinates: {
+            /** Position */
+            position: [
+                number,
+                number
+            ];
+            /** Trail */
+            trail: [
+                number,
+                number
+            ][];
+        };
+        /**
          * DecisionAttempt
          * @description A policy's answer: an action, or the reason it has none, plus provider metadata.
          */
         DecisionAttempt: {
             /** Action */
-            action: (components["schemas"]["TurnAction"] | components["schemas"]["SimpleTurnAction"]) | null;
+            action: (components["schemas"]["TurnAction"] | components["schemas"]["AppendTurnAction"]) | null;
             /** Failure */
             failure: ("timeout" | "provider_error" | "refusal" | "invalid_action" | "stale_tick" | "stay_disabled") | null;
             /** Request Text */
@@ -615,7 +670,7 @@ export interface components {
              */
             agent_id: "A" | "B" | "C";
             /** Action */
-            action: (components["schemas"]["TurnAction"] | components["schemas"]["SimpleTurnAction"]) | null;
+            action: (components["schemas"]["TurnAction"] | components["schemas"]["AppendTurnAction"]) | null;
             receipt: components["schemas"]["ActionReceipt"];
             /** Invocation Id */
             invocation_id: string | null;
@@ -992,6 +1047,11 @@ export interface components {
             /** New Revision */
             new_revision: number;
             splice: components["schemas"]["NotebookEdit"];
+            /**
+             * Dropped Codepoints
+             * @default 0
+             */
+            dropped_codepoints: number;
             /** Text */
             text: string;
             /** Sha256 */
@@ -1017,9 +1077,9 @@ export interface components {
             has_reached_exit: boolean;
             local: components["schemas"]["LocalCell"];
             /** Exit Distance Tenths */
-            exit_distance_tenths: number;
+            exit_distance_tenths?: number | null;
             /** Peer Ranges */
-            peer_ranges: components["schemas"]["PeerRange"][];
+            peer_ranges?: components["schemas"]["PeerRange"][] | null;
             last_action: components["schemas"]["ActionReceipt"];
             notebook: components["schemas"]["Notebook"];
             /** Radio Inbox */
@@ -1027,6 +1087,7 @@ export interface components {
             /** Colocated Notebooks */
             colocated_notebooks: components["schemas"]["Notebook"][];
             budgets: components["schemas"]["Budgets"];
+            coordinates?: components["schemas"]["Coordinates"] | null;
         };
         /** ObservationResponse */
         ObservationResponse: {
@@ -1238,13 +1299,18 @@ export interface components {
              * @default splice
              * @enum {string}
              */
-            notebook_ops: "splice" | "append_rewrite";
+            notebook_ops: "splice" | "append_log";
+            /**
+             * Coordinates Enabled
+             * @default false
+             */
+            coordinates_enabled: boolean;
             /**
              * Distance Sensors
              * @default exit_and_peers
-             * @constant
+             * @enum {string}
              */
-            distance_sensors: "exit_and_peers";
+            distance_sensors: "exit_and_peers" | "none";
             /**
              * Distance Quantization
              * @default tenths
@@ -1318,6 +1384,7 @@ export interface components {
              *       "radio_cooldown_ticks": 5,
              *       "meeting_notebooks_enabled": true,
              *       "notebook_ops": "splice",
+             *       "coordinates_enabled": false,
              *       "distance_sensors": "exit_and_peers",
              *       "distance_quantization": "tenths"
              *     }
@@ -1498,33 +1565,6 @@ export interface components {
             top_p?: number | null;
             /** Seed */
             seed?: number | null;
-        };
-        /**
-         * SimpleTurnAction
-         * @description Action variant for `notebook_ops="append_rewrite"` (not in spec §7, a declared rules variant).
-         *
-         *     The engine places the text itself, so agents never compute offsets or revisions.
-         *     Setting both notebook fields rejects the notebook component.
-         */
-        SimpleTurnAction: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            schema_version: "1.1";
-            /** Tick */
-            tick: number;
-            /**
-             * Move
-             * @enum {string}
-             */
-            move: "N" | "E" | "S" | "W" | "STAY";
-            /** Notebook Append */
-            notebook_append: string | null;
-            /** Notebook Rewrite */
-            notebook_rewrite: string | null;
-            /** Radio */
-            radio: string | null;
         };
         /** StateResponse */
         StateResponse: {
