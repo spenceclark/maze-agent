@@ -19,17 +19,15 @@ def requested_edit(
     so the usual budget and cap checks in `apply_splice` still apply."""
     if isinstance(action, TurnAction):
         return action.notebook_edit
-    if action.notebook_append is not None and action.notebook_rewrite is not None:
+    # An empty string means "no change": smaller models often send "" where they mean null.
+    append, rewrite = action.notebook_append or None, action.notebook_rewrite or None
+    if append is not None and rewrite is not None:
         return "conflicting_notebook_ops"
     end = notebook.codepoints
-    if action.notebook_append is not None:
-        return NotebookEdit(
-            expected_revision=notebook.revision, start=end, end=end, text=action.notebook_append
-        )
-    if action.notebook_rewrite is not None:
-        return NotebookEdit(
-            expected_revision=notebook.revision, start=0, end=end, text=action.notebook_rewrite
-        )
+    if append is not None:
+        return NotebookEdit(expected_revision=notebook.revision, start=end, end=end, text=append)
+    if rewrite is not None:
+        return NotebookEdit(expected_revision=notebook.revision, start=0, end=end, text=rewrite)
     return None
 
 

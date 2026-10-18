@@ -95,9 +95,9 @@ _NOTEBOOK_BULLETS = {
     "append_rewrite": (
         "- notebook_append (or null): text added to the end of your notebook.\n"
         "- notebook_rewrite (or null): text that replaces your whole notebook, for tidying or compacting it. "
-        "Use at most one of the two per turn. The text you send may be at most {insert} UTF-8 bytes per "
-        "turn and the whole notebook at most {cap} bytes; anything over is rejected whole, and nothing is "
-        "truncated for you."
+        "Use at most one of the two per turn; null or an empty string means no change. The text you send "
+        "may be at most {insert} UTF-8 bytes per turn and the whole notebook at most {cap} bytes; anything "
+        "over is rejected whole, and nothing is truncated for you."
     ),
 }
 _SCHEMA_VERSIONS = {"splice": "1.0", "append_rewrite": "1.1"}

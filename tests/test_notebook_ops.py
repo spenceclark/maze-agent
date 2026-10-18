@@ -110,3 +110,12 @@ def test_recorded_splice_decisions_still_load():
         )
     )
     assert isinstance(old.action, TurnAction)
+
+
+def test_empty_strings_mean_no_change():
+    s = play(initial_state(MAZE), A=simple(1, append="keep me"))
+    s = play(s, A=simple(2, append="", rewrite=""))  # what Qwen sends for "nothing"
+    assert s.agent("A").notebook == Notebook.of("A", 1, "keep me")
+    assert s.agent("A").last_receipt.notebook.status == "not_requested"
+    s = play(s, A=simple(3, append="", rewrite="fresh"))
+    assert s.agent("A").notebook.text == "fresh"
