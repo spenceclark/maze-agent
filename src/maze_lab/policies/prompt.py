@@ -47,6 +47,14 @@ PROMPT_MEMORY_NOTES["maze_agent_v6"] = PROMPT_MEMORY_NOTES["maze_agent_v4"] + (
 PROMPT_MEMORY_NOTES["maze_agent_v7"] = PROMPT_MEMORY_NOTES["maze_agent_v4"] + (
     " The exit you arrived through counts as tried as well: you already know where it leads."
 )
+# v8 = v7 plus going back to help: agents that reached the exit camped on it as a "beacon", which helps
+# nobody when the goal only needs each agent to visit once.
+PROMPT_MEMORY_NOTES["maze_agent_v8"] = PROMPT_MEMORY_NOTES["maze_agent_v7"] + (
+    " Once you have reached the exit, standing on it helps nobody: the others cannot see you there, and"
+    " the goal only needs each agent to visit it once. Instead, head back along your known route to find a"
+    " teammate. When you meet on a cell or both stand on the same landmark, compare positions to work out"
+    " the offset between your frames, then give them the route to the exit in their own frame."
+)
 _LANDMARK_NOTE = (
     '\n- Some cells carry a landmark: local.landmarks lists the label (for example "clock") of any'
     " landmark on your cell. Each label is unique and fixed to one cell, and you see it only while"

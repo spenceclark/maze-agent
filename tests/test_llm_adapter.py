@@ -305,3 +305,13 @@ def test_v7_counts_the_arrival_exit_as_tried_on_top_of_v4():
         )
         == v4
     )
+
+
+def test_v8_sends_exit_finders_back_to_help_on_top_of_v7():
+    v7 = system_instruction(AGENT_RULES, "A", "maze_agent_v7")
+    v8 = system_instruction(AGENT_RULES, "A", "maze_agent_v8")
+    assert (
+        v8.startswith(v7[: v7.index("The exit you arrived through")])
+        and "head back along your known route" in v8
+    )
+    assert "head back" not in v7
