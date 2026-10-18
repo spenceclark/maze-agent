@@ -29,6 +29,7 @@ Batches use 3 seeds, so intervals are wide.
 | 17 | Agents who reach the exit camp on it as a "beacon" and help nobody. Agents swap landmark coordinates but never do the subtraction | Prompt v8 = v7 plus "once you have reached the exit, standing on it helps nobody… head back along your known route to find a teammate… compare positions… give them the route in their own frame" (Haiku, no distances, coordinates; one game) | **A left the exit** (STAYs 42 against 75). **The first explicit landmark calibration:** at t51 B worked out "B = C + (0,4)" (correct) and converted C's landmarks into its own frame. Coverage 0.62, the best Haiku game | A walked out, then waited at its own start (unknown to anyone else) for the last 37 turns, radioing the same route 13 times. It never went to a landmark, so nobody could convert A's exit into their frame. Still only A exits |
 | 18 | The exit-finder never gives others a reference they can use | Prompt v9 = v8 plus "give positions relative to a landmark… if you know where the exit is, visiting a landmark… is one of the most useful things you can do" (Haiku, no distances; one game) | **The searchers adopted it:** C asked A for "your exit position relative to the piano", B for A's position "relative to the statue" | **The exit-finder didn't.** A went straight back to its own start and waited there for 69 turns "as rendezvous". It described the exit relative to its start ("2 west and 1 north of A's start"), a place only A can find, and never visited a landmark. Coverage fell to 0.44 (0.62 with v8). Still only A exits |
 | 19 | The exit-finder anchors on its own start | Prompt v10 = v9 plus "Your own start is not a landmark: only you know where it is… Go to a real landmark and describe the exit from that" (Haiku, no distances; one game) | **A stopped camping (2 STAYs in 80 turns) and went landmark-hunting.** It visited picture, key, drum and kettle, and radioed the exit relative to each: "10 west and 3 south of the key", "8 south of the kettle". All exact. Coverage 0.81, the best of any Haiku game. C did the conversion ("A's exit = key A[8,4] + (-10,-3)") | **The landmark sets never overlapped.** A found 4 landmarks in its half of the maze; B and C found the other 4 in theirs. A frame-free description only helps someone who has found that landmark. Still only A exits; C ended 28 moves away |
+| 20 | Does the v8–v10 helper prompting do anything for Qwen? | Qwen, v10, coordinates, no distances, 80 turns (one game, through Vessel) | Nothing measurable: coverage 0.25 (0.24 with v7), 36 distinct cells | **Worse on the basics:** 39.7% wall moves, and A, five moves from the exit at spawn, never reached it. **21 of 28 radio messages were the string "null".** Only 2 landmarks found; no landmark-relative positions, no frames named |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -1305,6 +1306,22 @@ The last link is luck about which landmarks two agents share. Possible levers:
 - more landmarks;
 - telling helpers to head for landmarks a teammate has reported;
 - a longer horizon, so the two sets eventually overlap.
+
+**v10 on Qwen (`391fd4168a78`), against v7 with the same settings (`f5313c5666ee`):**
+
+| Qwen, coordinates, no distances | Exits | Coverage | Distinct cells | Wall moves | Landmarks found | Radio messages that were "null" |
+| --- | --- | --- | --- | --- | --- | --- |
+| v7 (`f5313c5666ee`) | none (A ended 2 away) | 0.24 | 35 | 33.6% | 4 | — |
+| **v10** (`391fd4168a78`) | none (A ended 15 away) | 0.25 | 36 | **39.7%** | 2 | **21 of 28** |
+
+- **The helper prompts don't reach Qwen.** They all assume the agent has found the exit. Qwen's A, five
+  moves from it at spawn, never got there, so none of v8–v10 applied.
+- **Radio was mostly noise.** It used landmarks only in its own frame: "A found 'picture' at [3,0]" and
+  "Ladder at [-1,3]", with no frame named.
+- **The "null" radio quirk took over the channel.** 21 of 28 broadcasts were the literal string "null",
+  which the engine accepts as a message and delivers to both teammates. The rolling log already treats
+  "null" as no note. Radio could do the same.
+
 
 
 
