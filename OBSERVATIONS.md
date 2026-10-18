@@ -20,6 +20,7 @@ Batches use 3 seeds, so intervals are wide.
 | 8 | Does a cheap reasoning model already have Sonnet's habits? | DeepSeek v4.1 Flash via OpenRouter, plain v4 + landmarks, 8k cap (3 runs) | **Unprompted, every agent kept coordinates and estimated the exit's position,** and shared routes from landmarks about as often as Sonnet. Cost $0.30 per run | At a 60 s window, ~25% of turns were lost to timeouts and truncations (0 of 3). **With a 600 s window: no timeouts, 1 of 3 teams succeeded (t53, the fastest finish of any model)**, 1.67 agents exited. Still ~13% of turns lost to truncation at 8k. $0.38 per run |
 | 9 | How does a strong local model do? | Qwen3.5-9B (Unsloth IQ4) on Ollama, reasoning off, 8k context, v4 + landmarks (3 runs; meeting notebooks off to fit 8k) | Ran reliably: 4 failed decisions in 720, about 25 s per decision with 9 requests queued on one GPU, $0 **33% of decisions walked into a visible wall** (other models ≤0.3%); no agent reached the exit. Follow-ups: queuing ruled out, and the restate-edges prompt (v6) didn't help. Output field order is untested: Ollama emits keys alphabetically, so `move` always comes first. With reasoning on, wall moves vanished, but half the decisions never finished (see below) |
 | 10 | Qwen's splices missed: 30 of 240 notebook edits rejected for a stale revision or a bad offset, leaving notes out of order | `notebook_ops: append_rewrite`: append or rewrite fields, and the engine places the text (single games, same seed) | No more offset or revision errors. After hardening (plain-text notebooks, `"null"` counts as no change), no notebook wipes | **Qwen filled both fields in 20 of 240 decisions despite the rule, so 21 of 22 rewrites were cancelled.** Notebooks filled to the cap by t34–49 and the final 84 appends were rejected. **Then a rolling log (`append_log`, one field): 206 of 240 notes accepted, 12 rejections, no wipes; the oldest lines rolled off from t30–54.** Wall hits 23%, no exits, coverage 0.24 (splice 25%, A exited, 0.26). The bookkeeping is fixed; navigation isn't. Single games, not a controlled comparison |
+| 11 | Qwen walks into walls ~25% of the time, much of it sampling noise | Temperature 0.2, reasoning still off (replay of 100 recorded decisions, then one full rolling-log game) | In replay, wall moves fell from 24% to 9% | **In a real game they rose to 56%.** With little randomness the agent copies its last note and repeats the same blocked move: C walked W into a wall it had written down 71 turns in a row, B 35. Exploration collapsed (coverage 0.17, team distinct cells 24 against 35). Default temperature was what broke these loops |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -947,6 +948,29 @@ called closed.
 - **Costs seen so far.** Unparseable replies rose slightly at low temperature (2–4 in 60, against 1); I didn't
   inspect them. Single replayed decisions can't show whether near-greedy play makes back-and-forth loops
   worse. That needs a full game.
+
+**Full game at temperature 0.2 (`211579962f41`, rolling log, same seed) against default temperature (`bed2ae3c16c5`).**
+
+| Game | Moves into walls | Longest run of the same blocked move | Team distinct cells | Coverage | Reversals (A→B→A) | Exits |
+| --- | --- | --- | --- | --- | --- | --- |
+| Default temperature | 23.0% | 6 or fewer | 35 | 0.24 | 51 | none |
+| **0.2** | **56.3%** | **C 71, B 35, A 6** | **24** | **0.17** | 36 | A at t74 |
+
+- **Low temperature locks agents into loops.** C reached a statue cell at t9, then sent `move: W` into the west
+  wall for all 71 remaining turns. Every note read "N=open, E=open, S=wall, W=wall… Path continue…", correct
+  about the wall and still the wrong move. B did the same for 35 turns.
+- **A self-reinforcing loop.** The prompt hardly changes between turns: the same cell, a near-identical new
+  line in the notebook, the same peer ranges. So the same reply comes back. Each repeat adds another
+  identical line, which makes the next repeat even more likely. Notes also kept saying "Arrived W from E" after
+  blocked moves, copying the template rather than `last_action`.
+- **The replay missed this.** Single decisions replayed from real game states improved threefold, but a game
+  feeds each output back into the next prompt. Default temperature's randomness was what broke these
+  repeats. Reversals fell (51 → 36) only because two agents stopped moving at all.
+- **Takeaway:** temperature isn't a free fix for a small model with reasoning off. Options:
+  - an engine-side nudge, such as "your last N moves were blocked" in the observation;
+  - a moderate temperature;
+  - a structure that makes the model look at `last_action` before `move`.
+
 
 ## Qwen3.5-9B: append/rewrite instead of splices (single games via Vessel)
 Splices need exact code-point offsets and the current revision. Qwen got these wrong often, and the rejected
