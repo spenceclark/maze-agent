@@ -17,7 +17,7 @@ Batches use 3 seeds, so intervals are wide.
 | 6 | All of the above | **Swap model:** Sonnet 5.5 with no prompt changes (1 single run, then a 6-run batch) | Teams met the objective in **3 of 6** batch runs, against 0 of 12 for Haiku. 85% of agents reached the exit, against 36%. Far fewer back-and-forth moves (1.8 vs 4.3 per agent) and no waiting | Cost ~16–20×. **Landmarks didn't matter for Sonnet** (2 of 3 succeeded without them, 1 of 3 with). The model, not the scaffolding, made the difference |
 | 7a | Can context alone push Haiku into Sonnet's habits? | Prompt v5: spell out coordinates, exit estimation and landmark-anchored routes | **Adopted in form by 100% of agents** (0% before); 83% estimated the exit's position | **Progress got worse (−0.10).** The coordinates drifted (only 28% of noted positions correct), and agents then distrusted their own maps |
 | 7b | Is it a matter of reasoning budget? | Higher thinking effort (`effort: high`), with v4 and with v5 | Haiku's first team successes: 2 of 12 runs, both on the easiest seed. +0.5 agents reaching the exit per run. With v5, coordinates were more accurate (42%) | The extra thinking overflowed the 2,048-token cap: 34 and 74 cut-off decisions became forced STAYs. Cost +40–57% |
-| 8 | Does a cheap reasoning model already have Sonnet's habits? | DeepSeek v4.1 Flash via OpenRouter, plain v4 + landmarks, 8k cap (3 runs) | **Unprompted, every agent kept coordinates and estimated the exit's position,** and shared routes from landmarks about as often as Sonnet. Cost $0.30 per run | **Too slow for the 60 s window:** ~25% of turns lost to timeouts and truncations. 0 of 3 teams succeeded; outcomes at Haiku level. Needs a longer window to judge fairly |
+| 8 | Does a cheap reasoning model already have Sonnet's habits? | DeepSeek v4.1 Flash via OpenRouter, plain v4 + landmarks, 8k cap (3 runs) | **Unprompted, every agent kept coordinates and estimated the exit's position,** and shared routes from landmarks about as often as Sonnet. Cost $0.30 per run | At a 60 s window, ~25% of turns were lost to timeouts and truncations (0 of 3). **With a 600 s window: no timeouts, 1 of 3 teams succeeded (t53, the fastest finish of any model)**, 1.67 agents exited. Still ~13% of turns lost to truncation at 8k. $0.38 per run |
 | 9 | How does a strong local model do? | Qwen3.5-9B (Unsloth IQ4) on Ollama, reasoning off, 8k context, v4 + landmarks (3 runs; meeting notebooks off to fit 8k) | Ran reliably: 4 failed decisions in 720, about 25 s per decision with 9 requests queued on one GPU, $0 | **Couldn't read its own observation.** 33% of decisions walked into a visible wall (other models ≤0.3%), and edges were miscopied into notes. No agent reached the exit; progress 0.29 |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
@@ -777,6 +777,29 @@ reasoning tokens. Automatic prefix caching worked through OpenRouter (cache read
 **Next, for a fair comparison:** rerun at 8k with a much longer barrier ceiling, say 180–300 s, so slow
 reasoning isn't scored as forfeits. This costs nothing extra in tokens but takes much longer: probably 1–2 hours
 for 3 runs. The same applies to local models, whose throughput will also decide how many turns they lose.
+
+## DeepSeek v4.1 Flash rerun with a 600 s decision window (`experiments/landmarks_v4_deepseek_8k_w600.json`)
+Identical to the 8k DeepSeek batch except the barrier ceiling: 600 s instead of 60 s. Barrier timing waits
+only as long as the slowest agent needs, so the bigger window costs nothing unless a decision is slow. Full
+table: `reports/landmarks_v4_deepseek_8k_w600.md`.
+
+| DeepSeek v4.1 Flash, 8k cap | Team success | Agents exited | Progress | Turns lost | Latency p50 / p90 / max | Wall time per game | Cost per run |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 60 s window | 0 / 3 | 1.33 | 0.68 | 182 of 720 (137 timeouts, 43 truncated, 2 schema) | 16 / 50 / 60 s (capped) | 59 min | $0.30 |
+| **600 s window** | **1 / 3** (seed 102, **t53**) | 1.67 | 0.74 | 96 of 639 (0 timeouts, 90 truncated, 6 schema) | 10 / 40 / 86 s | 33 min | $0.38 |
+
+- **The window was the main handicap.** With no timeouts, DeepSeek met the team objective on seed 102 at t53.
+  That beats Sonnet's best (t68), on the easiest of the three mazes. Its slowest decision took 86 s, so the
+  60 s window had been cutting off its longest thinking.
+- **Timeouts made the games slower, not faster.** Games ended up quicker in wall time (33 vs 59 min per game),
+  because under the 60 s window every timed-out tick waited the full 60 s.
+- **The 8k cap still bites.** 90 decisions (14%) hit 8,192 output tokens, and each cut-off answer is billed in
+  full. A 16k cap would probably remove most of these, at a little more cost per long decision.
+- **The habits held.** Again unprompted, all 9 agents kept coordinates and estimated the exit's position, and
+  shared landmark routes 0.8 times per agent.
+- **The picture so far, n = 3:** with enough time to think, a cheap open-weight reasoning model ($0.38 per run)
+  lands between Haiku and Sonnet. Sonnet costs ~4× more per run and still does better on average (2.33 agents
+  exited against 1.67).
 
 ## Local: Qwen3.5-9B (Unsloth IQ4) on Ollama, 3 runs (`experiments/landmarks_v4_qwen35_9b.json`)
 Same cells as the Haiku, Sonnet and DeepSeek landmark runs: v4 + 10 landmarks, 12×12, 80 ticks, seeds 202611017,
