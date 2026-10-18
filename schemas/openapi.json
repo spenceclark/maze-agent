@@ -1609,6 +1609,15 @@
             "type": "boolean",
             "title": "Landmarks Enabled",
             "default": false
+          },
+          "notebook_ops": {
+            "type": "string",
+            "enum": [
+              "splice",
+              "append_rewrite"
+            ],
+            "title": "Notebook Ops",
+            "default": "splice"
           }
         },
         "additionalProperties": false,
@@ -1993,12 +2002,27 @@
           "action": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/TurnAction"
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/TurnAction"
+                  },
+                  {
+                    "$ref": "#/components/schemas/SimpleTurnAction"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "schema_version",
+                  "mapping": {
+                    "1.0": "#/components/schemas/TurnAction",
+                    "1.1": "#/components/schemas/SimpleTurnAction"
+                  }
+                }
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "title": "Action"
           },
           "failure": {
             "anyOf": [
@@ -2099,12 +2123,27 @@
           "action": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/TurnAction"
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/TurnAction"
+                  },
+                  {
+                    "$ref": "#/components/schemas/SimpleTurnAction"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "schema_version",
+                  "mapping": {
+                    "1.0": "#/components/schemas/TurnAction",
+                    "1.1": "#/components/schemas/SimpleTurnAction"
+                  }
+                }
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "title": "Action"
           },
           "receipt": {
             "$ref": "#/components/schemas/ActionReceipt"
@@ -3704,6 +3743,15 @@
             "title": "Meeting Notebooks Enabled",
             "default": true
           },
+          "notebook_ops": {
+            "type": "string",
+            "enum": [
+              "splice",
+              "append_rewrite"
+            ],
+            "title": "Notebook Ops",
+            "default": "splice"
+          },
           "distance_sensors": {
             "type": "string",
             "const": "exit_and_peers",
@@ -3850,6 +3898,7 @@
               "radio_message_bytes": 280,
               "radio_cooldown_ticks": 5,
               "meeting_notebooks_enabled": true,
+              "notebook_ops": "splice",
               "distance_sensors": "exit_and_peers",
               "distance_quantization": "tenths"
             }
@@ -4325,6 +4374,76 @@
         "additionalProperties": false,
         "type": "object",
         "title": "Sampling"
+      },
+      "SimpleTurnAction": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "1.1",
+            "title": "Schema Version"
+          },
+          "tick": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Tick"
+          },
+          "move": {
+            "type": "string",
+            "enum": [
+              "N",
+              "E",
+              "S",
+              "W",
+              "STAY"
+            ],
+            "title": "Move"
+          },
+          "notebook_append": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notebook Append"
+          },
+          "notebook_rewrite": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notebook Rewrite"
+          },
+          "radio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Radio"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema_version",
+          "tick",
+          "move",
+          "notebook_append",
+          "notebook_rewrite",
+          "radio"
+        ],
+        "title": "SimpleTurnAction",
+        "description": "Action variant for `notebook_ops=\"append_rewrite\"` (not in spec \u00a77, a declared rules variant).\n\nThe engine places the text itself, so agents never compute offsets or revisions.\nSetting both notebook fields rejects the notebook component."
       },
       "StateResponse": {
         "properties": {

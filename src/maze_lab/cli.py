@@ -58,7 +58,7 @@ async def _drive(store: RunStore, run_id: str) -> None:
 
 def _write_schemas(out: Path) -> None:
     """Published contracts: the API (OpenAPI) and what agents see and emit (JSON Schema)."""
-    from maze_lab.agent_contracts import AgentRules, Observation, TurnAction
+    from maze_lab.agent_contracts import AgentRules, Observation, SimpleTurnAction, TurnAction
     from maze_lab.api.app import create_app
 
     out.mkdir(parents=True, exist_ok=True)
@@ -66,6 +66,7 @@ def _write_schemas(out: Path) -> None:
         "openapi.json": create_app(":memory:").openapi(),
         "observation.schema.json": Observation.model_json_schema(),
         "turn_action.schema.json": TurnAction.model_json_schema(),
+        "simple_turn_action.schema.json": SimpleTurnAction.model_json_schema(),
         "agent_rules.schema.json": AgentRules.model_json_schema(),
         "run_config.schema.json": RunConfig.model_json_schema(),
     }

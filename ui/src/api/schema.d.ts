@@ -435,6 +435,12 @@ export interface components {
              * @default false
              */
             landmarks_enabled: boolean;
+            /**
+             * Notebook Ops
+             * @default splice
+             * @enum {string}
+             */
+            notebook_ops: "splice" | "append_rewrite";
         };
         /** AgentState */
         AgentState: {
@@ -577,7 +583,8 @@ export interface components {
          * @description A policy's answer: an action, or the reason it has none, plus provider metadata.
          */
         DecisionAttempt: {
-            action: components["schemas"]["TurnAction"] | null;
+            /** Action */
+            action: (components["schemas"]["TurnAction"] | components["schemas"]["SimpleTurnAction"]) | null;
             /** Failure */
             failure: ("timeout" | "provider_error" | "refusal" | "invalid_action" | "stale_tick" | "stay_disabled") | null;
             /** Request Text */
@@ -607,7 +614,8 @@ export interface components {
              * @enum {string}
              */
             agent_id: "A" | "B" | "C";
-            action: components["schemas"]["TurnAction"] | null;
+            /** Action */
+            action: (components["schemas"]["TurnAction"] | components["schemas"]["SimpleTurnAction"]) | null;
             receipt: components["schemas"]["ActionReceipt"];
             /** Invocation Id */
             invocation_id: string | null;
@@ -745,7 +753,7 @@ export interface components {
              * Provider
              * @enum {string}
              */
-            provider: "anthropic" | "openai" | "ollama";
+            provider: "anthropic" | "openai" | "ollama" | "openrouter";
             /** Model */
             model: string;
             /** Base Url */
@@ -772,6 +780,8 @@ export interface components {
              * @default 2048
              */
             max_output_tokens: number;
+            /** Effort */
+            effort?: ("none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max") | null;
         };
         /** LocalCell */
         LocalCell: {
@@ -1224,6 +1234,12 @@ export interface components {
              */
             meeting_notebooks_enabled: boolean;
             /**
+             * Notebook Ops
+             * @default splice
+             * @enum {string}
+             */
+            notebook_ops: "splice" | "append_rewrite";
+            /**
              * Distance Sensors
              * @default exit_and_peers
              * @constant
@@ -1301,6 +1317,7 @@ export interface components {
              *       "radio_message_bytes": 280,
              *       "radio_cooldown_ticks": 5,
              *       "meeting_notebooks_enabled": true,
+             *       "notebook_ops": "splice",
              *       "distance_sensors": "exit_and_peers",
              *       "distance_quantization": "tenths"
              *     }
@@ -1482,6 +1499,33 @@ export interface components {
             /** Seed */
             seed?: number | null;
         };
+        /**
+         * SimpleTurnAction
+         * @description Action variant for `notebook_ops="append_rewrite"` (not in spec §7, a declared rules variant).
+         *
+         *     The engine places the text itself, so agents never compute offsets or revisions.
+         *     Setting both notebook fields rejects the notebook component.
+         */
+        SimpleTurnAction: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            schema_version: "1.1";
+            /** Tick */
+            tick: number;
+            /**
+             * Move
+             * @enum {string}
+             */
+            move: "N" | "E" | "S" | "W" | "STAY";
+            /** Notebook Append */
+            notebook_append: string | null;
+            /** Notebook Rewrite */
+            notebook_rewrite: string | null;
+            /** Radio */
+            radio: string | null;
+        };
         /** StateResponse */
         StateResponse: {
             /** Run Id */
@@ -1548,8 +1592,8 @@ export interface components {
         /** TurnAction */
         TurnAction: {
             /**
-             * Schema Version
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
             schema_version: "1.0";
             /** Tick */

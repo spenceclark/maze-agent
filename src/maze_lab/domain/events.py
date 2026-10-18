@@ -8,14 +8,14 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-from maze_lab.agent_contracts import ActionReceipt, AgentId, Contract, NotebookEdit, TurnAction
+from maze_lab.agent_contracts import ActionReceipt, AgentId, AnyTurnAction, Contract, NotebookEdit
 from maze_lab.domain.geometry import Position
 
 
 class DecisionResolved(Contract):
     type: Literal["agent.decision_resolved"] = "agent.decision_resolved"
     agent_id: AgentId
-    action: TurnAction | None  # None when the decision itself failed
+    action: AnyTurnAction | None  # None when the decision itself failed
     receipt: ActionReceipt
     invocation_id: str | None
 

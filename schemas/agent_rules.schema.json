@@ -79,6 +79,15 @@
       "default": false,
       "title": "Landmarks Enabled",
       "type": "boolean"
+    },
+    "notebook_ops": {
+      "default": "splice",
+      "enum": [
+        "splice",
+        "append_rewrite"
+      ],
+      "title": "Notebook Ops",
+      "type": "string"
     }
   },
   "required": [

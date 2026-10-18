@@ -9,6 +9,7 @@ from maze_lab.agent_contracts import (
     InvalidActionError,
     MovementReceipt,
     Notebook,
+    TurnAction,
     parse_turn_action,
 )
 from maze_lab.config import RunConfig
@@ -24,7 +25,7 @@ VALID = {
 
 def test_spec_example_action_parses():
     action = parse_turn_action(json.dumps(VALID))
-    assert action.move == "E" and action.notebook_edit is not None
+    assert isinstance(action, TurnAction) and action.move == "E" and action.notebook_edit is not None
 
 
 @pytest.mark.parametrize(
@@ -133,6 +134,9 @@ def test_spec_run_creation_example_validates():
         assert agent.pop("sampling") == {"temperature": None, "top_p": None, "seed": None}
     for agent in example["agents"]:
         agent.pop("sampling")
+    assert (
+        dumped["rules"].pop("notebook_ops") == "splice"
+    )  # later rules variant, resolved to the spec's splice
     assert dumped == example  # every default resolved explicitly
 
 

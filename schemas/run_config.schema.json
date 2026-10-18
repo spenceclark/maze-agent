@@ -316,6 +316,15 @@
           "title": "Meeting Notebooks Enabled",
           "type": "boolean"
         },
+        "notebook_ops": {
+          "default": "splice",
+          "enum": [
+            "splice",
+            "append_rewrite"
+          ],
+          "title": "Notebook Ops",
+          "type": "string"
+        },
         "distance_sensors": {
           "const": "exit_and_peers",
           "default": "exit_and_peers",
@@ -465,6 +474,7 @@
         "radio_message_bytes": 280,
         "radio_cooldown_ticks": 5,
         "meeting_notebooks_enabled": true,
+        "notebook_ops": "splice",
         "distance_sensors": "exit_and_peers",
         "distance_quantization": "tenths"
       }

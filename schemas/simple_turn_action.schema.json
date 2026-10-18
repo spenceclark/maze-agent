@@ -1,0 +1,70 @@
+{
+  "additionalProperties": false,
+  "description": "Action variant for `notebook_ops=\"append_rewrite\"` (not in spec \u00a77, a declared rules variant).\n\nThe engine places the text itself, so agents never compute offsets or revisions.\nSetting both notebook fields rejects the notebook component.",
+  "properties": {
+    "schema_version": {
+      "const": "1.1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "tick": {
+      "minimum": 1,
+      "title": "Tick",
+      "type": "integer"
+    },
+    "move": {
+      "enum": [
+        "N",
+        "E",
+        "S",
+        "W",
+        "STAY"
+      ],
+      "title": "Move",
+      "type": "string"
+    },
+    "notebook_append": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Notebook Append"
+    },
+    "notebook_rewrite": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Notebook Rewrite"
+    },
+    "radio": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Radio"
+    }
+  },
+  "required": [
+    "schema_version",
+    "tick",
+    "move",
+    "notebook_append",
+    "notebook_rewrite",
+    "radio"
+  ],
+  "title": "SimpleTurnAction",
+  "type": "object"
+}

@@ -1,6 +1,36 @@
 """Notebook splice rules (spec §5.4)."""
 
-from maze_lab.agent_contracts import Notebook, NotebookEdit, NotebookRejection, utf8_len
+from typing import Literal
+
+from maze_lab.agent_contracts import (
+    Notebook,
+    NotebookEdit,
+    NotebookRejection,
+    SimpleTurnAction,
+    TurnAction,
+    utf8_len,
+)
+
+
+def requested_edit(
+    action: TurnAction | SimpleTurnAction, notebook: Notebook
+) -> NotebookEdit | Literal["conflicting_notebook_ops"] | None:
+    """The splice an action asks for. Append and rewrite are placed against the current notebook,
+    so the usual budget and cap checks in `apply_splice` still apply."""
+    if isinstance(action, TurnAction):
+        return action.notebook_edit
+    if action.notebook_append is not None and action.notebook_rewrite is not None:
+        return "conflicting_notebook_ops"
+    end = notebook.codepoints
+    if action.notebook_append is not None:
+        return NotebookEdit(
+            expected_revision=notebook.revision, start=end, end=end, text=action.notebook_append
+        )
+    if action.notebook_rewrite is not None:
+        return NotebookEdit(
+            expected_revision=notebook.revision, start=0, end=end, text=action.notebook_rewrite
+        )
+    return None
 
 
 def apply_splice(

@@ -24,7 +24,7 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.usage import RequestUsage
 
 from maze_lab.agent_contracts import Observation
-from maze_lab.config import LlmAgentConfig, RunConfig
+from maze_lab.config import LlmAgentConfig, RulesConfig, RunConfig
 from maze_lab.domain.state import initial_state
 from maze_lab.observation import observe, public_rules
 from maze_lab.policies.base import DecisionAttempt
@@ -271,3 +271,26 @@ def test_v6_adds_the_edge_restating_check_on_top_of_v4():
     v6 = system_instruction(AGENT_RULES, "A", "maze_agent_v6")
     assert "untried exit" in v6 and "copying your cell's four edges exactly" in v6
     assert "keep your own coordinates" not in v6  # v6 builds on v4, not v5
+
+
+def test_append_rewrite_runs_request_and_parse_the_simple_action():
+    rules = public_rules(RulesConfig(notebook_ops="append_rewrite"))
+    seen: list[dict[str, object]] = []
+
+    def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        seen.append(info.output_tools[0].parameters_json_schema)
+        args = {
+            "schema_version": "1.1",
+            "tick": 1,
+            "move": "S",
+            "notebook_append": "hi",
+            "notebook_rewrite": None,
+            "radio": None,
+        }
+        return ModelResponse(parts=[ToolCallPart(tool_name=info.output_tools[0].name, args=args)])
+
+    policy = PydanticAiPolicy(llm_config(), timeout_s=5, model=FunctionModel(respond))
+    attempt = asyncio.run(policy.decide(OBS, rules))
+    assert attempt.failure is None and attempt.action is not None
+    assert "notebook_append" in json.dumps(seen[0]) and "notebook_edit" not in json.dumps(seen[0])
+    assert '"1.1"' in json.loads(attempt.request_text or "")["system"]

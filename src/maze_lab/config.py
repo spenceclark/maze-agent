@@ -5,7 +5,7 @@ from typing import Annotated, Any, Literal, Self
 
 from pydantic import Field, model_validator
 
-from maze_lab.agent_contracts import AGENT_IDS, AgentId, Contract, Objective
+from maze_lab.agent_contracts import AGENT_IDS, AgentId, Contract, NotebookOps, Objective
 
 BaselinePolicyName = Literal["random_open_v1", "wall_follower_v1", "dfs_bounded_v1"]
 LlmAdapter = Literal["pydantic_ai"]
@@ -122,6 +122,8 @@ class RulesConfig(Contract):
     radio_message_bytes: int = Field(default=280, ge=0)
     radio_cooldown_ticks: int = Field(default=5, ge=0)
     meeting_notebooks_enabled: bool = True
+    # "splice" is spec §5.4; "append_rewrite" lets agents append or replace while the engine handles offsets.
+    notebook_ops: NotebookOps = "splice"
     distance_sensors: Literal["exit_and_peers"] = "exit_and_peers"  # variants: phase 6
     distance_quantization: Literal["tenths"] = "tenths"
 

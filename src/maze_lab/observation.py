@@ -36,6 +36,7 @@ def public_rules(rules: RulesConfig, landmarks_enabled: bool = False) -> AgentRu
         checkpoint_labels=[],
         max_provider_requests_per_turn=1,
         landmarks_enabled=landmarks_enabled,
+        notebook_ops=rules.notebook_ops,
     )
 
 

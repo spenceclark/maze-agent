@@ -9,7 +9,7 @@ from typing import Protocol, Self
 
 from pydantic import Field, model_validator
 
-from maze_lab.agent_contracts import AgentRules, Contract, ForcedStayCause, Observation, TurnAction
+from maze_lab.agent_contracts import AgentRules, AnyTurnAction, Contract, ForcedStayCause, Observation
 
 
 class Usage(Contract):
@@ -25,7 +25,7 @@ class Usage(Contract):
 class DecisionAttempt(Contract):
     """A policy's answer: an action, or the reason it has none, plus provider metadata."""
 
-    action: TurnAction | None
+    action: AnyTurnAction | None
     failure: ForcedStayCause | None
     request_text: str | None = None  # exact prompt sent (LLM policies)
     response_text: str | None = None  # exact text returned (LLM policies)

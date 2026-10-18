@@ -26,10 +26,12 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.providers.openrouter import OpenRouterProvider
 
 from maze_lab.agent_contracts import (
+    ACTION_MODELS,
     AgentRules,
     ForcedStayCause,
     InvalidActionError,
     Observation,
+    SimpleTurnAction,
     TurnAction,
     parse_turn_action,
 )
@@ -63,16 +65,19 @@ def build_model(config: LlmAgentConfig) -> Model:
     return OpenAIChatModel(config.model, provider=OpenAIProvider(openai_client=client))
 
 
+type _Action = TurnAction | SimpleTurnAction
+
+
 def _output_spec(
-    config: LlmAgentConfig,
-) -> ToolOutput[TurnAction] | NativeOutput[TurnAction] | PromptedOutput[TurnAction]:
+    config: LlmAgentConfig, model: type[_Action]
+) -> ToolOutput[_Action] | NativeOutput[_Action] | PromptedOutput[_Action]:
     match config.output_mode:
         case "tool":
-            return ToolOutput(TurnAction, name="submit_action")
+            return ToolOutput(model, name="submit_action")
         case "native":
-            return NativeOutput(TurnAction)
+            return NativeOutput(model)
         case "prompted":
-            return PromptedOutput(TurnAction)
+            return PromptedOutput(model)
 
 
 def _raw_output(response: ModelResponse | None) -> str | None:
@@ -129,7 +134,6 @@ class PydanticAiPolicy:
         self.config = config
         self.prompt_version = prompt_version
         self.model = model or build_model(config)  # reusable client: allowed, holds no memory
-        self.output = _output_spec(config)
         settings: _Settings = {"max_tokens": config.max_output_tokens, "timeout": timeout_s}
         if config.sampling.temperature is not None:
             settings["temperature"] = config.sampling.temperature
@@ -149,7 +153,7 @@ class PydanticAiPolicy:
             settings["openrouter_usage"] = {"include": True}  # report the billed cost of each call
         self.settings = settings
 
-    def request_text(self, system: str, blocks: list[str]) -> str:
+    def request_text(self, system: str, blocks: list[str], action_model: type[_Action] = TurnAction) -> str:
         """Everything sent to the provider, for the invocation record."""
         return json.dumps(
             {
@@ -157,7 +161,7 @@ class PydanticAiPolicy:
                 "user_blocks": blocks,
                 "cache_breakpoint_after_block": 1,
                 "output_mode": self.config.output_mode,
-                "output_schema": TurnAction.model_json_schema(),
+                "output_schema": action_model.model_json_schema(),
                 "settings": self.settings,
             },
             ensure_ascii=False,
@@ -166,14 +170,16 @@ class PydanticAiPolicy:
     async def decide(self, observation: Observation, rules: AgentRules) -> DecisionAttempt:
         system = system_instruction(rules, observation.agent_id, self.prompt_version)
         blocks = user_blocks(observation)
-        request_text = self.request_text(system, blocks)
+        action_model = ACTION_MODELS[rules.notebook_ops]
+        request_text = self.request_text(system, blocks, action_model)
         if (too_big := check_prompt(self.config, system, blocks)) is not None:
             # Never send a prompt a provider might truncate; this is a forced no-op, not a request.
             return DecisionAttempt(
                 action=None, failure="provider_error", request_text=request_text, error_detail=too_big
             )
 
-        agent = Agent(self.model, output_type=self.output, instructions=system, retries=0)
+        output = _output_spec(self.config, action_model)
+        agent = Agent(self.model, output_type=output, instructions=system, retries=0)
         failure: ForcedStayCause | None = None
         detail: str | None = None
         messages: list[ModelMessage]
@@ -191,14 +197,14 @@ class PydanticAiPolicy:
         responses = [m for m in messages if isinstance(m, ModelResponse)]
         last = responses[-1] if responses else None
         raw = _raw_output(last)
-        action: TurnAction | None = None
+        action: _Action | None = None
         truncated = last is not None and last.finish_reason == "length"
         if truncated and failure in (None, "invalid_action"):
             # Hidden reasoning counts against max_tokens and can leave the action cut off.
             failure, detail = "invalid_action", "output truncated at max_tokens"
         elif failure is None:
             try:
-                action = parse_turn_action(raw or "")
+                action = parse_turn_action(raw or "", rules.notebook_ops)
             except InvalidActionError as e:
                 failure, detail = "invalid_action", str(e)
 

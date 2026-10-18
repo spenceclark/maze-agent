@@ -12,10 +12,10 @@ from maze_lab.agent_contracts import (
     AGENT_IDS,
     ActionReceipt,
     AgentId,
+    AnyTurnAction,
     Contract,
     Notebook,
     Observation,
-    TurnAction,
 )
 from maze_lab.domain.events import DecisionResolved, RadioSent
 from maze_lab.domain.geometry import Position, distance_tenths
@@ -43,7 +43,7 @@ class TranscriptEntry(Contract):
     tick: int  # decision tick: the observation shows state tick - 1, the outcome is state tick
     observation: Observation | None  # exactly what the agent was shown; None if not recorded
     response_text: str | None  # raw model output, before parsing
-    action: TurnAction | None  # parsed action; None when the decision failed
+    action: AnyTurnAction | None  # parsed action; None when the decision failed
     failure: str | None
     error_detail: str | None
     outcome: ActionReceipt  # what the engine did with the action

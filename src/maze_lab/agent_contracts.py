@@ -5,7 +5,7 @@ may reference world coordinates, maze metadata, or spectator data.
 """
 
 import json
-from typing import Literal, Self
+from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -28,6 +28,7 @@ NotebookRejection = Literal[
     "notebook_cap_exceeded",
     "feature_disabled",
     "action_rejected",
+    "conflicting_notebook_ops",
 ]
 RadioRejection = Literal[
     "radio_cooldown",
@@ -82,6 +83,29 @@ class TurnAction(Contract):
     move: Move
     notebook_edit: NotebookEdit | None
     radio: str | None
+
+
+class SimpleTurnAction(Contract):
+    """Action variant for `notebook_ops="append_rewrite"` (not in spec §7, a declared rules variant).
+
+    The engine places the text itself, so agents never compute offsets or revisions.
+    Setting both notebook fields rejects the notebook component.
+    """
+
+    schema_version: Literal["1.1"]
+    tick: int = Field(ge=1)
+    move: Move
+    notebook_append: str | None  # added to the end of the notebook
+    notebook_rewrite: str | None  # replaces the whole notebook
+    radio: str | None
+
+
+AnyTurnAction = Annotated[TurnAction | SimpleTurnAction, Field(discriminator="schema_version")]
+NotebookOps = Literal["splice", "append_rewrite"]
+ACTION_MODELS: dict[NotebookOps, type[TurnAction] | type[SimpleTurnAction]] = {
+    "splice": TurnAction,
+    "append_rewrite": SimpleTurnAction,
+}
 
 
 class LocalCell(Contract):
@@ -208,6 +232,7 @@ class AgentRules(Contract):
     checkpoint_labels: list[str]
     max_provider_requests_per_turn: int = Field(ge=1)
     landmarks_enabled: bool = False  # positions and labels are never public
+    notebook_ops: NotebookOps = "splice"
 
 
 class InvalidActionError(ValueError):
@@ -240,8 +265,8 @@ def _check_strings_encodable(value: object) -> None:
             _check_strings_encodable(v)
 
 
-def parse_turn_action(raw: str) -> TurnAction:
-    """Strictly parse one complete JSON object into a TurnAction (spec §7).
+def parse_turn_action(raw: str, notebook_ops: NotebookOps = "splice") -> TurnAction | SimpleTurnAction:
+    """Strictly parse one complete JSON object into the run's action model (spec §7).
 
     Rejects oversized output, duplicate keys, NaN/Infinity, lone surrogates,
     trailing prose, and extra fields. Raises InvalidActionError.
@@ -258,6 +283,6 @@ def parse_turn_action(raw: str) -> TurnAction:
         raise InvalidActionError("top-level JSON value must be an object")
     _check_strings_encodable(parsed)
     try:
-        return TurnAction.model_validate_json(raw)
+        return ACTION_MODELS[notebook_ops].model_validate_json(raw)
     except ValueError as e:
         raise InvalidActionError(str(e)) from e
