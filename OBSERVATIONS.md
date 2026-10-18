@@ -27,6 +27,7 @@ Batches use 3 seeds, so intervals are wide.
 | 15 | Our own wording hamstrung them: "trail lists where you were on each of the last 30 turns" | Prompt v7 (the exit you arrived through counts as tried), then the trail rule reworded: "ends with last turn's cell, never includes where you are now" (Haiku + coordinates, same seed) | v7 was adopted ("E open (came from)") but measured nothing new: used-exit choices were already 0%. **The wording fix removed all doubt notes (22 per game → 0)** and gave the best exploration so far: 110 distinct cells (85–92 before), coverage 0.45, back-and-forth 11 (19–22) | Still only A exits. C needs 52 moves even with a perfect map and was still finding new cells at t80. **The 80-turn horizon now binds**; the default for 12×12 is 320 |
 | 16 | Are the distance readings making them bounce? About 60% of Haiku's reversals came straight after a move that raised the exit reading | `distance_sensors: none`: no exit distance and no peer ranges, and the distance rule replaced by "you have no distance sensors" (Haiku, v7 + coordinates, same seed; one game) | **Coverage 0.53, the best Haiku game yet** (0.45 with distances), 115 distinct cells, back-and-forth about the same (14 against 11). Landmarks were mentioned far more (16 notes and 8 radio messages, against 6 and 1), because they became the only shared reference | Still only A exits, and nobody meets. Without distances, B and C can't locate the exit, so A's route home in A's frame is useless until they find a shared cell. The horizon still binds: C was finding new cells at t80 |
 | 17 | Agents who reach the exit camp on it as a "beacon" and help nobody. Agents swap landmark coordinates but never do the subtraction | Prompt v8 = v7 plus "once you have reached the exit, standing on it helps nobody… head back along your known route to find a teammate… compare positions… give them the route in their own frame" (Haiku, no distances, coordinates; one game) | **A left the exit** (STAYs 42 against 75). **The first explicit landmark calibration:** at t51 B worked out "B = C + (0,4)" (correct) and converted C's landmarks into its own frame. Coverage 0.62, the best Haiku game | A walked out, then waited at its own start (unknown to anyone else) for the last 37 turns, radioing the same route 13 times. It never went to a landmark, so nobody could convert A's exit into their frame. Still only A exits |
+| 18 | The exit-finder never gives others a reference they can use | Prompt v9 = v8 plus "give positions relative to a landmark… if you know where the exit is, visiting a landmark… is one of the most useful things you can do" (Haiku, no distances; one game) | **The searchers adopted it:** C asked A for "your exit position relative to the piano", B for A's position "relative to the statue" | **The exit-finder didn't.** A went straight back to its own start and waited there for 69 turns "as rendezvous". It described the exit relative to its start ("2 west and 1 north of A's start"), a place only A can find, and never visited a landmark. Coverage fell to 0.44 (0.62 with v8). Still only A exits |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -1242,6 +1243,31 @@ own frame."
 - **No exits:** A ended 2 moves from the exit.
 - **Conclusion:** removing distances doesn't help Qwen. Its problems are wall moves and acting against its
   own notes, not chasing a reading.
+
+**Prompt v9 (`fc710288bac3`) = v8 plus:** "When you share where something is (the exit, a dead end, an
+untried branch), give it relative to a landmark, for example 'exit is 3 east and 2 south of the piano':
+anyone who has found that landmark can use it at once, without knowing your frame. If you know where the
+exit is, visiting a landmark so you can describe the exit from it is one of the most useful things you can
+do." Every frame has the same axes, so a landmark-relative position needs no calibration.
+
+| Haiku, no distances | Exits | Coverage | Distinct cells | A's STAYs | Landmark-relative exit given |
+| --- | --- | --- | --- | --- | --- |
+| v8 (`d974c5320ad8`) | A t5 | 0.62 | 129 | ~37 waiting at its start | no |
+| **v9** (`fc710288bac3`) | A t5 | 0.44 | 110 | **69 waiting at its start** | no (only relative to "A's start") |
+
+- **The searchers asked the right question.** C at t44: "A: please give your start [0,0] relative to the
+  piano, or send your exit position relative to the piano." B at t57 asked the same of the statue. Both
+  had visited all four of the landmarks the other one knew.
+- **A treated its start as a landmark.** At t6: "It is 2 west and 1 north of A's start [0,0]". Then it
+  went back to the start ("Waiting at start as rendezvous for B and C") and stayed there to the end, even
+  writing "staying as rendezvous" at t30. At t13 it radioed "2 west and 1 south", contradicting itself.
+- **The landmark was close but never visited.** The globe sits next to the exit, and the exit is 1 west
+  and 1 north of it, but A never stepped onto it. Haiku follows the letter of "go back and help" (returning
+  to a meeting point it chose) but not its point: a reference only it can find.
+- **Single game:** v9's lower coverage is mostly B's 10-turn ping-pong, likely noise. What's consistent
+  across v8 and v9 is the exit-finder anchoring on its own start.
+- **Next nudge, if any:** say outright that your start is not a landmark, because only you can find it.
+
 
 
 
