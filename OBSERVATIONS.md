@@ -24,6 +24,7 @@ Batches use 3 seeds, so intervals are wide.
 | 12 | Did the Qwen fixes help Haiku? | Rolling-log notebook on Haiku, otherwise the same config as the earlier Haiku runs (v4 + landmarks, seed 202611017; one game against 5 earlier splice runs) | Nothing to fix: Haiku's splices were never rejected, and walls stayed near zero | **No gain, maybe worse.** Only A (5 cells from the exit) got out; B had exited in 3 of 5 splice runs. Coverage 0.35 (0.36–0.76 before), reversals 26 (4–14). It wrote a note every turn, so notebooks filled and every prompt changed at the notebook block. **Cost $0.14 against $0.07–0.09**, with cache writes tripled |
 | 13 | No shared frame, and no memory of where they've been | `coordinates_enabled`: exact [x, y] from each agent's own start plus a 30-turn trail, a rule on lining frames up via a shared landmark or cell, and a quieter rolling log (one game each, Haiku and Qwen) | **Haiku solved the 'where':** B and C each placed the exit exactly in their own frames from distance readings. B found the exact offset to A's frame by using the exit as the shared cell. Exploration rose (92 cells against 58, back-and-forth 19 against 26) and notes fell from 238 to 170 | **No one new reached the exit:** B knew the exit was at (-6,-2) but found no route to it in 80 turns. Qwen wrote 'Must break out of this loop' 59 times and kept looping; its wall hits were 37%. The bottleneck is now route-finding |
 | 14 | Why is route-finding so poor? Measured at junction revisits | Ground truth from trajectories: when back on a junction with an untried open exit, how often does the agent take one it has already used? | **Sonnet 3%, DeepSeek 27%, Haiku 40%, Qwen 58%.** In Haiku's bad choices, it wrote "Trying X (untried)" about an exit it had used | **Two bookkeeping gaps:** (1) cells have no identity, so a revisit is logged as a new cell; (2) the exit it arrived through is never marked tried. Stale duplicate lines aren't the main issue. Sonnet names cells (W1, W2…) and recognises them. Haiku with coordinates: 0 of 8 (small sample) |
+| 15 | Our own wording hamstrung them: "trail lists where you were on each of the last 30 turns" | Prompt v7 (the exit you arrived through counts as tried), then the trail rule reworded: "ends with last turn's cell, never includes where you are now" (Haiku + coordinates, same seed) | v7 was adopted ("E open (came from)") but measured nothing new: used-exit choices were already 0%. **The wording fix removed all doubt notes (22 per game → 0)** and gave the best exploration so far: 110 distinct cells (85–92 before), coverage 0.45, back-and-forth 11 (19–22) | Still only A exits. C needs 52 moves even with a perfect map and was still finding new cells at t80. **The 80-turn horizon now binds**; the default for 12×12 is 320 |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -1105,6 +1106,43 @@ used as untried. For example:
   - a rule that the exit you arrived through counts as tried;
   - an engine-kept record of the edges seen at each visited coordinate. That's a "known map", a bigger
     change to what the experiment measures.
+
+## Prompt v7 and a misleading trail rule (Haiku + coordinates, same seed)
+- **v7 = v4 plus one sentence:** "The exit you arrived through counts as tried as well: you already know
+  where it leads."
+- **Run 1 (`3e75a6a13206`):** v7 with the original coordinates wording.
+- **Run 2 (`7daa4ff3a048`):** the trail sentence reworded (commit `0521217`).
+
+| Haiku + coordinates | Exits | Coverage | Distinct cells | Back-and-forth | Used-exit choices at junction revisits | Notes doubting position or trail | Cost |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| v4 (`1fd674ac2892`) | A t5 | 0.41 | 92 | 19 | 0 of 8 | 23 | $0.11 |
+| v7 (`3e75a6a13206`) | A t5 | 0.36 | 85 | 22 | 0 of 11 | 22 | $0.11 |
+| **v7, trail wording fixed** (`7daa4ff3a048`) | A t5 | **0.45** | **110** | **11** | 0 of 7 | **0** | $0.11 |
+
+**v7 was used but had nothing left to fix.** Notes adopted it ("N open, E open (came from), … Only untried exit is
+N"; "Came from S (tried). Trying N (untried)"). With coordinates, Haiku was already taking no used exits at
+junction revisits, so there was no gap for it to close.
+
+**The trail wording was a bug of ours.**
+- **The ambiguity:** "trail lists where you were on each of the last 30 turns" doesn't say whether the
+  current cell is included. It isn't: the trail ends with last turn's cell.
+- **How Haiku read it:** it took the last trail entry as its current position, then logged the mismatch
+  ("position is [-2,3] (trail lagged)"). C at t12 even went with the trail over the exact position: "state
+  position [1,-2] conflicts with trail/notebook [1,-3]; trusting trail for now".
+- **The fix:** the reworded rule says the position "is always current and exact" and the trail "ends with
+  last turn's cell, so it never includes where you are now". Doubt notes went from 22 per game to 0.
+- **Effect:** the best exploration of any Haiku game: 110 distinct cells, back-and-forth halved. B kept a
+  frontier list in its own frame ("Untried exits in my frame: [0,0] S, [0,3] S, [-2,3] W") and went back to
+  it.
+
+**Why still only one exit: the horizon now binds.**
+- **Optimal distances:** with a perfect map, B needs 28 moves to reach the exit and C needs 52 (the oracle
+  is 52 ticks).
+- **Still exploring:** C was finding new cells at t80, with no stretch over 14 turns without one.
+- **The horizon:** these Haiku configs inherited the pilots' 80 turns; the default for 12×12 is 320. Earlier,
+  "too short" was wrong because agents stalled by t24. Now they explore steadily, so the horizon is the
+  constraint.
+
 
 
 
