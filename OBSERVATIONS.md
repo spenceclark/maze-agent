@@ -28,6 +28,7 @@ Batches use 3 seeds, so intervals are wide.
 | 16 | Are the distance readings making them bounce? About 60% of Haiku's reversals came straight after a move that raised the exit reading | `distance_sensors: none`: no exit distance and no peer ranges, and the distance rule replaced by "you have no distance sensors" (Haiku, v7 + coordinates, same seed; one game) | **Coverage 0.53, the best Haiku game yet** (0.45 with distances), 115 distinct cells, back-and-forth about the same (14 against 11). Landmarks were mentioned far more (16 notes and 8 radio messages, against 6 and 1), because they became the only shared reference | Still only A exits, and nobody meets. Without distances, B and C can't locate the exit, so A's route home in A's frame is useless until they find a shared cell. The horizon still binds: C was finding new cells at t80 |
 | 17 | Agents who reach the exit camp on it as a "beacon" and help nobody. Agents swap landmark coordinates but never do the subtraction | Prompt v8 = v7 plus "once you have reached the exit, standing on it helps nobody… head back along your known route to find a teammate… compare positions… give them the route in their own frame" (Haiku, no distances, coordinates; one game) | **A left the exit** (STAYs 42 against 75). **The first explicit landmark calibration:** at t51 B worked out "B = C + (0,4)" (correct) and converted C's landmarks into its own frame. Coverage 0.62, the best Haiku game | A walked out, then waited at its own start (unknown to anyone else) for the last 37 turns, radioing the same route 13 times. It never went to a landmark, so nobody could convert A's exit into their frame. Still only A exits |
 | 18 | The exit-finder never gives others a reference they can use | Prompt v9 = v8 plus "give positions relative to a landmark… if you know where the exit is, visiting a landmark… is one of the most useful things you can do" (Haiku, no distances; one game) | **The searchers adopted it:** C asked A for "your exit position relative to the piano", B for A's position "relative to the statue" | **The exit-finder didn't.** A went straight back to its own start and waited there for 69 turns "as rendezvous". It described the exit relative to its start ("2 west and 1 north of A's start"), a place only A can find, and never visited a landmark. Coverage fell to 0.44 (0.62 with v8). Still only A exits |
+| 19 | The exit-finder anchors on its own start | Prompt v10 = v9 plus "Your own start is not a landmark: only you know where it is… Go to a real landmark and describe the exit from that" (Haiku, no distances; one game) | **A stopped camping (2 STAYs in 80 turns) and went landmark-hunting.** It visited picture, key, drum and kettle, and radioed the exit relative to each: "10 west and 3 south of the key", "8 south of the kettle". All exact. Coverage 0.81, the best of any Haiku game. C did the conversion ("A's exit = key A[8,4] + (-10,-3)") | **The landmark sets never overlapped.** A found 4 landmarks in its half of the maze; B and C found the other 4 in theirs. A frame-free description only helps someone who has found that landmark. Still only A exits; C ended 28 moves away |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -1267,6 +1268,44 @@ do." Every frame has the same axes, so a landmark-relative position needs no cal
 - **Single game:** v9's lower coverage is mostly B's 10-turn ping-pong, likely noise. What's consistent
   across v8 and v9 is the exit-finder anchoring on its own start.
 - **Next nudge, if any:** say outright that your start is not a landmark, because only you can find it.
+
+**Prompt v10 (`4292211a0c10`) = v9 plus:** "Your own start is not a landmark: only you know where it is, so
+a position given from it, or an offer to meet there, is useless to the others. Go to a real landmark and
+describe the exit from that."
+
+| Haiku, no distances | Exits | Coverage | Distinct cells | STAYs (team) | Landmarks A visited | Exit given relative to a landmark |
+| --- | --- | --- | --- | --- | --- | --- |
+| v8 (`d974c5320ad8`) | A t5 | 0.62 | 129 | 42 | 0 | no |
+| v9 (`fc710288bac3`) | A t5 | 0.44 | 110 | 69 | 0 | no (from "A's start") |
+| **v10** (`4292211a0c10`) | A t6 | **0.81** | **156** | **2** | **4** | **yes, exact** |
+
+**The behaviour we were after finally appeared.**
+- **A left the exit for good:** it explored east and north "for B and C", and reached its first landmark
+  (picture) at t26.
+- **From t55 A radioed the exit from landmarks:** "Exit is 10 west and 9 south of the drum, or 10 west and
+  3 south of the key", and later "8 south of the kettle… head for the kettle, then go south". All three
+  are exactly right (ground truth: key + (-10,-3), drum + (-10,-9), kettle + (0,-8)).
+- **C understood and converted it:** "A's exit = key A[8,4] + (-10,-3), i.e. A-frame [-2,1], matching A's
+  earlier report."
+- **B asked for the missing piece:** "Send your offset… or meet at a landmark."
+
+**Why it still didn't produce exits: no shared landmark.**
+- **The two sets never overlapped.** A's four landmarks (picture, key, drum, kettle) are in the half of the
+  maze A explored. B and C visited the other four (ladder, statue, piano, fountain).
+- **So a correct, frame-free description was unusable,** and nobody could convert anyone else's frame.
+- **A even had the others' landmarks.** B and C had radioed theirs early ("ladder at B[-1,3]"), but only in
+  their own frames, so A couldn't head for them.
+- **The picture went unused.** A missed the cheapest shortcut: it stood on the picture at t26, which is
+  right next to the exit (exit = picture + (-5,1)), but radioed nothing about it.
+- **Exploration was the broadest of any game** (coverage 0.81). Most of that is A searching an area that
+  has nothing to do with the exit.
+
+**Where this leaves the "help" mechanism:** each step needed spelling out, and Haiku then did it correctly.
+The last link is luck about which landmarks two agents share. Possible levers:
+- more landmarks;
+- telling helpers to head for landmarks a teammate has reported;
+- a longer horizon, so the two sets eventually overlap.
+
 
 
 
