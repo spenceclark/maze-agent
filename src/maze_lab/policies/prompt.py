@@ -55,6 +55,15 @@ PROMPT_MEMORY_NOTES["maze_agent_v8"] = PROMPT_MEMORY_NOTES["maze_agent_v7"] + (
     " teammate. When you meet on a cell or both stand on the same landmark, compare positions to work out"
     " the offset between your frames, then give them the route to the exit in their own frame."
 )
+# v9 = v8 plus landmark-relative positions: agents swapped coordinates in their own frames but never
+# derived offsets, and the exit-finder never visited a landmark. Every frame shares the same axes, so
+# "exit = piano + (3, -2)" works for anyone who has found the piano, with no calibration.
+PROMPT_MEMORY_NOTES["maze_agent_v9"] = PROMPT_MEMORY_NOTES["maze_agent_v8"] + (
+    " When you share where something is (the exit, a dead end, an untried branch), give it relative to a"
+    ' landmark, for example "exit is 3 east and 2 south of the piano": anyone who has found that landmark'
+    " can use it at once, without knowing your frame. If you know where the exit is, visiting a landmark so"
+    " you can describe the exit from it is one of the most useful things you can do."
+)
 _LANDMARK_NOTE = (
     '\n- Some cells carry a landmark: local.landmarks lists the label (for example "clock") of any'
     " landmark on your cell. Each label is unique and fixed to one cell, and you see it only while"

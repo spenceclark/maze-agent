@@ -315,3 +315,10 @@ def test_v8_sends_exit_finders_back_to_help_on_top_of_v7():
         and "head back along your known route" in v8
     )
     assert "head back" not in v7
+
+
+def test_v9_adds_landmark_relative_positions_on_top_of_v8():
+    v8 = system_instruction(AGENT_RULES, "A", "maze_agent_v8")
+    v9 = system_instruction(AGENT_RULES, "A", "maze_agent_v9")
+    assert "head back along your known route" in v9 and "relative to a landmark" in v9
+    assert "relative to a landmark" not in v8
