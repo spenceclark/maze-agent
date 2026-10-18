@@ -35,6 +35,7 @@ Batches use 3 seeds, so intervals are wide.
 | 23 | Note-first only helps on turns where Qwen writes a note | `action_field_order: check_first`: a required, unstored `check` line before the note and the move ("restate this turn's four edges, the direction you arrived from, and which open direction you will take and why"); one game | **Wall moves 7.5%** (18 of 240), against 37.5% move-first and 29.4% note-first, the lowest Qwen has ever managed. **66 distinct cells** (38 and 32), coverage 0.40 | **No exits:** A wandered 31 moves from the exit. At junction revisits Qwen took an already-used exit 88% of the time (23 of 26). Its moves now match its cell; its route choices are still poor. Twice the output tokens; game 25 minutes against 11 |
 | 24 | With the check, Qwen still re-enters branches it has just explored | The check also lists "which of this cell's exits you have already taken", read from the trail (north of [x, y] is [x, y+1]), and the move should prefer one not taken (one game) | **The best Qwen exploration yet:** 87 distinct cells (66), coverage 0.46 (0.40). Immediate backtracks fell from 35% to 26% of moves, and used exits at junction revisits from 88% to 73% | **Still no exits.** 19% of checks after t2 said "Exits taken: None", although every agent had arrived from somewhere, and some then moved straight back the way they came. Wall moves 12.1% (7.5%). Output tokens +42% |
 | 25 | Qwen can't work out from its trail which exits it has used | `used_exits_enabled`: the engine lists the current cell's directions already moved through (either way, whole game), and the check copies them (one game, the last helping hand) | **The local choice is fixed:** with an unused open exit available, it took one 66 times out of 74 (89%). Used exits at junction revisits fell to 4 of 11 (from 19 of 26). A exited at t5 | **The global search isn't.** 138 of 240 decisions (57%) were on cells where every open exit had already been used, wandering explored ground with no way to find the frontier. Coverage 0.38 (0.46), B and C ended 63 and 61 moves from the exit. This is where we stopped helping Qwen |
+| 26 | New baseline on the current code: Haiku, Sonnet 5.5, Opus 5.5 (one game each), plus two more local models for reference | v10, coordinates, no distances, rolling log, 10 landmarks, 80 turns. Local models get Qwen's best setup (check first) | **Sonnet and Opus got two of three agents out** (C at t76 and t77). Opus's B ended 2 moves from the exit. Both worked from landmark-relative exit positions and reasoned from the west edge. Coverage 0.81 and 0.87 | **Still no team success in 80 turns.** Haiku's repeat went back to camping at its start ("Start is not a landmark; I can't align frames without meeting"… "I am waiting at start"), so v10 worked in 1 of 2 games. lfm2.5 lost 192 of 240 turns to wrong tick numbers; command-r7b walked into walls on 45% of moves |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -1453,6 +1454,51 @@ trail (or notebook) holds the neighbouring cell that way… preferring one you h
 - **Verdict for this experiment:** Qwen3.5-9B with reasoning off can be scaffolded into reading its cell
   correctly and choosing locally well, but not into exploring a maze. With reasoning on it might, but at a
   cost in time that makes 80+ turn games impractical locally.
+
+## New baseline on the current code (one game each), and two more local models
+**API models** use the latest Haiku setup:
+- **Prompt and sensors:** v10, coordinates with a 30-turn trail, no distance sensors.
+- **Notebook and maze:** rolling-log notebook, 10 landmarks, seed 202611017, 80 turns.
+- **Output:** move first, no check line, used exits off.
+
+**Local models** use Qwen's best setup: the same plus `check_first`, through Vessel.
+
+| Model | Run | Exits | Path left at t80 (A / B / C) | Coverage | Distinct cells | Wall moves | Back-and-forth | Cost |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Haiku 5.5 (earlier, `4292211a0c10`) | v10 | A t6 | 66 / 44 / 28 | 0.81 | 156 | 1 | 35 | $0.13 |
+| **Haiku 5.5** | `132480b016eb` | A t6 | 5 / 48 / 31 | 0.49 | 110 | 6 | 20 | $0.11 |
+| **Sonnet 5.5** | `6ad85aefd5ef` | **A t5, C t76** | 65 / 20 / 0 | 0.81 | 181 | 0 | 6 | $2.23 |
+| **Opus 5.5** | `0cdbead59320` | **A t5, C t77** | 67 / **2** / 0 | **0.87** | **192** | 0 | 9 | $3.33 |
+| qwen3.5:9b (check first, `6630a25324ab`) | reference | none | 32 / 47 / 33 | 0.46 | 87 | 29 | 54 | $0 |
+| lfm2.5 (8.5B MoE, Q4_K_M) | `fbbc898ddc6f` | none | 5 / 27 / 53 | 0.06 | 8 | 30 of 42 | 0 | $0 |
+| command-r7b (fixed template) | `1cbf5c6f97de` | none | 4 / 36 / 43 | 0.26 | 37 | 100 of 224 | 25 | $0 |
+
+**Sonnet and Opus used the v8–v10 helper mechanism as intended.**
+- **A left the exit and went landmark-hunting,** radioing the exit from each landmark it found. Opus at
+  t18: "EXIT is 1W 1N of landmark globe… Globe is a dead end 1 east of the maze SW corner". Sonnet at t42:
+  "exit is 5W,1N of PICTURE, and 10W,3S of KEY".
+- **Both reasoned from the maze's edges as well as landmarks.** The fountain sits on the west boundary,
+  which gave the exit's column. Sonnet's C at t57: "Exit is 3 cells SOUTH of landmark fountain, on the west
+  edge".
+- **Sonnet's C derived B's frame from the fountain** ("my=B+(0,-4)") and followed the landmark route to the
+  exit at t76. Opus's C arrived at t77, and its B was 2 moves away when time ran out.
+- **Both were still exploring at t80.** Two exits plus a third agent 2 moves away is the closest any game
+  has come to the team objective in 80 turns. The 320-turn horizon would very likely finish them.
+
+**Haiku's repeat was much worse than the first v10 game.** Its A explained the problem and then did it
+anyway. At t19: "Start is not a landmark; I can't align frames without meeting. Please head to exit or
+meet me at start". By t43 it was "staying at start [0,0] to meet you". It waited there for most of the game
+(69 STAYs), and coverage fell from 0.81 to 0.49. v10's effect on Haiku is real but unreliable: 1 of 2
+games.
+
+**The other local models were worse than Qwen.**
+- **lfm2.5:** 192 of its 240 decisions were forced STAYs because the reply carried the wrong `tick` (134
+  replies, e.g. tick 5 on decision 1). It copies its own last note's tick rather than `decision_tick`. On
+  the few accepted moves it hit walls 30 times in 42.
+- **command-r7b:** formatting was clean, but 45% of moves went into walls, even with the check line, and it
+  covered 37 cells.
+- **Qwen3.5-9B stays the best local model tested here,** and it isn't close to the hosted models.
+
 
 
 
