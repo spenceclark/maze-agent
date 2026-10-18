@@ -265,3 +265,9 @@ def test_reasoning_off_for_ollama_and_rejected_for_anthropic():
     assert "anthropic_effort" not in policy.settings
     with pytest.raises(ValidationError):
         llm_config(effort="none")
+
+
+def test_v6_adds_the_edge_restating_check_on_top_of_v4():
+    v6 = system_instruction(AGENT_RULES, "A", "maze_agent_v6")
+    assert "untried exit" in v6 and "copying your cell's four edges exactly" in v6
+    assert "keep your own coordinates" not in v6  # v6 builds on v4, not v5

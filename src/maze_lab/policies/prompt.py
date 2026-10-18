@@ -35,6 +35,12 @@ PROMPT_MEMORY_NOTES["maze_agent_v5"] = PROMPT_MEMORY_NOTES["maze_agent_v4"] + (
     " first leads away from it. When you radio a route, start it from a landmark or a place the others"
     " can recognise, not from your own start."
 )
+# v6 = v4 plus a perception check, for models that miscopy the observation (local Qwen3.5-9B).
+PROMPT_MEMORY_NOTES["maze_agent_v6"] = PROMPT_MEMORY_NOTES["maze_agent_v4"] + (
+    " Before choosing a move, start this turn's note by copying your cell's four edges exactly as given in"
+    ' local (north, east, south, west), then choose only a direction whose edge is "open", or STAY. If'
+    " last_action says a move was blocked, do not repeat that direction from the same cell."
+)
 _LANDMARK_NOTE = (
     '\n- Some cells carry a landmark: local.landmarks lists the label (for example "clock") of any'
     " landmark on your cell. Each label is unique and fixed to one cell, and you see it only while"
