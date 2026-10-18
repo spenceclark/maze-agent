@@ -31,6 +31,7 @@ Batches use 3 seeds, so intervals are wide.
 | 19 | The exit-finder anchors on its own start | Prompt v10 = v9 plus "Your own start is not a landmark: only you know where it is… Go to a real landmark and describe the exit from that" (Haiku, no distances; one game) | **A stopped camping (2 STAYs in 80 turns) and went landmark-hunting.** It visited picture, key, drum and kettle, and radioed the exit relative to each: "10 west and 3 south of the key", "8 south of the kettle". All exact. Coverage 0.81, the best of any Haiku game. C did the conversion ("A's exit = key A[8,4] + (-10,-3)") | **The landmark sets never overlapped.** A found 4 landmarks in its half of the maze; B and C found the other 4 in theirs. A frame-free description only helps someone who has found that landmark. Still only A exits; C ended 28 moves away |
 | 20 | Does the v8–v10 helper prompting do anything for Qwen? | Qwen, v10, coordinates, no distances, 80 turns (one game, through Vessel) | Nothing measurable: coverage 0.25 (0.24 with v7), 36 distinct cells | **Worse on the basics:** 39.7% wall moves, and A, five moves from the exit at spawn, never reached it. **21 of 28 radio messages were the string "null".** Only 2 landmarks found; no landmark-relative positions, no frames named |
 | 21 | Is the Unsloth IQ4_XS quant the problem? The official build and OpenRouter's Qwen3.5-9B both chose S on a replayed decision where Unsloth chose N into a wall | Same game (v10, coordinates, no distances, 80 turns) on the official `qwen3.5:9b` (Q4_K_M; its Modelfile sets temperature 1, presence_penalty 1.5, top_k 20, top_p 0.95) | A exited at t50 (Unsloth's A never did). It emits keys in **schema order**, not alphabetically | **No real change:** 37.5% wall moves (39.7%), coverage 0.26 (0.25). 26 of 90 blocked moves went in a direction that turn's own note called a wall (Unsloth: 19 of 95). The one-decision test didn't generalise; the quant isn't the main cause |
+| 22 | Qwen commits to a move before writing anything about its cell | `action_field_order: note_first`: the schema asks for `notebook_append` before `move`, and the official `qwen3.5:9b` writes keys in schema order (one game, same v10 setup) | **On turns where it wrote a note, wall moves fell from 39% to 14%** (13 of 96, against 45 of 115). Moves against that turn's own note fell from 26 to 3. Overall 29.4% against 37.5%; A exited at t22 (t50) | **On turns with a null note it still hit walls 40% of the time** (57 of 142), and it skipped the note on 60% of turns, encouraged by the rolling log's "write only when you learn something new". No exits for B or C |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -1345,6 +1346,29 @@ The last link is luck about which landmarks two agents share. Possible levers:
   (`schema_version, tick, move, notebook_append, radio`); the Unsloth build wrote them alphabetically.
   Putting `notebook_append` before `move` in the action schema would make it write its note before
   choosing a direction. That's the "think, then act" test that couldn't be run before.
+
+**Note first, move second (`c6eb407ec363`, `action_field_order: note_first`), against the same game with
+the move first (`e8d0d98506f7`).** Both are official `qwen3.5:9b`, v10, coordinates, no distances, rolling
+log. A live reply confirmed the new order: `{"schema_version", "tick", "notebook_append", "move",
+"radio"}`.
+
+| qwen3.5:9b | Wall moves overall | …on turns it wrote a note | …on turns with no note | Moves against that turn's own note | Notes written | Exits |
+| --- | --- | --- | --- | --- | --- | --- |
+| Move first | 37.5% | 39% (45 of 115) | 36% (45 of 125) | 26 | 109 | A t50 |
+| **Note first** | **29.4%** | **14% (13 of 96)** | 40% (57 of 142) | **3** | 91 | **A t22** |
+
+- **Writing first works.** When Qwen wrote its note before choosing, it walked into a wall a third as
+  often, and almost never against what it had just written.
+- **The field-order hypothesis was right.** The model was committing to `move` before restating anything.
+  The earlier test of it was invalid because the Unsloth build wrote keys alphabetically.
+- **The gain only lands on turns with a note.** Qwen left `notebook_append` null on 60% of turns, and those
+  turns were as bad as before. The rolling log's "write a note only when you learn something new" pushes
+  it to skip.
+- **Exploration didn't improve:** 32 distinct cells against 38, more reversals. Only one game each.
+- **Next step:** a required scratch field before `move`, written every turn and never stored ("check: my
+  edges are…, I came from…, so I go…"). That would give the benefit on every turn without filling the
+  notebook. It's chain-of-thought in one field, without turning reasoning on.
+
 
 
 
