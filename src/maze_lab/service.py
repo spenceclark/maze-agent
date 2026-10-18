@@ -123,7 +123,10 @@ class RunService:
         """Re-adopt runs left running or paused by a previous process."""
         for summary in self.store.summaries():
             if summary.status in ("running", "paused"):
-                self._launch(summary.run_id)
+                try:
+                    self._launch(summary.run_id)
+                except ValueError as e:  # e.g. a config from a rules variant since removed
+                    log.warning("not re-adopting run %s: its config no longer loads (%s)", summary.run_id, e)
         self.ready = True
 
     async def shutdown(self) -> None:

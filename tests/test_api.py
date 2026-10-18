@@ -250,3 +250,23 @@ def test_live_stream_and_mid_run_reconnect_have_no_gaps(tmp_path: Path):
     combined = [e.sequence for e in first + rest]
     assert combined == list(range(1, len(combined) + 1))
     assert rest[-1].type == "run.completed"
+
+
+def test_startup_skips_runs_whose_config_no_longer_loads(tmp_path: Path):
+    """A run left 'running' under a since-removed rules variant must not stop the server starting."""
+    store = RunStore(tmp_path / "old.db")
+    service = RunService(store, EventHub())
+    run_id = service.create(RunConfig.model_validate(baseline_config())).run_id
+    with store._tx() as db:  # pyright: ignore[reportPrivateUsage]
+        db.execute(
+            "UPDATE runs SET status = 'running',"
+            " config_json = replace(config_json, '\"splice\"', '\"retired\"') WHERE run_id = ?",
+            (run_id,),
+        )
+
+    async def start() -> bool:
+        await service.startup()
+        return service.ready
+
+    assert asyncio.run(start())
+    store.close()
