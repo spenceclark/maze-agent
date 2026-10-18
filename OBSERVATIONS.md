@@ -19,6 +19,7 @@ Batches use 3 seeds, so intervals are wide.
 | 7b | Is it a matter of reasoning budget? | Higher thinking effort (`effort: high`), with v4 and with v5 | Haiku's first team successes: 2 of 12 runs, both on the easiest seed. +0.5 agents reaching the exit per run. With v5, coordinates were more accurate (42%) | The extra thinking overflowed the 2,048-token cap: 34 and 74 cut-off decisions became forced STAYs. Cost +40–57% |
 | 8 | Does a cheap reasoning model already have Sonnet's habits? | DeepSeek v4.1 Flash via OpenRouter, plain v4 + landmarks, 8k cap (3 runs) | **Unprompted, every agent kept coordinates and estimated the exit's position,** and shared routes from landmarks about as often as Sonnet. Cost $0.30 per run | At a 60 s window, ~25% of turns were lost to timeouts and truncations (0 of 3). **With a 600 s window: no timeouts, 1 of 3 teams succeeded (t53, the fastest finish of any model)**, 1.67 agents exited. Still ~13% of turns lost to truncation at 8k. $0.38 per run |
 | 9 | How does a strong local model do? | Qwen3.5-9B (Unsloth IQ4) on Ollama, reasoning off, 8k context, v4 + landmarks (3 runs; meeting notebooks off to fit 8k) | Ran reliably: 4 failed decisions in 720, about 25 s per decision with 9 requests queued on one GPU, $0 **33% of decisions walked into a visible wall** (other models ≤0.3%); no agent reached the exit. Follow-ups: queuing ruled out, and the restate-edges prompt (v6) didn't help. Output field order is untested: Ollama emits keys alphabetically, so `move` always comes first. With reasoning on, wall moves vanished, but half the decisions never finished (see below) |
+| 10 | Qwen's splices missed: 30 of 240 notebook edits rejected for a stale revision or a bad offset, leaving notes out of order | `notebook_ops: append_rewrite`: append or rewrite fields, and the engine places the text (single games, same seed) | No more offset or revision errors. After hardening (plain-text notebooks, `"null"` counts as no change), no notebook wipes | **Qwen filled both fields in 20 of 240 decisions despite the rule, so 21 of 22 rewrites were cancelled.** Notebooks filled to the cap by t34–49 and the final 84 appends were rejected. Wall hits 20% (25% splice); not a controlled comparison |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -927,6 +928,44 @@ so teammates got "null" messages.
     prompt, so the notebook cap would need shrinking.
   - Lower sampling temperature with reasoning off. Untested; it's the obvious next check, given the replay
     showed mostly random errors.
+
+## Qwen3.5-9B: append/rewrite instead of splices (single games via Vessel)
+Splices need exact code-point offsets and the current revision. Qwen got these wrong often, and the rejected
+edits left its notes out of order. `rules.notebook_ops = "append_rewrite"` swaps `notebook_edit` for two
+fields, `notebook_append` and `notebook_rewrite`, and the engine places the text. Budgets and the cap are
+unchanged. All three games use the same maze seed and config (`configs/qwen35_9b_vessel*.json`, not
+committed), Qwen3.5-9B with reasoning off, v4 + landmarks, 80 ticks:
+
+| Game | Notebook ops | Notebook rejections | Notebook wipes (shrunk to under half on a rewrite) | Moves into walls | Exits |
+| --- | --- | --- | --- | --- | --- |
+| `dbef9cc1d9b9` | splice | 37: 17 stale revision, 13 bad span, 4 over budget, 3 action rejected | 6, from bad spans (one went to `","`, one to empty) | 25.4% | A t23 |
+| `573778fa8e7c` | append/rewrite | 32: **15 both fields set**, 13 over the cap, 3 over budget, 1 action rejected | **7 deliberate**: 5 rewrites to the string `"null"`, 2 to an echo of the notebook's JSON wrapper | 28.9% | A t9 |
+| `1566f8373ef8` | append/rewrite, hardened | 110: **84 over the cap**, **20 both fields set**, 4 over budget, 2 action rejected | **0** (one deliberate compaction, A t55, 8,039 → 1,017 bytes) | 20.1% | A t56 |
+
+A's shortest path from spawn is 5 cells, so its exit tick here is noise.
+
+**Hardening fixed the wipes.** In the first append game, Qwen copied the JSON wrapper around its notebook
+(`{"owner":"A","revision":34,"text":...}`) into a rewrite, and five times sent `"null"` as the rewrite text,
+erasing up to 5,318 bytes. Two changes stopped it: notebooks are now shown as plain text between
+`<<<NOTEBOOK X` markers, and blank or `"null"` text counts as no change. No wipes since.
+
+**"Append or rewrite, never both" didn't land.** In the hardened game Qwen still filled both fields 20 times,
+usually with near-duplicates of the same note. The rule throws both away, so **21 of 22 rewrite attempts were
+cancelled**; the one that went through was A's compaction at t55. It looks schema-driven: every field is
+required (nullable), and with reasoning off the model fills each key it is given.
+
+**New failure: notebooks fill up and stay full.** No splice deletions means notebooks only grow. A, B and C
+hit the 8,192-byte cap at t38, t49 and t34. From then on every append was rejected (84 in total). The few
+compaction attempts all came with an append, so they were cancelled too. B and C finished the game unable to
+record anything new.
+
+**Implications:**
+- **Make conflicts impossible by construction.** Use one nullable `notebook` field holding `{mode: append|rewrite, text}`, not two fields.
+- **Handle a full notebook.** Options: the engine drops the oldest text on overflow (a rolling log), or the
+  observation warns near the cap ("rewrite to compact"). Either breaks spec §5.4's "nothing is truncated for
+  you", which this variant already departs from.
+- **Keep appends at the end.** Newest notes then sit right before the observation, and the notebook's
+  prefix stays stable for prompt caching. Prepending would rewrite the start of the notebook block every turn.
 
 ## Prompt caching (added after the pilot, prompt `maze_agent_v2`)
 The pilot sent each observation as one JSON blob, so no part of the prompt was reusable between ticks. Version 2
