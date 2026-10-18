@@ -102,7 +102,9 @@ def preflight(config: RunConfig) -> None:
             continue
         observation = _worst_case_observation(rules, agent.id, config.horizon_ticks)
         problem = check_prompt(
-            agent, system_instruction(rules, agent.id, config.prompt_version), user_blocks(observation)
+            agent,
+            system_instruction(rules, agent.id, config.prompt_version),
+            user_blocks(observation, rules.notebook_ops),
         )
         if problem is not None:
             raise ValueError(

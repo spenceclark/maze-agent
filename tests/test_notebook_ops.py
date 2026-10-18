@@ -18,6 +18,8 @@ from maze_lab.config import RulesConfig
 from maze_lab.domain.events import DecisionResolved
 from maze_lab.domain.reducer import Submission, resolve
 from maze_lab.domain.state import WorldState, initial_state
+from maze_lab.observation import observe, public_rules
+from maze_lab.policies.prompt import system_instruction, user_blocks
 
 MAZE = grid(3, 3, P(2, 2), [P(0, 0), P(1, 0), P(0, 1)])
 RULES = RulesConfig(notebook_ops="append_rewrite")
@@ -119,3 +121,20 @@ def test_empty_strings_mean_no_change():
     assert s.agent("A").last_receipt.notebook.status == "not_requested"
     s = play(s, A=simple(3, append="", rewrite="fresh"))
     assert s.agent("A").notebook.text == "fresh"
+
+
+def test_null_strings_mean_no_change():
+    s = play(initial_state(MAZE), A=simple(1, append="keep me"))
+    s = play(s, A=simple(2, rewrite="null"))  # Qwen wiped notebooks this way in run 573778fa8e7c
+    s = play(s, A=simple(3, append=" NULL "))
+    assert s.agent("A").notebook == Notebook.of("A", 1, "keep me")
+
+
+def test_append_rewrite_prompts_show_notebooks_as_plain_text():
+    obs = observe(MAZE, RULES, play(initial_state(MAZE), A=simple(1, append='line {"a": 1}')), "A")
+    own, peers, rest = user_blocks(obs, "append_rewrite")
+    assert own.endswith('<<<NOTEBOOK A\nline {"a": 1}\nNOTEBOOK A>>>')
+    assert '"owner"' not in own and '"revision"' not in own
+    assert peers.endswith("(none)") and '"owner"' not in rest
+    text = system_instruction(public_rules(RULES), "A")
+    assert "Use append OR rewrite, never both" in text and "thrown away" in text

@@ -89,7 +89,7 @@ class SimpleTurnAction(Contract):
     """Action variant for `notebook_ops="append_rewrite"` (not in spec §7, a declared rules variant).
 
     The engine places the text itself, so agents never compute offsets or revisions.
-    An empty string counts as no change; setting both fields rejects the notebook component.
+    Blank text or "null" counts as no change; setting both fields rejects the notebook component.
     """
 
     schema_version: Literal["1.1"]

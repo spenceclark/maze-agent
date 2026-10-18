@@ -12,6 +12,13 @@ from maze_lab.agent_contracts import (
 )
 
 
+def _given(text: str | None) -> str | None:
+    """Blank text or the string "null" means no change: small models send these where they mean null."""
+    if text is None or not text.strip() or text.strip().lower() == "null":
+        return None
+    return text
+
+
 def requested_edit(
     action: TurnAction | SimpleTurnAction, notebook: Notebook
 ) -> NotebookEdit | Literal["conflicting_notebook_ops"] | None:
@@ -19,8 +26,7 @@ def requested_edit(
     so the usual budget and cap checks in `apply_splice` still apply."""
     if isinstance(action, TurnAction):
         return action.notebook_edit
-    # An empty string means "no change": smaller models often send "" where they mean null.
-    append, rewrite = action.notebook_append or None, action.notebook_rewrite or None
+    append, rewrite = _given(action.notebook_append), _given(action.notebook_rewrite)
     if append is not None and rewrite is not None:
         return "conflicting_notebook_ops"
     end = notebook.codepoints

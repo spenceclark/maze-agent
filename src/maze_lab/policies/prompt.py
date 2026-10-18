@@ -13,7 +13,7 @@ reuses identical input only; it carries no state between decisions.
 
 from pydantic import TypeAdapter
 
-from maze_lab.agent_contracts import AgentRules, Notebook, Observation
+from maze_lab.agent_contracts import AgentRules, Notebook, NotebookOps, Observation
 
 PROMPT_VERSION = "maze_agent_v4"  # default for new runs
 
@@ -93,11 +93,13 @@ _NOTEBOOK_BULLETS = {
         "your one edit. Invalid edits are rejected whole; nothing is truncated for you."
     ),
     "append_rewrite": (
-        "- notebook_append (or null): text added to the end of your notebook.\n"
-        "- notebook_rewrite (or null): text that replaces your whole notebook, for tidying or compacting it. "
-        "Use at most one of the two per turn; null or an empty string means no change. The text you send "
-        "may be at most {insert} UTF-8 bytes per turn and the whole notebook at most {cap} bytes; anything "
-        "over is rejected whole, and nothing is truncated for you."
+        "- notebook_append (or null): text added to the end of your notebook; your existing notes are kept.\n"
+        "- notebook_rewrite (or null): text that becomes your whole notebook; anything not in it is thrown "
+        "away. Use it only to tidy or compact your notes.\n"
+        "Use append OR rewrite, never both: if both are filled, neither is applied. null, an empty string or "
+        '"null" means no change. The text you send may be at most {insert} UTF-8 bytes per turn and the '
+        "whole notebook at most {cap} bytes; anything over is rejected whole, and nothing is truncated "
+        "for you."
     ),
 }
 _SCHEMA_VERSIONS = {"splice": "1.0", "append_rewrite": "1.1"}
@@ -130,11 +132,27 @@ def system_instruction(rules: AgentRules, agent_id: str, version: str = PROMPT_V
     )
 
 
-def user_blocks(observation: Observation) -> list[str]:
-    """The observation as quoted JSON data in three blocks, most stable first.
+def _plain_notebook(notebook: Notebook) -> str:
+    return f"<<<NOTEBOOK {notebook.owner}\n{notebook.text}\nNOTEBOOK {notebook.owner}>>>"
 
-    Together the blocks hold every observation field exactly once, in a fixed order.
+
+def user_blocks(observation: Observation, notebook_ops: NotebookOps = "splice") -> list[str]:
+    """The observation in three blocks, most stable first.
+
+    Together the blocks hold every observation field exactly once, in a fixed order. Splice mode
+    quotes notebooks as JSON (offsets and revisions matter there). Append/rewrite mode shows them as
+    delimited plain text, which gives small models no JSON wrapper to echo back into their notes.
     """
+    if notebook_ops == "append_rewrite":
+        own = observation.notebook
+        peers_text = "\n".join(_plain_notebook(n) for n in observation.colocated_notebooks) or "(none)"
+        return [
+            f"Your notebook, {own.utf8_bytes} of {observation.budgets.notebook_cap_bytes} bytes used "
+            "(plain text between the markers):\n" + _plain_notebook(own),
+            "Notebooks of agents sharing your cell, readable this turn only:\n" + peers_text,
+            "Current observation; notebooks are given above (JSON data):\n"
+            + observation.model_dump_json(exclude={"notebook", "colocated_notebooks"}),
+        ]
     peers = _NOTEBOOKS.dump_json(observation.colocated_notebooks).decode()
     return [
         "Your notebook (JSON data):\n" + observation.notebook.model_dump_json(),
