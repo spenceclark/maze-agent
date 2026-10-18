@@ -18,7 +18,7 @@ Batches use 3 seeds, so intervals are wide.
 | 7a | Can context alone push Haiku into Sonnet's habits? | Prompt v5: spell out coordinates, exit estimation and landmark-anchored routes | **Adopted in form by 100% of agents** (0% before); 83% estimated the exit's position | **Progress got worse (−0.10).** The coordinates drifted (only 28% of noted positions correct), and agents then distrusted their own maps |
 | 7b | Is it a matter of reasoning budget? | Higher thinking effort (`effort: high`), with v4 and with v5 | Haiku's first team successes: 2 of 12 runs, both on the easiest seed. +0.5 agents reaching the exit per run. With v5, coordinates were more accurate (42%) | The extra thinking overflowed the 2,048-token cap: 34 and 74 cut-off decisions became forced STAYs. Cost +40–57% |
 | 8 | Does a cheap reasoning model already have Sonnet's habits? | DeepSeek v4.1 Flash via OpenRouter, plain v4 + landmarks, 8k cap (3 runs) | **Unprompted, every agent kept coordinates and estimated the exit's position,** and shared routes from landmarks about as often as Sonnet. Cost $0.30 per run | At a 60 s window, ~25% of turns were lost to timeouts and truncations (0 of 3). **With a 600 s window: no timeouts, 1 of 3 teams succeeded (t53, the fastest finish of any model)**, 1.67 agents exited. Still ~13% of turns lost to truncation at 8k. $0.38 per run |
-| 9 | How does a strong local model do? | Qwen3.5-9B (Unsloth IQ4) on Ollama, reasoning off, 8k context, v4 + landmarks (3 runs; meeting notebooks off to fit 8k) | Ran reliably: 4 failed decisions in 720, about 25 s per decision with 9 requests queued on one GPU, $0 | **Couldn't read its own observation.** 33% of decisions walked into a visible wall (other models ≤0.3%), and edges were miscopied into notes. No agent reached the exit; progress 0.29 |
+| 9 | How does a strong local model do? | Qwen3.5-9B (Unsloth IQ4) on Ollama, reasoning off, 8k context, v4 + landmarks (3 runs; meeting notebooks off to fit 8k) | Ran reliably: 4 failed decisions in 720, about 25 s per decision with 9 requests queued on one GPU, $0 **33% of decisions walked into a visible wall** (other models ≤0.3%); no agent reached the exit. Follow-ups: queuing ruled out, the restate-edges prompt (v6) didn't help, and field order wasn't the cause. With reasoning on, wall moves vanished, but half the decisions never finished (see below) |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -851,6 +851,66 @@ trying next, cheaply and locally:
   did best all reasoned.
 - **Simplify the observation:** a plainer edge format, or a prompt v6 that asks the agent to restate the four
   edges before choosing a move. That would be the first rung's shepherding, applied to a smaller model.
+
+## Qwen3.5-9B follow-up: queuing, restating edges (prompt v6), field order, reasoning
+Three questions after the first local batch. Was it the request queue? Would making the model restate its edges
+help? What actually drives the wall-walking?
+
+**Queuing is ruled out, both by measurement and by experiment.**
+- **No prompt was cut off.** Ollama's reported prompt tokens track prompt size linearly (3.2–3.9 bytes per
+  token) up to the largest prompt (~3.3k tokens, well inside the 8,192 context). `OLLAMA_NUM_PARALLEL=1`, so
+  requests run one at a time and never share a context; queuing only adds waiting.
+- **Running one game at a time didn't change the picture.** In `experiments/qwen35_9b_restate.json`, condition
+  v4, latency fell from 25 s to 3.9 s per decision, but the results matched the queued batch: 28.5% of moves
+  into walls (33% queued), no exits, progress 0.22.
+
+**Prompt v6 (restate edges before choosing) didn't help.** v6 = v4 plus "start this turn's note by copying your
+cell's four edges exactly… choose only a direction whose edge is open… do not repeat a blocked direction".
+Results over 3 seeds, each run one game at a time:
+
+| Qwen3.5-9B | Moves into walls | Repeated a just-blocked direction | Notes restating edges | Edges copied correctly (open vs closed) | Moves through an edge its own note called closed | Exits | Progress |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| v4, queued (first batch) | 32.8% | 50 | 20% | 90% | 31 of 143 | 0 | 0.29 |
+| v4, one game at a time | 28.5% | 35 | 26% | 87% | 43 of 187 | 0 | 0.22 |
+| **v6 restate**, one at a time | 25.7% | 21 | 48% | **95%** | **77 of 346 (22%)** | 0 | 0.15 |
+
+- **It was reading the edges correctly.** An earlier check said it miscopied them, but that check scored
+  Qwen's "O" abbreviation for open as wrong. Corrected, Qwen copies edges right 87–95% of the time.
+- **The failure is acting against its own notes.** In about one decision in five it moved through an edge it
+  had just written down as closed. v6 doubled how often edges were restated and cut repeats of a just-blocked
+  direction, but walls were still hit about a quarter of the time and no agent exited.
+
+**Field order isn't the cause; reasoning is the lever.** Hypothesis: with reasoning off, the model writes the
+JSON fields in schema order, and `move` comes before `notebook_edit`, so it commits to a move before restating
+anything. To test it, I replayed 40 of the v6 decisions that went through a self-declared closed edge, with
+the exact recorded prompts:
+
+| Replay of 40 bad decisions | Moves into a closed edge | Valid move returned |
+| --- | --- | --- |
+| As run (move first, reasoning off) | 5 (12%) | 40 |
+| Note field first, reasoning off | 9 (22%) | 40 |
+| Move first, **reasoning on** (4,096-token cap) | **0 (0%)** | **18** |
+
+- **Mostly random sampling error.** Replayed with identical inputs, only 12% of the bad decisions went wrong
+  again. The wall-walking is sampling noise at a high base rate (Ollama's default temperature), not a fixed
+  misreading of particular cells.
+- **Field order doesn't matter.** Putting the note first didn't help (22%).
+- **Reasoning fixes the moves but often doesn't finish.** With thinking on, none of the 18 answers went into a
+  wall. But 22 of 40 returned no parseable move within 4,096 tokens, presumably because thinking used up the
+  budget; I didn't diagnose this further.
+
+**The 'null' radio quirk.** Under native structured output, Qwen often sent the radio field as the string
+`"null"` instead of JSON null: 20–28 times per three-game batch. The engine accepts that as a real broadcast,
+so teammates got "null" messages.
+
+**Takeaways for a small local model:**
+- **The cheap fixes don't move this failure.** It isn't perception or field order, so prompt shepherding at
+  the perception rung (v6) doesn't reach it.
+- **What does help is thinking time, then sampling.**
+  - Reasoning on, with a big enough output cap. The 8k context leaves ~2.5k output tokens beside a worst-case
+    prompt, so the notebook cap would need shrinking.
+  - Lower sampling temperature with reasoning off. Untested; it's the obvious next check, given the replay
+    showed mostly random errors.
 
 ## Prompt caching (added after the pilot, prompt `maze_agent_v2`)
 The pilot sent each observation as one JSON blob, so no part of the prompt was reusable between ticks. Version 2
