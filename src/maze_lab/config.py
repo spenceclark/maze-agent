@@ -130,6 +130,8 @@ class RulesConfig(Contract):
     notebook_ops: NotebookOps = "splice"
     # Variant: agents see exact coordinates relative to their own start, plus their recent trail.
     coordinates_enabled: bool = False
+    # Variant: agents see which directions of their current cell they have already moved through.
+    used_exits_enabled: bool = False
     distance_sensors: DistanceSensors = "exit_and_peers"  # "none": no exit distance or peer ranges
     distance_quantization: Literal["tenths"] = "tenths"
 

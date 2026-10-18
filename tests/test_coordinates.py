@@ -45,3 +45,21 @@ def test_prompt_explains_frames_and_calibration():
     text = system_instruction(public_rules(ON), "A")
     assert "x grows east, y grows north" in text and "fixed offset" in text
     assert "You never see coordinates" not in text
+
+
+def test_used_exits_list_the_current_cells_directions_moved_through_either_way():
+    on = RulesConfig(used_exits_enabled=True)
+    s = step(MAZE, initial_state(MAZE), on, A=act(1, "N")).state  # A: (1,1) -> (1,0)
+    assert observe(MAZE, on, s, "A").used_exits == ["S"]  # arrived from the south
+    s = step(MAZE, s, on, A=act(2, "S")).state  # back to (1,1)
+    assert observe(MAZE, on, s, "A").used_exits == ["N"]
+    s = step(MAZE, s, on, A=act(3, "W")).state
+    s = step(MAZE, s, on, A=act(4, "E")).state  # back again
+    assert observe(MAZE, on, s, "A").used_exits == ["N", "W"]
+    assert observe(MAZE, on, s, "B").used_exits == []  # B never moved
+    blocks = "".join(user_blocks(observe(MAZE, on, s, "A")))
+    assert '"used_exits":["N","W"]' in blocks
+    text = system_instruction(public_rules(on), "A", with_check=True)
+    assert "used_exits lists the directions" in text and "copy them from used_exits" in text
+    assert "used_exits" not in system_instruction(public_rules(RulesConfig()), "A", with_check=True)
+    assert "used_edges" not in step(MAZE, initial_state(MAZE), A=act(1, "N")).state.model_dump_json()

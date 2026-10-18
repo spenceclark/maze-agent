@@ -16,7 +16,7 @@ from maze_lab.agent_contracts import (
     PeerRange,
 )
 from maze_lab.config import RulesConfig
-from maze_lab.domain.geometry import Position, distance_tenths
+from maze_lab.domain.geometry import DIRECTIONS, Position, distance_tenths
 from maze_lab.domain.maze import MazeDefinition
 from maze_lab.domain.radio import next_eligible_tick
 from maze_lab.domain.state import WorldState
@@ -40,6 +40,7 @@ def public_rules(rules: RulesConfig, landmarks_enabled: bool = False) -> AgentRu
         landmarks_enabled=landmarks_enabled,
         notebook_ops=rules.notebook_ops,
         coordinates_enabled=rules.coordinates_enabled,
+        used_exits_enabled=rules.used_exits_enabled,
         distance_sensors=rules.distance_sensors,
     )
 
@@ -75,6 +76,9 @@ def observe(maze: MazeDefinition, rules: RulesConfig, state: WorldState, agent_i
             landmarks=maze.landmarks_at(me.position),
             checkpoints=[],
         ),
+        used_exits=[d for d in DIRECTIONS if (me.position.x, me.position.y, d) in me.used_edges]
+        if rules.used_exits_enabled
+        else None,
         exit_distance_tenths=distance_tenths(me.position, maze.exit) if sensors else None,
         peer_ranges=[
             PeerRange(agent_id=p.agent_id, distance_tenths=distance_tenths(me.position, p.position))

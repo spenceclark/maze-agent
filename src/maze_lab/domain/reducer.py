@@ -148,6 +148,11 @@ def _resolve_agent(
             agent_id=prev.agent_id, action=action, receipt=receipt, invocation_id=sub.invocation_id
         ),
     )
+    used_edges = prev.used_edges
+    if rules.used_exits_enabled and arrived_from is not None:  # arrived_from is set only on a move
+        left_by = OPPOSITE[arrived_from]
+        here, there = prev.position, position
+        used_edges = sorted({*used_edges, (here.x, here.y, left_by), (there.x, there.y, arrived_from)})
     first_exit = prev.first_exit_tick
     if first_exit is None and position == maze.exit:
         first_exit = tick
@@ -160,6 +165,7 @@ def _resolve_agent(
         first_exit_tick=first_exit,
         successful_moves=moves,
         trail=[*prev.trail, prev.position][-TRAIL_TICKS:] if rules.coordinates_enabled else [],
+        used_edges=used_edges,
     )
     return new_state, events, radio
 

@@ -94,6 +94,11 @@
       "title": "Coordinates Enabled",
       "type": "boolean"
     },
+    "used_exits_enabled": {
+      "default": false,
+      "title": "Used Exits Enabled",
+      "type": "boolean"
+    },
     "distance_sensors": {
       "default": "exit_and_peers",
       "enum": [

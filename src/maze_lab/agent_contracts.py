@@ -223,6 +223,8 @@ class Observation(Contract):
     state_tick: int = Field(ge=0)
     has_reached_exit: bool
     local: LocalCell
+    # Variant `used_exits_enabled`: directions of this cell the agent has moved through, either way.
+    used_exits: list[Direction] | None = Field(default=None, exclude_if=_absent)
     # Fields a rules variant switches off are left out of the JSON, not sent as null, so runs without
     # any variant keep byte-identical observations and prompts.
     exit_distance_tenths: int | None = Field(default=None, ge=0, exclude_if=_absent)  # sensors off
@@ -274,6 +276,7 @@ class AgentRules(Contract):
     landmarks_enabled: bool = False  # positions and labels are never public
     notebook_ops: NotebookOps = "splice"
     coordinates_enabled: bool = False
+    used_exits_enabled: bool = False
     distance_sensors: DistanceSensors = "exit_and_peers"
 
 

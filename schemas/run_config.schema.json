@@ -340,6 +340,11 @@
           "title": "Coordinates Enabled",
           "type": "boolean"
         },
+        "used_exits_enabled": {
+          "default": false,
+          "title": "Used Exits Enabled",
+          "type": "boolean"
+        },
         "distance_sensors": {
           "default": "exit_and_peers",
           "enum": [
@@ -494,6 +499,7 @@
         "meeting_notebooks_enabled": true,
         "notebook_ops": "splice",
         "coordinates_enabled": false,
+        "used_exits_enabled": false,
         "distance_sensors": "exit_and_peers",
         "distance_quantization": "tenths"
       }

@@ -137,6 +137,7 @@ def test_spec_run_creation_example_validates():
     # Later rules variants resolve to the spec's behaviour.
     assert dumped["rules"].pop("notebook_ops") == "splice"
     assert dumped["rules"].pop("coordinates_enabled") is False
+    assert dumped["rules"].pop("used_exits_enabled") is False
     assert dumped == example  # every default resolved explicitly
 
 

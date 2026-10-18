@@ -102,10 +102,19 @@ _DISTANCE_NOTES = {
 # branches it had just explored (23 of 26 junction revisits in run 4a196f67ca00).
 _CHECK_BULLET = (
     "- check (required, written first): one short line restating this turn's four edges, the direction you"
-    " arrived from, and which of this cell's exits you have already taken: an exit is taken if your trail"
-    " (or notebook) holds the neighbouring cell that way, where north of [x, y] is [x, y+1] and east is"
-    " [x+1, y]. Then say which open direction you will take and why, preferring one you have not taken."
-    " The check is not stored anywhere; it only helps you choose this turn's move.\n"
+    " arrived from, and which of this cell's exits you have already taken: {taken_from}. Then say which"
+    " open direction you will take and why, preferring one you have not taken. The check is not stored"
+    " anywhere; it only helps you choose this turn's move.\n"
+)
+_TAKEN_FROM_TRAIL = (
+    "an exit is taken if your trail (or notebook) holds the neighbouring cell that way, where north of"
+    " [x, y] is [x, y+1] and east is [x+1, y]"
+)
+_TAKEN_FROM_USED_EXITS = "copy them from used_exits"
+_USED_EXITS_NOTE = (
+    "\n- used_exits lists the directions of your current cell you have already moved through, leaving or"
+    " arriving, at any point this game. An open direction not in it leads somewhere you have not yet been"
+    " from here."
 )
 _NOTEBOOKS = TypeAdapter(list[Notebook])
 
@@ -121,7 +130,8 @@ WORLD
 - Each turn you see the four edges of your current cell: "open" (you can move through), \
 "interior_wall" (an internal wall), or "outer_brick" (the maze's outer boundary; brick appears only \
 there).
-- local.is_exit tells you whether you are standing on the exit.{landmark_note}{coordinates_note}
+- local.is_exit tells you whether you are standing on the exit.{landmark_note}{coordinates_note}\
+{used_exits_note}
 {distance_note}
 - Several agents may share a cell. Agents that end a turn on the same cell can read each other's \
 full notebooks on the next turn (colocated_notebooks). Reading copies nothing into your notebook.
@@ -190,7 +200,12 @@ def system_instruction(
         memory_note=PROMPT_MEMORY_NOTES[version],
         landmark_note=_LANDMARK_NOTE if rules.landmarks_enabled else "",
         distance_note=_DISTANCE_NOTES[rules.distance_sensors],
-        check_bullet=_CHECK_BULLET if with_check else "",
+        check_bullet=_CHECK_BULLET.format(
+            taken_from=_TAKEN_FROM_USED_EXITS if rules.used_exits_enabled else _TAKEN_FROM_TRAIL
+        )
+        if with_check
+        else "",
+        used_exits_note=_USED_EXITS_NOTE if rules.used_exits_enabled else "",
         world_view=_COORDINATES_VIEW
         if rules.coordinates_enabled
         else "You never see coordinates, the map size, or a map.",

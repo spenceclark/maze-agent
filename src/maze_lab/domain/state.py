@@ -10,6 +10,7 @@ from maze_lab.agent_contracts import (
     ActionReceipt,
     AgentId,
     Contract,
+    Direction,
     Notebook,
     RadioObservation,
 )
@@ -30,6 +31,9 @@ class AgentState(Contract):
     # Kept only with rules.coordinates_enabled; left out of the JSON when empty, so states stored
     # before trails existed keep their hashes.
     trail: list[Position] = Field(default_factory=list, exclude_if=lambda v: not v)
+    # Kept only with rules.used_exits_enabled: every edge the agent has moved through, as (x, y,
+    # direction) from both of its cells, sorted; left out of the JSON when empty, like the trail.
+    used_edges: list[tuple[int, int, Direction]] = Field(default_factory=list, exclude_if=lambda v: not v)
 
 
 class WorldState(Contract):

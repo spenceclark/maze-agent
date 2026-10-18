@@ -1624,6 +1624,11 @@
             "title": "Coordinates Enabled",
             "default": false
           },
+          "used_exits_enabled": {
+            "type": "boolean",
+            "title": "Used Exits Enabled",
+            "default": false
+          },
           "distance_sensors": {
             "type": "string",
             "enum": [
@@ -1707,6 +1712,32 @@
             },
             "type": "array",
             "title": "Trail"
+          },
+          "used_edges": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "N",
+                    "E",
+                    "S",
+                    "W"
+                  ]
+                }
+              ],
+              "type": "array",
+              "maxItems": 3,
+              "minItems": 3
+            },
+            "type": "array",
+            "title": "Used Edges"
           }
         },
         "additionalProperties": false,
@@ -3317,6 +3348,26 @@
           "local": {
             "$ref": "#/components/schemas/LocalCell"
           },
+          "used_exits": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "N",
+                    "E",
+                    "S",
+                    "W"
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Used Exits"
+          },
           "exit_distance_tenths": {
             "anyOf": [
               {
@@ -3917,6 +3968,11 @@
             "title": "Coordinates Enabled",
             "default": false
           },
+          "used_exits_enabled": {
+            "type": "boolean",
+            "title": "Used Exits Enabled",
+            "default": false
+          },
           "distance_sensors": {
             "type": "string",
             "enum": [
@@ -4068,6 +4124,7 @@
               "meeting_notebooks_enabled": true,
               "notebook_ops": "splice",
               "coordinates_enabled": false,
+              "used_exits_enabled": false,
               "distance_sensors": "exit_and_peers",
               "distance_quantization": "tenths"
             }

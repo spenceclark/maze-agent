@@ -447,6 +447,11 @@ export interface components {
              */
             coordinates_enabled: boolean;
             /**
+             * Used Exits Enabled
+             * @default false
+             */
+            used_exits_enabled: boolean;
+            /**
              * Distance Sensors
              * @default exit_and_peers
              * @enum {string}
@@ -471,6 +476,12 @@ export interface components {
             successful_moves: number;
             /** Trail */
             trail?: components["schemas"]["Position"][];
+            /** Used Edges */
+            used_edges?: [
+                number,
+                number,
+                "N" | "E" | "S" | "W"
+            ][];
         };
         /** AgentsResponse */
         AgentsResponse: {
@@ -1082,6 +1093,8 @@ export interface components {
             /** Has Reached Exit */
             has_reached_exit: boolean;
             local: components["schemas"]["LocalCell"];
+            /** Used Exits */
+            used_exits?: ("N" | "E" | "S" | "W")[] | null;
             /** Exit Distance Tenths */
             exit_distance_tenths?: number | null;
             /** Peer Ranges */
@@ -1312,6 +1325,11 @@ export interface components {
              */
             coordinates_enabled: boolean;
             /**
+             * Used Exits Enabled
+             * @default false
+             */
+            used_exits_enabled: boolean;
+            /**
              * Distance Sensors
              * @default exit_and_peers
              * @enum {string}
@@ -1391,6 +1409,7 @@ export interface components {
              *       "meeting_notebooks_enabled": true,
              *       "notebook_ops": "splice",
              *       "coordinates_enabled": false,
+             *       "used_exits_enabled": false,
              *       "distance_sensors": "exit_and_peers",
              *       "distance_quantization": "tenths"
              *     }
