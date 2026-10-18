@@ -25,6 +25,7 @@ Batches use 3 seeds, so intervals are wide.
 | 13 | No shared frame, and no memory of where they've been | `coordinates_enabled`: exact [x, y] from each agent's own start plus a 30-turn trail, a rule on lining frames up via a shared landmark or cell, and a quieter rolling log (one game each, Haiku and Qwen) | **Haiku solved the 'where':** B and C each placed the exit exactly in their own frames from distance readings. B found the exact offset to A's frame by using the exit as the shared cell. Exploration rose (92 cells against 58, back-and-forth 19 against 26) and notes fell from 238 to 170 | **No one new reached the exit:** B knew the exit was at (-6,-2) but found no route to it in 80 turns. Qwen wrote 'Must break out of this loop' 59 times and kept looping; its wall hits were 37%. The bottleneck is now route-finding |
 | 14 | Why is route-finding so poor? Measured at junction revisits | Ground truth from trajectories: when back on a junction with an untried open exit, how often does the agent take one it has already used? | **Sonnet 3%, DeepSeek 27%, Haiku 40%, Qwen 58%.** In Haiku's bad choices, it wrote "Trying X (untried)" about an exit it had used | **Two bookkeeping gaps:** (1) cells have no identity, so a revisit is logged as a new cell; (2) the exit it arrived through is never marked tried. Stale duplicate lines aren't the main issue. Sonnet names cells (W1, W2…) and recognises them. Haiku with coordinates: 0 of 8 (small sample) |
 | 15 | Our own wording hamstrung them: "trail lists where you were on each of the last 30 turns" | Prompt v7 (the exit you arrived through counts as tried), then the trail rule reworded: "ends with last turn's cell, never includes where you are now" (Haiku + coordinates, same seed) | v7 was adopted ("E open (came from)") but measured nothing new: used-exit choices were already 0%. **The wording fix removed all doubt notes (22 per game → 0)** and gave the best exploration so far: 110 distinct cells (85–92 before), coverage 0.45, back-and-forth 11 (19–22) | Still only A exits. C needs 52 moves even with a perfect map and was still finding new cells at t80. **The 80-turn horizon now binds**; the default for 12×12 is 320 |
+| 16 | Are the distance readings making them bounce? About 60% of Haiku's reversals came straight after a move that raised the exit reading | `distance_sensors: none`: no exit distance and no peer ranges, and the distance rule replaced by "you have no distance sensors" (Haiku, v7 + coordinates, same seed; one game) | **Coverage 0.53, the best Haiku game yet** (0.45 with distances), 115 distinct cells, back-and-forth about the same (14 against 11). Landmarks were mentioned far more (16 notes and 8 radio messages, against 6 and 1), because they became the only shared reference | Still only A exits, and nobody meets. Without distances, B and C can't locate the exit, so A's route home in A's frame is useless until they find a shared cell. The horizon still binds: C was finding new cells at t80 |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -1161,6 +1162,43 @@ wording (`bb8677c622e6`):**
   which is its long-run rate (58%).
 - **Single games swing this much,** so read this as no clear change. Qwen's bottleneck is still acting on
   what it writes, not what it's told.
+
+## No distance sensors (`distance_sensors: none`, Haiku, `a5e568c02c88`)
+- **What changes:** `exit_distance_tenths` and `peer_ranges` are left out of the observation. The
+  straight-line distance rule becomes "You have no distance sensors: nothing tells you how far away the
+  exit or the other agents are."
+- **Setup:** otherwise the same as `7daa4ff3a048` (v7, coordinates with the fixed trail wording, rolling
+  log, 10 landmarks, seed 202611017).
+- **The question being tested:** were the readings making agents bounce back and forth?
+- **The evidence beforehand:** across 8 earlier Haiku games on this seed, 62 of 104 reversals (A→B→A) came
+  straight after a move that raised the exit reading.
+
+| Haiku, v7 + coordinates | Exits | Coverage | Distinct cells | Back-and-forth | Notes / radio naming a landmark | Cost |
+| --- | --- | --- | --- | --- | --- | --- |
+| With distances (`7daa4ff3a048`) | A t5 | 0.45 | 110 | 11 | 6 / 1 | $0.11 |
+| **No distances** (`a5e568c02c88`) | A t5 | **0.53** | 115 | 14 | **16 / 8** | $0.11 |
+
+- **Exploration improved a little:** 0.53 coverage is the best Haiku game so far. Back-and-forth didn't
+  fall (14 against 11), so the readings weren't the main cause of bouncing in this setup. With coordinates
+  and a trail, reversals were already low.
+- **Landmarks took over as reference points:** without distances they're the only thing two agents can both
+  recognise. Notes and radio named them several times more often.
+- **The cost:** without distances, B and C can't work out where the exit is. A radioed the route home
+  in its own frame ("[-2,1] in my frame… N,N,W,S,W"). Others noted "offset still unknown, need a shared
+  landmark or cell", and no shared cell turned up in 80 turns.
+- **Taken with the coordinates games:** distances help locate the exit and convert between frames. They
+  hurt less than expected once agents have coordinates.
+
+**Frames on the radio: Haiku labels them, Qwen doesn't.**
+
+| Model | Radio messages with coordinates | Naming whose frame |
+| --- | --- | --- |
+| Haiku (4 games) | 110 | **109** ("A-frame [-2,1]", "in my frame", "offset unknown") |
+| Qwen (2 games) | 30 | **0** ("B moved E to [1,1]") |
+
+Haiku understood the frames from the rule. Qwen sends bare coordinates, so its teammates can't tell they're
+in someone else's frame.
+
 
 
 
