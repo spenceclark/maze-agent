@@ -1618,6 +1618,11 @@
             ],
             "title": "Notebook Ops",
             "default": "splice"
+          },
+          "coordinates_enabled": {
+            "type": "boolean",
+            "title": "Coordinates Enabled",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -1641,65 +1646,8 @@
         "description": "Public rules shown to every agent. Never a serialization of RunConfig."
       },
       "AgentState": {
-        "properties": {
-          "agent_id": {
-            "type": "string",
-            "enum": [
-              "A",
-              "B",
-              "C"
-            ],
-            "title": "Agent Id"
-          },
-          "position": {
-            "$ref": "#/components/schemas/Position"
-          },
-          "notebook": {
-            "$ref": "#/components/schemas/Notebook"
-          },
-          "last_receipt": {
-            "$ref": "#/components/schemas/ActionReceipt"
-          },
-          "last_radio_tick": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Radio Tick"
-          },
-          "first_exit_tick": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "First Exit Tick"
-          },
-          "successful_moves": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "Successful Moves"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "agent_id",
-          "position",
-          "notebook",
-          "last_receipt",
-          "last_radio_tick",
-          "first_exit_tick",
-          "successful_moves"
-        ],
-        "title": "AgentState"
+        "additionalProperties": true,
+        "type": "object"
       },
       "AgentsResponse": {
         "properties": {
@@ -2054,6 +2002,49 @@
           "code"
         ],
         "title": "ComponentReceipt"
+      },
+      "Coordinates": {
+        "properties": {
+          "position": {
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Position"
+          },
+          "trail": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "array",
+            "title": "Trail"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "position",
+          "trail"
+        ],
+        "title": "Coordinates",
+        "description": "Variant `coordinates_enabled`: exact [x, y] relative to the agent's own start, x east, y north."
       },
       "DecisionAttempt": {
         "properties": {
@@ -3211,92 +3202,8 @@
         "title": "NotebookUpdated"
       },
       "Observation": {
-        "properties": {
-          "schema_version": {
-            "type": "string",
-            "const": "1.0",
-            "title": "Schema Version"
-          },
-          "agent_id": {
-            "type": "string",
-            "enum": [
-              "A",
-              "B",
-              "C"
-            ],
-            "title": "Agent Id"
-          },
-          "decision_tick": {
-            "type": "integer",
-            "minimum": 1.0,
-            "title": "Decision Tick"
-          },
-          "state_tick": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "State Tick"
-          },
-          "has_reached_exit": {
-            "type": "boolean",
-            "title": "Has Reached Exit"
-          },
-          "local": {
-            "$ref": "#/components/schemas/LocalCell"
-          },
-          "exit_distance_tenths": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "Exit Distance Tenths"
-          },
-          "peer_ranges": {
-            "items": {
-              "$ref": "#/components/schemas/PeerRange"
-            },
-            "type": "array",
-            "title": "Peer Ranges"
-          },
-          "last_action": {
-            "$ref": "#/components/schemas/ActionReceipt"
-          },
-          "notebook": {
-            "$ref": "#/components/schemas/Notebook"
-          },
-          "radio_inbox": {
-            "items": {
-              "$ref": "#/components/schemas/RadioObservation"
-            },
-            "type": "array",
-            "title": "Radio Inbox"
-          },
-          "colocated_notebooks": {
-            "items": {
-              "$ref": "#/components/schemas/Notebook"
-            },
-            "type": "array",
-            "title": "Colocated Notebooks"
-          },
-          "budgets": {
-            "$ref": "#/components/schemas/Budgets"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "schema_version",
-          "agent_id",
-          "decision_tick",
-          "state_tick",
-          "has_reached_exit",
-          "local",
-          "exit_distance_tenths",
-          "peer_ranges",
-          "last_action",
-          "notebook",
-          "radio_inbox",
-          "colocated_notebooks",
-          "budgets"
-        ],
-        "title": "Observation"
+        "additionalProperties": true,
+        "type": "object"
       },
       "ObservationResponse": {
         "properties": {
@@ -3816,6 +3723,11 @@
             "title": "Notebook Ops",
             "default": "splice"
           },
+          "coordinates_enabled": {
+            "type": "boolean",
+            "title": "Coordinates Enabled",
+            "default": false
+          },
           "distance_sensors": {
             "type": "string",
             "const": "exit_and_peers",
@@ -3963,6 +3875,7 @@
               "radio_cooldown_ticks": 5,
               "meeting_notebooks_enabled": true,
               "notebook_ops": "splice",
+              "coordinates_enabled": false,
               "distance_sensors": "exit_and_peers",
               "distance_quantization": "tenths"
             }

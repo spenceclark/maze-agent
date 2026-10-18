@@ -1,0 +1,47 @@
+"""The coordinates variant: exact positions relative to each agent's own start, plus a recent trail."""
+
+from helpers import P, act, grid, step
+
+from maze_lab.config import RulesConfig
+from maze_lab.domain.state import TRAIL_TICKS, initial_state
+from maze_lab.observation import observe, public_rules
+from maze_lab.policies.prompt import system_instruction, user_blocks
+
+MAZE = grid(3, 3, P(2, 2), [P(1, 1), P(0, 0), P(2, 0)])  # every interior edge open
+ON = RulesConfig(coordinates_enabled=True)
+
+
+def test_position_counts_from_own_start_with_y_north():
+    s = step(MAZE, initial_state(MAZE), ON, A=act(1, "N"), B=act(1, "E")).state
+    a, b = observe(MAZE, ON, s, "A").coordinates, observe(MAZE, ON, s, "B").coordinates
+    assert a is not None and b is not None
+    assert a.position == (0, 1) and a.trail == [(0, 0)]
+    assert b.position == (1, 0)  # B counts from its own start
+
+
+def test_trail_repeats_blocked_moves_and_keeps_the_last_ticks():
+    s = step(MAZE, initial_state(MAZE), ON, A=act(1, "N")).state
+    s = step(MAZE, s, ON, A=act(2, "N")).state  # brick: blocked
+    coords = observe(MAZE, ON, s, "A").coordinates
+    assert coords is not None and coords.trail == [(0, 0), (0, 1)] and coords.position == (0, 1)
+    for t in range(3, TRAIL_TICKS + 10):
+        s = step(MAZE, s, ON, A=act(t, "S" if t % 2 else "N")).state
+    coords = observe(MAZE, ON, s, "A").coordinates
+    assert coords is not None and len(coords.trail) == TRAIL_TICKS
+    assert coords.position == (0, 0) and coords.trail[-4:] == [(0, 0), (0, 1)] * 2  # ping-pong is visible
+
+
+def test_runs_without_the_variant_are_unchanged():
+    s = step(MAZE, initial_state(MAZE), A=act(1, "N")).state
+    assert s.agent("A").trail == [] and "trail" not in s.model_dump_json()
+    obs = observe(MAZE, RulesConfig(), s, "A")
+    assert obs.coordinates is None and "coordinates" not in "".join(user_blocks(obs))
+    assert "You never see coordinates" in system_instruction(public_rules(RulesConfig()), "A")
+
+
+def test_prompt_explains_frames_and_calibration():
+    s = step(MAZE, initial_state(MAZE), ON, A=act(1, "N")).state
+    assert '"coordinates":{"position":[0,1],"trail":[[0,0]]}' in user_blocks(observe(MAZE, ON, s, "A"))[2]
+    text = system_instruction(public_rules(ON), "A")
+    assert "x grows east, y grows north" in text and "fixed offset" in text
+    assert "You never see coordinates" not in text

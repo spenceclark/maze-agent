@@ -1,13 +1,21 @@
 """Agent-facing wire contracts (spec §7).
 
 Everything an agent sees or produces is defined here. Nothing in this module
-may reference world coordinates, maze metadata, or spectator data.
+may reference world coordinates, maze metadata, or spectator data. The one
+exception is a declared variant: `Coordinates`, relative to the agent's own start.
 """
 
 import json
 from typing import Annotated, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializerFunctionWrapHandler,
+    model_serializer,
+    model_validator,
+)
 
 AgentId = Literal["A", "B", "C"]
 Direction = Literal["N", "E", "S", "W"]
@@ -178,6 +186,13 @@ class Budgets(Contract):
     allow_stay: bool
 
 
+class Coordinates(Contract):
+    """Variant `coordinates_enabled`: exact [x, y] relative to the agent's own start, x east, y north."""
+
+    position: tuple[int, int]
+    trail: list[tuple[int, int]]  # positions at the previous ticks, oldest first; repeats mean no move
+
+
 class Observation(Contract):
     schema_version: Literal["1.0"]
     agent_id: AgentId
@@ -192,6 +207,15 @@ class Observation(Contract):
     radio_inbox: list[RadioObservation]
     colocated_notebooks: list[Notebook]
     budgets: Budgets
+    coordinates: Coordinates | None = None
+
+    @model_serializer(mode="wrap")
+    def _omit_absent_coordinates(self, handler: SerializerFunctionWrapHandler) -> dict[str, object]:
+        """Runs without the variant keep byte-identical observations and prompts."""
+        data = handler(self)
+        if self.coordinates is None:
+            data.pop("coordinates", None)
+        return data
 
     @model_validator(mode="after")
     def _invariants(self) -> Self:
@@ -232,6 +256,7 @@ class AgentRules(Contract):
     max_provider_requests_per_turn: int = Field(ge=1)
     landmarks_enabled: bool = False  # positions and labels are never public
     notebook_ops: NotebookOps = "splice"
+    coordinates_enabled: bool = False
 
 
 class InvalidActionError(ValueError):

@@ -88,6 +88,11 @@
       ],
       "title": "Notebook Ops",
       "type": "string"
+    },
+    "coordinates_enabled": {
+      "default": false,
+      "title": "Coordinates Enabled",
+      "type": "boolean"
     }
   },
   "required": [

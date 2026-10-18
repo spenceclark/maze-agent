@@ -106,6 +106,49 @@
       "title": "ComponentReceipt",
       "type": "object"
     },
+    "Coordinates": {
+      "additionalProperties": false,
+      "description": "Variant `coordinates_enabled`: exact [x, y] relative to the agent's own start, x east, y north.",
+      "properties": {
+        "position": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "integer"
+            }
+          ],
+          "title": "Position",
+          "type": "array"
+        },
+        "trail": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Trail",
+          "type": "array"
+        }
+      },
+      "required": [
+        "position",
+        "trail"
+      ],
+      "title": "Coordinates",
+      "type": "object"
+    },
     "LocalCell": {
       "additionalProperties": false,
       "properties": {
@@ -411,6 +454,17 @@
     },
     "budgets": {
       "$ref": "#/$defs/Budgets"
+    },
+    "coordinates": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Coordinates"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     }
   },
   "required": [

@@ -37,7 +37,7 @@ from maze_lab.domain.events import (
 from maze_lab.domain.maze import MazeDefinition
 from maze_lab.domain.notebook import apply_change, requested_change
 from maze_lab.domain.radio import check_radio
-from maze_lab.domain.state import AgentState, WorldState, meeting_groups
+from maze_lab.domain.state import TRAIL_TICKS, AgentState, WorldState, meeting_groups
 from maze_lab.hashing import sha256_hex
 
 
@@ -159,6 +159,7 @@ def _resolve_agent(
         last_radio_tick=last_radio,
         first_exit_tick=first_exit,
         successful_moves=moves,
+        trail=[*prev.trail, prev.position][-TRAIL_TICKS:] if rules.coordinates_enabled else [],
     )
     return new_state, events, radio
 

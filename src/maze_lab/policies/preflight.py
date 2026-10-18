@@ -21,6 +21,7 @@ from maze_lab.agent_contracts import (
     AgentId,
     AgentRules,
     Budgets,
+    Coordinates,
     LocalCell,
     Notebook,
     Observation,
@@ -29,6 +30,7 @@ from maze_lab.agent_contracts import (
     TurnAction,
 )
 from maze_lab.config import LlmAgentConfig, RunConfig
+from maze_lab.domain.state import TRAIL_TICKS
 from maze_lab.observation import public_rules
 from maze_lab.policies.prompt import system_instruction, user_blocks
 
@@ -91,6 +93,9 @@ def _worst_case_observation(rules: AgentRules, agent_id: AgentId, horizon: int) 
             notebook_enabled=rules.notebook_enabled,
             allow_stay=rules.allow_stay,
         ),
+        coordinates=Coordinates(position=(-999, -999), trail=[(-999, -999)] * TRAIL_TICKS)
+        if rules.coordinates_enabled
+        else None,
     )
 
 

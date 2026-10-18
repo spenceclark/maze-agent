@@ -2,7 +2,7 @@
 
 from typing import Self
 
-from pydantic import Field, model_validator
+from pydantic import Field, SerializerFunctionWrapHandler, model_serializer, model_validator
 
 from maze_lab.agent_contracts import (
     AGENT_IDS,
@@ -16,6 +16,8 @@ from maze_lab.agent_contracts import (
 from maze_lab.domain.geometry import Position
 from maze_lab.domain.maze import MazeDefinition
 
+TRAIL_TICKS = 30  # ponytail: fixed trail length; make it a rules knob if runs need to tune it
+
 
 class AgentState(Contract):
     agent_id: AgentId
@@ -25,6 +27,15 @@ class AgentState(Contract):
     last_radio_tick: int | None
     first_exit_tick: int | None
     successful_moves: int = Field(ge=0)
+    trail: list[Position] = Field(default_factory=list)  # kept only with rules.coordinates_enabled
+
+    @model_serializer(mode="wrap")
+    def _omit_empty_trail(self, handler: SerializerFunctionWrapHandler) -> dict[str, object]:
+        """States stored before trails existed keep their hashes."""
+        data = handler(self)
+        if not self.trail:
+            data.pop("trail", None)
+        return data
 
 
 class WorldState(Contract):

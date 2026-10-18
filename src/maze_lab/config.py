@@ -124,6 +124,8 @@ class RulesConfig(Contract):
     meeting_notebooks_enabled: bool = True
     # "splice" is spec §5.4; "append_log" makes the notebook a rolling log agents only append to.
     notebook_ops: NotebookOps = "splice"
+    # Variant: agents see exact coordinates relative to their own start, plus their recent trail.
+    coordinates_enabled: bool = False
     distance_sensors: Literal["exit_and_peers"] = "exit_and_peers"  # variants: phase 6
     distance_quantization: Literal["tenths"] = "tenths"
 

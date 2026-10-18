@@ -1,7 +1,8 @@
 """The sole projection from ground truth to what an agent sees (spec §4.2).
 
 Nothing else may build an `Observation` or `AgentRules`. Coordinates, maze
-size, seeds, and spectator data stop here.
+size, seeds, and spectator data stop here; with `coordinates_enabled` agents
+see only positions relative to their own start.
 """
 
 from maze_lab.agent_contracts import (
@@ -9,12 +10,13 @@ from maze_lab.agent_contracts import (
     AgentId,
     AgentRules,
     Budgets,
+    Coordinates,
     LocalCell,
     Observation,
     PeerRange,
 )
 from maze_lab.config import RulesConfig
-from maze_lab.domain.geometry import distance_tenths
+from maze_lab.domain.geometry import Position, distance_tenths
 from maze_lab.domain.maze import MazeDefinition
 from maze_lab.domain.radio import next_eligible_tick
 from maze_lab.domain.state import WorldState
@@ -37,11 +39,18 @@ def public_rules(rules: RulesConfig, landmarks_enabled: bool = False) -> AgentRu
         max_provider_requests_per_turn=1,
         landmarks_enabled=landmarks_enabled,
         notebook_ops=rules.notebook_ops,
+        coordinates_enabled=rules.coordinates_enabled,
     )
+
+
+def _relative(p: Position, start: Position) -> tuple[int, int]:
+    """[x, y] from the agent's start, x east and y north (world y grows south)."""
+    return (p.x - start.x, start.y - p.y)
 
 
 def observe(maze: MazeDefinition, rules: RulesConfig, state: WorldState, agent_id: AgentId) -> Observation:
     me = state.agent(agent_id)
+    start = maze.spawns[AGENT_IDS.index(agent_id)]
     cell = maze.cell(me.position)
     group = next((g for g in state.meetings if agent_id in g), [])
     colocated = (
@@ -85,4 +94,9 @@ def observe(maze: MazeDefinition, rules: RulesConfig, state: WorldState, agent_i
             notebook_enabled=rules.notebook_enabled,
             allow_stay=rules.allow_stay,
         ),
+        coordinates=Coordinates(
+            position=_relative(me.position, start), trail=[_relative(p, start) for p in me.trail]
+        )
+        if rules.coordinates_enabled
+        else None,
     )

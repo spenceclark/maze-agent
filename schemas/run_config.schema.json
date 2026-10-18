@@ -325,6 +325,11 @@
           "title": "Notebook Ops",
           "type": "string"
         },
+        "coordinates_enabled": {
+          "default": false,
+          "title": "Coordinates Enabled",
+          "type": "boolean"
+        },
         "distance_sensors": {
           "const": "exit_and_peers",
           "default": "exit_and_peers",
@@ -475,6 +480,7 @@
         "radio_cooldown_ticks": 5,
         "meeting_notebooks_enabled": true,
         "notebook_ops": "splice",
+        "coordinates_enabled": false,
         "distance_sensors": "exit_and_peers",
         "distance_quantization": "tenths"
       }

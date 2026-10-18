@@ -134,9 +134,9 @@ def test_spec_run_creation_example_validates():
         assert agent.pop("sampling") == {"temperature": None, "top_p": None, "seed": None}
     for agent in example["agents"]:
         agent.pop("sampling")
-    assert (
-        dumped["rules"].pop("notebook_ops") == "splice"
-    )  # later rules variant, resolved to the spec's splice
+    # Later rules variants resolve to the spec's behaviour.
+    assert dumped["rules"].pop("notebook_ops") == "splice"
+    assert dumped["rules"].pop("coordinates_enabled") is False
     assert dumped == example  # every default resolved explicitly
 
 

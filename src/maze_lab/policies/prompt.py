@@ -14,6 +14,7 @@ reuses identical input only; it carries no state between decisions.
 from pydantic import TypeAdapter
 
 from maze_lab.agent_contracts import AgentRules, Notebook, NotebookOps, Observation
+from maze_lab.domain.state import TRAIL_TICKS
 
 PROMPT_VERSION = "maze_agent_v4"  # default for new runs
 
@@ -46,6 +47,15 @@ _LANDMARK_NOTE = (
     " landmark on your cell. Each label is unique and fixed to one cell, and you see it only while"
     " standing there."
 )
+_COORDINATES_VIEW = "You never see the map size or a map; your coordinates count from your own start."
+_COORDINATES_NOTE = (
+    "\n- coordinates.position is your exact cell as [x, y] counted from your own start [0, 0]: x grows east,"
+    " y grows north. coordinates.trail lists where you were on each of the last {trail} turns, oldest first."
+    " A repeated entry means you stayed or were blocked; a repeating pattern means you are going in circles."
+    "\n- The other agents count from their own starts, so their coordinates differ from yours by a fixed"
+    " offset. When two of you stand on the same landmark or meet on the same cell, comparing your positions"
+    " there gives that offset, after which you can share places and routes in one frame."
+)
 _NOTEBOOKS = TypeAdapter(list[Notebook])
 
 _SYSTEM = """\
@@ -56,11 +66,11 @@ GOAL: {objective}. Reaching the exit cell counts as a visit; you stay active aft
 helping the others.
 
 WORLD
-- The maze is a rectangular grid of cells. You never see coordinates, the map size, or a map.
+- The maze is a rectangular grid of cells. {world_view}
 - Each turn you see the four edges of your current cell: "open" (you can move through), \
 "interior_wall" (an internal wall), or "outer_brick" (the maze's outer boundary; brick appears only \
 there).
-- local.is_exit tells you whether you are standing on the exit.{landmark_note}
+- local.is_exit tells you whether you are standing on the exit.{landmark_note}{coordinates_note}
 - exit_distance_tenths and peer_ranges give straight-line (Euclidean) distances in tenths of a cell, \
 ignoring walls. They are not path lengths and carry no direction. Because walls are ignored, a cell \
 where every move raises the reading can be a dead end, and the path to the exit may first lead away from it.
@@ -96,7 +106,9 @@ _NOTEBOOK_BULLETS = {
         "- notebook_append (or null): a note added on a new line at the end of your notebook, at most "
         "{insert} UTF-8 bytes (a longer note is rejected whole). The notebook is a rolling log: when it "
         "would exceed {cap} bytes, its oldest lines are dropped to make room. null, an empty string or "
-        '"null" means no note this turn.'
+        '"null" means no note this turn. Write a note only when you learn something new (a junction, a'
+        " dead end, a landmark, a change of plan): every note pushes your oldest lines closer to being"
+        " dropped."
     ),
 }
 _SCHEMA_VERSIONS = {"splice": "1.0", "append_log": "1.2"}
@@ -126,6 +138,10 @@ def system_instruction(rules: AgentRules, agent_id: str, version: str = PROMPT_V
         radio_note="" if rules.radio_enabled else " Radio is disabled in this condition.",
         memory_note=PROMPT_MEMORY_NOTES[version],
         landmark_note=_LANDMARK_NOTE if rules.landmarks_enabled else "",
+        world_view=_COORDINATES_VIEW
+        if rules.coordinates_enabled
+        else "You never see coordinates, the map size, or a map.",
+        coordinates_note=_COORDINATES_NOTE.format(trail=TRAIL_TICKS) if rules.coordinates_enabled else "",
     )
 
 
