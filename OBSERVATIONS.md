@@ -34,6 +34,7 @@ Batches use 3 seeds, so intervals are wide.
 | 22 | Qwen commits to a move before writing anything about its cell | `action_field_order: note_first`: the schema asks for `notebook_append` before `move`, and the official `qwen3.5:9b` writes keys in schema order (one game, same v10 setup) | **On turns where it wrote a note, wall moves fell from 39% to 14%** (13 of 96, against 45 of 115). Moves against that turn's own note fell from 26 to 3. Overall 29.4% against 37.5%; A exited at t22 (t50) | **On turns with a null note it still hit walls 40% of the time** (57 of 142), and it skipped the note on 60% of turns, encouraged by the rolling log's "write only when you learn something new". No exits for B or C |
 | 23 | Note-first only helps on turns where Qwen writes a note | `action_field_order: check_first`: a required, unstored `check` line before the note and the move ("restate this turn's four edges, the direction you arrived from, and which open direction you will take and why"); one game | **Wall moves 7.5%** (18 of 240), against 37.5% move-first and 29.4% note-first, the lowest Qwen has ever managed. **66 distinct cells** (38 and 32), coverage 0.40 | **No exits:** A wandered 31 moves from the exit. At junction revisits Qwen took an already-used exit 88% of the time (23 of 26). Its moves now match its cell; its route choices are still poor. Twice the output tokens; game 25 minutes against 11 |
 | 24 | With the check, Qwen still re-enters branches it has just explored | The check also lists "which of this cell's exits you have already taken", read from the trail (north of [x, y] is [x, y+1]), and the move should prefer one not taken (one game) | **The best Qwen exploration yet:** 87 distinct cells (66), coverage 0.46 (0.40). Immediate backtracks fell from 35% to 26% of moves, and used exits at junction revisits from 88% to 73% | **Still no exits.** 19% of checks after t2 said "Exits taken: None", although every agent had arrived from somewhere, and some then moved straight back the way they came. Wall moves 12.1% (7.5%). Output tokens +42% |
+| 25 | Qwen can't work out from its trail which exits it has used | `used_exits_enabled`: the engine lists the current cell's directions already moved through (either way, whole game), and the check copies them (one game, the last helping hand) | **The local choice is fixed:** with an unused open exit available, it took one 66 times out of 74 (89%). Used exits at junction revisits fell to 4 of 11 (from 19 of 26). A exited at t5 | **The global search isn't.** 138 of 240 decisions (57%) were on cells where every open exit had already been used, wandering explored ground with no way to find the frontier. Coverage 0.38 (0.46), B and C ended 63 and 61 moves from the exit. This is where we stopped helping Qwen |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -1422,6 +1423,37 @@ trail (or notebook) holds the neighbouring cell that way… preferring one you h
 - **Next lever if wanted:** take the arithmetic away. The engine could include, for the current cell, the
   directions the agent has already used from or into it, a fact derived from its own trail. That moves the
   bookkeeping from the model to the harness, the way coordinates did for Haiku.
+
+**The last helping hand: the engine lists used exits (`6bfc0e35c876`, `used_exits_enabled`).**
+- **What the engine adds:** a record of every edge each agent has moved through. The observation lists the
+  current cell's used directions, e.g. `"used_exits":["S"]`.
+- **The check changes to match:** it now says "copy them from used_exits" instead of working them out from
+  the trail.
+- **Otherwise unchanged:** the same qwen3.5:9b, v10, coordinates, no distances, check-first game.
+
+| qwen3.5:9b, check first | Wall moves | Distinct cells | Coverage | Used exit taken when an unused one was open | Turns on cells with every exit used | Exits |
+| --- | --- | --- | --- | --- | --- | --- |
+| Check from the trail (`6630a25324ab`) | 12.1% | 87 | 0.46 | 19 of 26 at junctions | — | none |
+| **Engine lists used exits** (`6bfc0e35c876`) | 13.7% | 69 | 0.38 | **8 of 74 (11%)**; 4 of 11 at junctions | **138 of 240 (57%)** | A t5 |
+
+- **Qwen now follows the depth-first rule locally.** It copies the list correctly ("Used_exits=[S]; Next:
+  Move_W") and, when there was an unexplored way out, took it 89% of the time.
+- **What depth-first search needs next is beyond it.** When every exit of a cell has been used, the agent
+  has to head back to the nearest cell that still has one. Qwen spent 57% of its decisions in exhausted
+  territory (C: 64 of its 80 turns), wandering without a plan to reach the frontier. Explored cells and
+  coverage fell, and B and C ended further from the exit than they started.
+- **So the remaining gap is planning over a remembered map, not perception or bookkeeping.** Each
+  scaffold fixed the layer it targeted:
+  - check-first fixed perception (walls 37% → 7–14%);
+  - used exits fixed the local choice (88% → 11% wrong).
+
+  Neither produced exits, because the model doesn't navigate back to unexplored ground. The only remaining
+  scaffold is the engine giving the direction to the nearest unexplored exit. That is the engine running
+  depth-first search with Qwen as the hands, so it no longer tests the model.
+- **Verdict for this experiment:** Qwen3.5-9B with reasoning off can be scaffolded into reading its cell
+  correctly and choosing locally well, but not into exploring a maze. With reasoning on it might, but at a
+  cost in time that makes 80+ turn games impractical locally.
+
 
 
 
