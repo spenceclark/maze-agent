@@ -294,3 +294,14 @@ def test_vessel_headers_name_the_run_and_agent():
     assert "extra_headers" not in plain.settings
     tagged = PydanticAiPolicy(llm_config(), timeout_s=5, model=FunctionModel(tool_call({})), session="run123")
     assert tagged.settings.get("extra_headers") == {"X-Vessel-Session": "run123", "X-Vessel-Tags": "A"}
+
+
+def test_v7_counts_the_arrival_exit_as_tried_on_top_of_v4():
+    v4 = system_instruction(AGENT_RULES, "A", "maze_agent_v4")
+    v7 = system_instruction(AGENT_RULES, "A", "maze_agent_v7")
+    assert (
+        v7.replace(
+            " The exit you arrived through counts as tried as well: you already know where it leads.", ""
+        )
+        == v4
+    )

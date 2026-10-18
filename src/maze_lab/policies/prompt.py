@@ -42,6 +42,11 @@ PROMPT_MEMORY_NOTES["maze_agent_v6"] = PROMPT_MEMORY_NOTES["maze_agent_v4"] + (
     ' local (north, east, south, west), then choose only a direction whose edge is "open", or STAY. If'
     " last_action says a move was blocked, do not repeat that direction from the same cell."
 )
+# v7 = v4 plus counting the arrival exit as tried: agents logged exits they left by, never the one they
+# came in through, and re-entered branches they had just explored (junction revisit analysis).
+PROMPT_MEMORY_NOTES["maze_agent_v7"] = PROMPT_MEMORY_NOTES["maze_agent_v4"] + (
+    " The exit you arrived through counts as tried as well: you already know where it leads."
+)
 _LANDMARK_NOTE = (
     '\n- Some cells carry a landmark: local.landmarks lists the label (for example "clock") of any'
     " landmark on your cell. Each label is unique and fixed to one cell, and you see it only while"
