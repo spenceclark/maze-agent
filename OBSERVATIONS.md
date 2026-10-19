@@ -36,6 +36,7 @@ Batches use 3 seeds, so intervals are wide.
 | 24 | With the check, Qwen still re-enters branches it has just explored | The check also lists "which of this cell's exits you have already taken", read from the trail (north of [x, y] is [x, y+1]), and the move should prefer one not taken (one game) | **The best Qwen exploration yet:** 87 distinct cells (66), coverage 0.46 (0.40). Immediate backtracks fell from 35% to 26% of moves, and used exits at junction revisits from 88% to 73% | **Still no exits.** 19% of checks after t2 said "Exits taken: None", although every agent had arrived from somewhere, and some then moved straight back the way they came. Wall moves 12.1% (7.5%). Output tokens +42% |
 | 25 | Qwen can't work out from its trail which exits it has used | `used_exits_enabled`: the engine lists the current cell's directions already moved through (either way, whole game), and the check copies them (one game, the last helping hand) | **The local choice is fixed:** with an unused open exit available, it took one 66 times out of 74 (89%). Used exits at junction revisits fell to 4 of 11 (from 19 of 26). A exited at t5 | **The global search isn't.** 138 of 240 decisions (57%) were on cells where every open exit had already been used, wandering explored ground with no way to find the frontier. Coverage 0.38 (0.46), B and C ended 63 and 61 moves from the exit. This is where we stopped helping Qwen |
 | 26 | New baseline on the current code: Haiku, Sonnet 5.5, Opus 5.5 (one game each), plus two more local models for reference | v10, coordinates, no distances, rolling log, 10 landmarks, 80 turns. Local models get Qwen's best setup (check first) | **Sonnet and Opus got two of three agents out** (C at t76 and t77). Opus's B ended 2 moves from the exit. Both worked from landmark-relative exit positions and reasoned from the west edge. Coverage 0.81 and 0.87 | **Still no team success in 80 turns.** Haiku's repeat went back to camping at its start ("Start is not a landmark; I can't align frames without meeting"… "I am waiting at start"), so v10 worked in 1 of 2 games. lfm2.5 lost 192 of 240 turns to wrong tick numbers; command-r7b walked into walls on 45% of moves |
+| 27 | Is 80 turns the limit for the current setup? | The same baseline at a 120-turn horizon, Haiku and Sonnet (one game each) | **Sonnet met the team objective at t110** (A t5, C t88, B t110), $3.28: the first team success on this setup. It came entirely through the landmark relay: A gave the exit relative to the picture, C found the picture and walked there, then radioed a step-by-step route; B found the picture and followed it | **Haiku still only got A out** despite covering 94% of the maze. A radioed the exit relative to the key and drum, and C reached both (t92, t104), but too late. A also radioed a wrong frame offset ("C-frame = A-frame minus (0,4)"; truth (-4,-7)) |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -1498,6 +1499,40 @@ games.
 - **command-r7b:** formatting was clean, but 45% of moves went into walls, even with the check line, and it
   covered 37 cells.
 - **Qwen3.5-9B stays the best local model tested here,** and it isn't close to the hosted models.
+
+## 120-turn baseline: Sonnet's first team success (`efb5bfcde844`), Haiku (`08b190561509`)
+Same configs as the 80-turn baseline with `horizon_ticks: 120`
+(`configs/{haiku,sonnet55}_v10_landmarks_coords_nodist_h120.json`).
+
+| Model, 120 turns | Result | Exits | Moves from the exit at the end (A / B / C) | Coverage | Distinct cells | Cost |
+| --- | --- | --- | --- | --- | --- | --- |
+| **Sonnet 5.5** | **objective met, t110** | A t5, C t88, B t110 | 55 / 0 / 17 | 0.92 | 224 | $3.28 |
+| Haiku 5.5 | time limit | A t6 | 69 / 37 / 55 | **0.94** | 219 | $0.21 |
+
+**How Sonnet's team got out: a landmark relay, as v9/v10 intended.**
+- **A** found the exit at t5, went landmark-hunting, and radioed "exit 8 S of kettle, 5W 1N of picture".
+- **C** reached the picture at t73: "PICTURE landmark… Exit = 5W,1N of picture = (-6,-6) in my frame". It
+  navigated there turn by turn and arrived at t88. It then radioed a step-by-step route from the picture:
+  "From PICTURE go N3,W,S,W,S,E,S,W,W,N,N,W,S,W". It also gave the exit relative to the fountain and the
+  piano.
+- **B** reached the picture at t95 ("Exit is 5W,1N of picture… Heading N then W"), followed C's route, and
+  arrived at t110.
+- **No frame calibration was needed.** Everything went through a landmark everyone could find. This is the
+  mechanism ladder rows 17–19 built up, completing for the first time.
+
+**Haiku explored almost everything and still didn't finish.**
+- **Its A did the right things:** it radioed the exit relative to the key and the drum from t55 ("exit is 10
+  west and 3 south of the key landmark").
+- **C reached the key at t92 and the drum at t104,** too late to walk 13+ moves through the maze before
+  t120.
+- **A also radioed a wrong frame offset,** "C-frame = A-frame minus (0,4)" (the truth is (-4,-7)), which
+  could only mislead.
+- **Coverage of 0.94 shows exploration isn't Haiku's limit any more.** Turning a shared landmark into a
+  route in time is.
+
+**Horizon:** 120 turns was enough for Sonnet, with 10 to spare; 80 was not. The oracle minimum for this maze
+is 52 ticks.
+
 
 
 
