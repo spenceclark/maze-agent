@@ -1100,8 +1100,10 @@ used as untried. For example:
   coming up from the south into it.
 
 **Two gaps, and stale lines are only part of it:**
-- **Every revisit becomes a fresh line.** No model ever deleted notebook text (0 bytes deleted in every
-  Haiku and Sonnet run), so a junction's history is spread across journal lines from different ticks.
+- **Every revisit becomes a fresh line.** Agents almost never edit an earlier line in place, so a junction's
+  history is spread across journal lines from different ticks. (Corrected: an earlier version said no model
+  ever deleted notebook text. Haiku did compact in 29 of 86 splice runs; see "Who compacts their own
+  notes" below.)
 - **The failure is earlier than reconciling those lines:** the agent doesn't recognise the cell. It
   describes it from scratch by edges and distance, which many cells share, and declares exits untried.
 - **Arrival directions aren't counted.** Agents log "Trying N" for exits they leave by, but the exit they
@@ -1534,6 +1536,21 @@ Same configs as the 80-turn baseline with `horizon_ticks: 120`
 **Horizon:** 120 turns was enough for Sonnet, with 10 to spare; 80 was not. The oracle minimum for this maze
 is 52 ticks.
 
+**Who compacts their own notes** (every splice run in `pilot.db`; a compaction is an edit that replaces
+500+ characters with shorter text):
+
+| Model | Splice runs | Runs with any deletion | Compacting edits | Agent-games ending near the cap (≥90%) |
+| --- | --- | --- | --- | --- |
+| Sonnet 5.5 | 8 | **0** | **0** | 6 of 24 |
+| Haiku 5.5 | 86 | 29 | 23 (median 1,437 chars removed) | 41 of 258 |
+| DeepSeek v4.1 Flash | 9 | **9** | **73** | 16 of 27 |
+| Qwen3.5-9B (Unsloth) | 10 | 10 | (mostly broken splices, not compaction) | 1 of 30 |
+
+Splice lets an agent compact: one edit can replace any range with a shorter summary (deleting is free;
+the inserted text is capped at 1,024 bytes per turn). DeepSeek uses it routinely, Haiku occasionally,
+Sonnet never; Sonnet only appends, and relies on the notebook being big enough. The rolling log removes
+that choice: the engine drops the oldest lines, and agents can't compact or restructure.
+
 **The same 120-turn Sonnet game with splice notebooks (`b11823fcca61`) against the rolling log
 (`efb5bfcde844`).** Only `rules.notebook_ops` differs. The rolling log was built for Qwen and carried into
 the hosted baseline, so this checks whether it matters for Sonnet.
@@ -1554,8 +1571,8 @@ the hosted baseline, so this checks whether it matters for Sonnet.
   instead.
 - **Verdict:**
   - **For hosted models at 80–120 turns,** splice and rolling log are interchangeable.
-  - **For longer horizons the rolling log is the safer default,** because no model we tested ever compacts
-    its own notes.
+  - **For longer horizons the rolling log is the safer default.** Sonnet never compacted in 8 splice runs,
+    and Haiku only sometimes (see "Who compacts their own notes" below).
   - **So it isn't purely a Qwen fix,** although Qwen is why it exists.
 
 
