@@ -42,6 +42,7 @@ Batches use 3 seeds, so intervals are wide.
 | 30 | Nobody merges a teammate's notebook; Haiku teams wait instead of searching | Prompt v11 = v10 plus "copy into your own notes what you lack… Do not wait for information… go and search for that landmark"; and a **shared-frame control** (`coordinates_frame: team`, everyone counts from A's start). Haiku and GLM on the 10×10 seed, one game each | **Haiku with the shared frame met the objective at t120,** its first team success on this setup. **v11's "don't wait" worked for Haiku:** STAYs 197 → 72, coverage 0.70 → 0.95, two exits. GLM went from one exit to two under both variants | **Merging still didn't happen:** 0 copied passages across 34 post-meeting notes in the four games. At Haiku's first v11 meeting (t25, A and B on the same cell) neither note mentioned the other. The frame problem is real: with a shared frame the exit is just "[2,5]", yet B still needed until t120 to find a route |
 | 31 | v11's merge rule never fired: meetings weren't salient | `meeting_alert_enabled`: the observation names teammates on your cell (`colocated_with`), and a rule says that turn's note should copy what you lack and record their position by their own count. Haiku and GLM with v11, 10×10 seed (one game each) | **Haiku met the objective at t91** (C t33, A t76, B t91), the fastest Haiku finish on any maze, for $0.13. Every meeting was noticed and two produced a frame offset. C on the candle with B: "B frame = C frame + (4,-3)… Exit in B frame is [8,4]"; B exited 16 turns later | Agents summarise rather than copy text, so the 40-character copy test still reads 0. **GLM never met a teammate** in its game, so the alert never fired (one exit, B t118). C still camped as a "beacon" on the candle after calibrating |
 | 32 | Does the scaffolded setup scale to bigger mazes with long horizons? | Haiku, v11 + meeting alert, coordinates, no distances, rolling log, 600 turns; 9×9 to 17×17 with 10–14 landmarks, seed 20261104 (one game each) | **Team objective met on 4 of 5 mazes:** 9×9 t116, 11×11 t125, 13×13 t238, 17×17 t236, each in about 3–4× the best possible time, for $0.18–0.40 a game | **15×15 failed:** all three spawned 72–95 moves from the exit, and nobody found it in 600 turns (coverage 0.67). B gave up exploring at t313 and waited on a landmark for 287 turns (255 STAYs) for an exit description nobody could give |
+| 33 | On 15×15 nobody found the exit; one agent waited 287 turns for news | Prompt v12 = v11 plus "Until someone has found the exit, keep exploring… Split the search with your teammates: radio which part… you have covered" (same maze, 600 turns, one game) | **The waiting and the coordination changed:** B's STAYs 255 → 59; radio about coverage and splitting 12 → 65 messages ("covered x=4..8, y=-2..4 on the east side… search elsewhere"); every agent explored 135–152 cells | **Still no exit.** In both games nobody got closer than 58 moves to it. The exit's region has a single entrance, cell (10,14) on the south edge, whose north side was open. All three agents passed it twice, noting "N open" each time while "continuing W along south frontier", and never took it |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -1772,6 +1773,35 @@ each; worth replicating before believing the ordering.
 - **Next lever:** "while the exit is unknown, keep exploring; split the unexplored area with teammates".
 
 **Cost:** $2.18 for all five games (600-turn limit; four ended early).
+
+**15×15 again with prompt v12 (`ec6580b5c45c`, `experiments/haiku_15x15_v12.json`).** v12 = v11 plus:
+"Until someone has found the exit, keep exploring: never stand still waiting for news, because nobody may
+have any. Split the search with your teammates: radio which part of the maze you have covered and which
+way you are heading (relative to a landmark if you can), and head for ground nobody has reported."
+
+| Haiku, 15×15, 600 turns | Run | Exits | Coverage | STAYs (A / B / C) | Cells explored (A / B / C) | Radio about coverage or splitting | Closest any agent got to the exit | Cost |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| v11 | `671b99acb82d` | none | 0.67 | 3 / 255 / 3 | 112 / 85 / 150 | 12 of 120 | 58 moves | $1.05 |
+| **v12** | `ec6580b5c45c` | none | 0.68 | 4 / 59 / 2 | 152 / 135 / 145 | **65 of 218** | 58 moves | $1.19 |
+
+- **v12 did what it said.** Nobody parked. The team divided the maze on the radio: A at t31, "covered
+  x=4..8, y=-2..4 on the east side. Heading west along y=3 now; search elsewhere". B listed its own covered
+  area and untried branches. Each agent explored more.
+- **The outcome didn't move,** because the problem was never effort.
+- **There is one way in.** The exit's region is reached through a single cell, (10,14) on the south
+  boundary, whose north side opens into a 58-move corridor to the exit.
+- **Every agent passed the entrance twice and walked straight past it:**
+  - B at t254: "N open, E open (came from), S brick, W open. Continuing W along row -6."
+  - B at t281: "moved E… Continuing E along row -6".
+  - A at t328 and t356, C at t370 and t401: the same, following the south boundary.
+- **Why it was missed:** each pass is a straight sweep along the boundary row. The open north side is
+  recorded but never marked as an untried branch, so on the way back it isn't recognised as one. By the end
+  of the game no notebook mentioned the cell at all; the rolling log had dropped those notes.
+- **This is the junction-bookkeeping failure from row 14, at scale.** A plan to keep sweeping overrides the
+  junction rule, and on a big maze one missed branch can hide the exit for the whole game.
+- **The obvious test:** `used_exits_enabled`, which would have listed the gateway's north side as never
+  taken on every pass. It exists but has never been tried on Haiku.
+
 
 ## Qwen3.5-9B: append/rewrite instead of splices (single games via Vessel)
 Splices need exact code-point offsets and the current revision. Qwen got these wrong often, and the rejected
