@@ -48,7 +48,9 @@ spec baseline. Findings for each are in `OBSERVATIONS.md`; the "Ladder" column g
 | `maze.landmark_count` | `0` … | Unique labelled cells, seen only while standing on them | 5 |
 | `rules.distance_sensors` | `"exit_and_peers"`, `"none"` | `"none"` drops exit distance and peer ranges, and says so in the rules | 16 |
 | `rules.coordinates_enabled` | `false`, `true` | Exact `[x, y]` from the agent's own start (x east, y north), plus its last 30 positions | 13, 15 |
+| `rules.coordinates_frame` | `"own_start"`, `"team"` | `team`: everyone counts from A's start, so no frame conversion is needed (a control) | 30 |
 | `rules.used_exits_enabled` | `false`, `true` | Lists the current cell's directions the agent has already moved through | 25 |
+| `rules.meeting_alert_enabled` | `false`, `true` | Names teammates on your cell (`colocated_with`), with a rule to copy what you lack and record their position | 31 |
 | `rules.notebook_ops` | `"splice"`, `"append_log"` | `append_log`: one `notebook_append` field. The engine adds it as a new line and drops the oldest lines past the cap. Notebooks are shown as plain text; blank or `"null"` means no note | 10, 12 |
 | `rules.radio_enabled`, `rules.meeting_notebooks_enabled`, `rules.allow_stay` | `true`, `false` | Spec ablations: radio, reading colocated notebooks, STAY | 3 |
 
@@ -61,7 +63,7 @@ spec baseline. Findings for each are in `OBSERVATIONS.md`; the "Ladder" column g
 | `sampling.temperature` | unset, number | Unset uses the model's default | 11 |
 | `max_output_tokens`, `context_window_tokens`, `context_bytes_per_token` | | Output cap, and the preflight context budget | 7c |
 
-**Prompt version** (`prompt_version`). Each adds sentences to the rules; v8–v10 are cumulative.
+**Prompt version** (`prompt_version`). Each adds sentences to the rules; v8–v11 are cumulative.
 
 | Version | Builds on | Adds | Ladder |
 | --- | --- | --- | --- |
@@ -73,6 +75,7 @@ spec baseline. Findings for each are in `OBSERVATIONS.md`; the "Ladder" column g
 | `maze_agent_v8` | v7 | Once you've reached the exit, go back and help: meet, find your frame offset, give the route | 17 |
 | `maze_agent_v9` | v8 | Give positions relative to a landmark; visit one if you know where the exit is | 18 |
 | `maze_agent_v10` | v9 | Your own start is not a landmark | 19 |
+| `maze_agent_v11` | v10 | Copy what you lack from a teammate's notebook when you meet; don't wait, go to a described landmark | 30, 31 |
 
 Always on (not switchable):
 - straight-line distance quantised in tenths;
