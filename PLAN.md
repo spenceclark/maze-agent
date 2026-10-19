@@ -90,7 +90,12 @@ operator pause/step/resume). 11 vitest tests cover live follow, seek, duplicate 
 - [x] Vessel proxy headers on every LLM request (session = run id, tag = agent)
 - [x] Baseline on current code, one game each: Haiku, Sonnet 5.5, Opus 5.5; local reference: qwen3.5:9b,
   lfm2.5, command-r7b (see OBSERVATIONS.md rows 21–26)
-- [ ] 320-turn horizon runs of the current setup (agents now explore steadily; 80 turns is the limit)
+- [x] Longer horizons: 120-turn Sonnet baseline (team success t110); 10x10 five-model baseline (Sonnet t88)
+- [x] Prompt v11, shared-frame control (`coordinates_frame`), meeting alert (`meeting_alert_enabled`);
+  OpenRouter reasoning effort; Haiku team successes at t120 (shared frame) and t91 (meeting alert)
+- [x] Haiku on 9x9-17x17 mazes, 600 turns: team success on 4 of 5 (`experiments/haiku_sizes_600.json`)
+- [ ] Replicates (3+ seeds) of the best Haiku setup before trusting single-game orderings
+- [ ] "Keep exploring and split the unexplored area" nudge for games where nobody finds the exit
 - [ ] Remaining ablation variants (checkpoints)
 
 ## Next (not started)
