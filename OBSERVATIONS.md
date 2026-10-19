@@ -1802,6 +1802,33 @@ way you are heading (relative to a landmark if you can), and head for ground nob
 - **The obvious test:** `used_exits_enabled`, which would have listed the gateway's north side as never
   taken on every pass. It exists but has never been tried on Haiku.
 
+**Did they exchange notes and sync frames in the two 15×15 games? Yes; the frames often, but not always
+correctly.**
+- **Meetings:** 7 in v11 (`671b99acb82d`), 12 in v12 (`ec6580b5c45c`), all noticed via the meeting alert.
+  Notes after a meeting summarised the teammate's notebook rather than copying it. A at t37: "B's notebook
+  puts it at [-4,7] by its count, so the offset may be B = A + (-8,3); unverified".
+- **Every offset stated in a note or on the radio, checked against ground truth:**
+
+| Game | Offset claim (X-frame = Y-frame + d) | Verdict | Times stated | First |
+| --- | --- | --- | --- | --- |
+| v11 | B = A + (-8, 3) | wrong, off by one | 1 | t37 |
+| v11 | B = A + (-8, 4) | **correct** (fixed the next turn) | 7 | t38 |
+| v11 | C = B + (9, 0) | **correct** | 14 | t125 |
+| v11 | A = B + (8, 4) | wrong: y sign flipped when inverting (truth 8, -4) | 15 | t235 |
+| v11 | A = C + (-1, 4) | wrong: y sign flipped (truth -1, -4) | 8 | t362 |
+| v12 | A = B + (8, -4) | **correct** | 57 | t75 |
+| v12 | A = C + (0, -4) | wrong, off by one in x (truth -1, -4) | 11 | t121 |
+| v12 | C = B + (0, 4), (8, 0), (10, 0) | wrong (truth 9, 0) | 8 | t182–t286 |
+| v12 | C = A + (2, 4) | wrong, off by one (truth 1, 4) | 8 | t285 |
+| v12 | C = B + (9, 0) | **correct**, at last | 34 | t540 |
+
+- **Offsets read directly at a meeting were usually right.** Derived ones went wrong: inverting "A = B + d"
+  into "B = A − d" flipped the y sign, and chaining two offsets went off by one. Wrong offsets were then
+  repeated for hundreds of turns.
+- **Here it couldn't matter,** since nobody found the exit. In a game where someone does, a wrong offset
+  would send a teammate to the wrong cell. That is a cost the shared-frame control (row 30) avoids
+  entirely.
+
 
 ## Qwen3.5-9B: append/rewrite instead of splices (single games via Vessel)
 Splices need exact code-point offsets and the current revision. Qwen got these wrong often, and the rejected
