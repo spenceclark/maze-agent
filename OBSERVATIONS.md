@@ -39,6 +39,7 @@ Batches use 3 seeds, so intervals are wide.
 | 27 | Is 80 turns the limit for the current setup? | The same baseline at a 120-turn horizon, Haiku and Sonnet (one game each) | **Sonnet met the team objective at t110** (A t5, C t88, B t110), $3.28: the first team success on this setup. It came entirely through the landmark relay: A gave the exit relative to the picture, C found the picture and walked there, then radioed a step-by-step route; B found the picture and followed it | **Haiku still only got A out** despite covering 94% of the maze. A radioed the exit relative to the key and drum, and C reached both (t92, t104), but too late. A also radioed a wrong frame offset ("C-frame = A-frame minus (0,4)"; truth (-4,-7)) |
 | 28 | Is the rolling-log notebook (built for Qwen) helping or hurting the hosted baseline? | The same 120-turn Sonnet game with `notebook_ops: "splice"` (one game) | Same quality of play: A t5, C t112, coverage 0.94, 0 wall moves; cost $3.45 against $3.28 | **No team success this time** (B ended 16 moves away, reaching the picture at t120), but the difference is game-to-game luck: C reached the picture at t96 here against t72. **Sonnet used splices purely as appends** (never deleted a byte), so its notebooks reached 8.0–8.1 KB at t120, just under the 8,192-byte cap. Past ~120 turns, splice notebooks would start rejecting notes; the rolling log matters for long horizons, not for Qwen alone |
 | 29 | Does the current setup hold on a new maze, and how do other hosted models compare? | 10×10, seed 20261025 (spawns 41/24/33 moves from the exit), 10 landmarks, 120 turns, same v10 setup; Haiku, Sonnet, DeepSeek v4.1 Flash, MiMo v2.6 Pro (reasoning off), GLM 5.3 Flash (reasoning can't be disabled; `minimal`) | **Sonnet met the objective at t88** ($1.97). DeepSeek got two out (C t35, A t79; $0.36), GLM one (C t99, coverage 0.95; $0.20) | **Haiku:** C exited at t34 and radioed the exit relative to two landmarks. A and B met on the helmet and calibrated ("A = B + (-6,+1)"), then all three waited for coordinates instead of walking to the quilt (197 STAYs). **MiMo** got no one out: tool mode lost 99 turns (it answers in text); in prompted mode it echoed `"additionalProperties": false` into 37 replies, and hit walls on 20% of moves |
+| 30 | Nobody merges a teammate's notebook; Haiku teams wait instead of searching | Prompt v11 = v10 plus "copy into your own notes what you lack… Do not wait for information… go and search for that landmark"; and a **shared-frame control** (`coordinates_frame: team`, everyone counts from A's start). Haiku and GLM on the 10×10 seed, one game each | **Haiku with the shared frame met the objective at t120,** its first team success on this setup. **v11's "don't wait" worked for Haiku:** STAYs 197 → 72, coverage 0.70 → 0.95, two exits. GLM went from one exit to two under both variants | **Merging still didn't happen:** 0 copied passages across 34 post-meeting notes in the four games. At Haiku's first v11 meeting (t25, A and B on the same cell) neither note mentioned the other. The frame problem is real: with a shared frame the exit is just "[2,5]", yet B still needed until t120 to find a route |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -1644,6 +1645,54 @@ after the best possible finish of t41. Two Sonnet successes on two mazes now (12
 - **Between those failures it hit walls on 20% of moves,** and nobody exited.
 - **Caveat:** these are integration problems as much as ability, so judge its ability with care. A run with
   reasoning on, or a parser that drops schema keywords, would be fairer.
+
+
+## Prompt v11 and a shared-frame control (10×10, Haiku and GLM; `experiments/v11_and_team_frame_10x10.json`)
+- **Why these two:** across every earlier run, about 2,200 agent-turns sharing a cell produced almost no
+  copying from the teammate's notebook (Sonnet 0, Haiku 8 incidental, DeepSeek 1). In the 10×10 baseline,
+  Haiku's team calibrated and then waited for coordinates instead of looking for the landmark it had been
+  told about.
+- **v11 = v10 plus:** "When you share a cell with a teammate you see their notebook for that turn only:
+  copy into your own notes what you lack from it (the exit, landmarks, dead ends), and note where they stand
+  by their own count, since you are on the same cell. Do not wait for information: if a teammate has
+  described the exit from a landmark you have not seen, go and search for that landmark instead of staying
+  put."
+- **The control:** `rules.coordinates_frame: "team"` (with v10) makes every agent count from A's start and
+  says no conversion is needed. That measures what the frame problem costs.
+
+| 10×10, seed 20261025 | Run | Result | Exits | Moves from the exit at the end (A / B / C) | Coverage | STAYs | Notes copied from a teammate |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Haiku, v10 (baseline) | `ebe880ccf91e` | time limit | C t34 | 32 / 32 / 3 | 0.70 | 197 | 0 of 38 |
+| Haiku, **v11** | `07ea04477805` | time limit | C t34, A t72 | 7 / 19 / 7 | **0.95** | **72** | 0 of 20 |
+| Haiku, **shared frame** | `282ae83f5f26` | **objective met t120** | C t34, A t73, B t120 | 6 / 0 / 6 | 0.67 | 138 | 1 of 30 (incidental, at the exit) |
+| GLM 5.3 Flash, v10 (baseline) | `eae1d236c7c7` | time limit | C t99 | 5 / 16 / 14 | 0.95 | 18 | 0 of 8 |
+| GLM, **v11** | `c0719a8c9bc4` | time limit | B t41, A t86 | 17 / 17 / 31 | 0.77 | 51 | 0 of 6 |
+| GLM, **shared frame** | `abd719e15af1` | time limit | B t31, C t74 | 33 / 7 / 11 | 0.77 | 51 | 0 of 2 |
+
+**"Don't wait" worked; "merge" didn't.**
+- **Haiku with v11 stopped waiting:** 72 STAYs against 197, coverage up from 0.70 to 0.95, a second agent
+  out, and the other two ended 7 and 19 moves away.
+- **Nobody merged.** Across the four games, none of the 34 notes written the turn after a meeting copied
+  anything from the teammate's notebook.
+- **Haiku's first v11 meeting shows why:** A and B stood on the same cell at t25 away from the exit, and
+  each wrote a note about its own next move ("Moving N along known route…", "Trying W") with no mention of
+  the other.
+- **Diagnosis:** the meeting is only signalled by a non-empty `colocated_notebooks` block, and both agents
+  are mid-plan. The instruction never fires because the trigger isn't salient.
+
+**The shared frame gave Haiku its team success, and shows routing is the other half.**
+- **Positions became plain facts:** "exit [2,5]", "dice [0,1]", "candle landmark is at [-4,4] in shared
+  frame. Exit [2,5] is 6 east and 1 north of the candle."
+- **B knew the exit's exact cell from early on and still spent ~60 turns finding a corridor to it,**
+  reporting walls as it went: "[-1,1] E wall, [-1,3] N and E". It arrived on the final turn.
+- **So removing calibration helped, but planning a route through a half-known maze remains the slowest
+  part for Haiku.**
+- **GLM** went from one exit to two under both variants, without a team success.
+
+**Next lever for merging, if wanted:** make the meeting impossible to miss. For example, an explicit
+`colocated_with: ["B"]` field plus a rule: "a teammate is on your cell: this turn, copy the exit, landmarks
+and their position into your notes". Single games throughout; the v11 and shared-frame gains need
+replicates before they're believable.
 
 
 ## Qwen3.5-9B: append/rewrite instead of splices (single games via Vessel)
