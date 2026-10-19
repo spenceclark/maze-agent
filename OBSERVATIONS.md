@@ -40,6 +40,7 @@ Batches use 3 seeds, so intervals are wide.
 | 28 | Is the rolling-log notebook (built for Qwen) helping or hurting the hosted baseline? | The same 120-turn Sonnet game with `notebook_ops: "splice"` (one game) | Same quality of play: A t5, C t112, coverage 0.94, 0 wall moves; cost $3.45 against $3.28 | **No team success this time** (B ended 16 moves away, reaching the picture at t120), but the difference is game-to-game luck: C reached the picture at t96 here against t72. **Sonnet used splices purely as appends** (never deleted a byte), so its notebooks reached 8.0–8.1 KB at t120, just under the 8,192-byte cap. Past ~120 turns, splice notebooks would start rejecting notes; the rolling log matters for long horizons, not for Qwen alone |
 | 29 | Does the current setup hold on a new maze, and how do other hosted models compare? | 10×10, seed 20261025 (spawns 41/24/33 moves from the exit), 10 landmarks, 120 turns, same v10 setup; Haiku, Sonnet, DeepSeek v4.1 Flash, MiMo v2.6 Pro (reasoning off), GLM 5.3 Flash (reasoning can't be disabled; `minimal`) | **Sonnet met the objective at t88** ($1.97). DeepSeek got two out (C t35, A t79; $0.36), GLM one (C t99, coverage 0.95; $0.20) | **Haiku:** C exited at t34 and radioed the exit relative to two landmarks. A and B met on the helmet and calibrated ("A = B + (-6,+1)"), then all three waited for coordinates instead of walking to the quilt (197 STAYs). **MiMo** got no one out: tool mode lost 99 turns (it answers in text); in prompted mode it echoed `"additionalProperties": false` into 37 replies, and hit walls on 20% of moves |
 | 30 | Nobody merges a teammate's notebook; Haiku teams wait instead of searching | Prompt v11 = v10 plus "copy into your own notes what you lack… Do not wait for information… go and search for that landmark"; and a **shared-frame control** (`coordinates_frame: team`, everyone counts from A's start). Haiku and GLM on the 10×10 seed, one game each | **Haiku with the shared frame met the objective at t120,** its first team success on this setup. **v11's "don't wait" worked for Haiku:** STAYs 197 → 72, coverage 0.70 → 0.95, two exits. GLM went from one exit to two under both variants | **Merging still didn't happen:** 0 copied passages across 34 post-meeting notes in the four games. At Haiku's first v11 meeting (t25, A and B on the same cell) neither note mentioned the other. The frame problem is real: with a shared frame the exit is just "[2,5]", yet B still needed until t120 to find a route |
+| 31 | v11's merge rule never fired: meetings weren't salient | `meeting_alert_enabled`: the observation names teammates on your cell (`colocated_with`), and a rule says that turn's note should copy what you lack and record their position by their own count. Haiku and GLM with v11, 10×10 seed (one game each) | **Haiku met the objective at t91** (C t33, A t76, B t91), the fastest Haiku finish on any maze, for $0.13. Every meeting was noticed and two produced a frame offset. C on the candle with B: "B frame = C frame + (4,-3)… Exit in B frame is [8,4]"; B exited 16 turns later | Agents summarise rather than copy text, so the 40-character copy test still reads 0. **GLM never met a teammate** in its game, so the alert never fired (one exit, B t118). C still camped as a "beacon" on the candle after calibrating |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -1693,6 +1694,45 @@ after the best possible finish of t41. Two Sonnet successes on two mazes now (12
 `colocated_with: ["B"]` field plus a rule: "a teammate is on your cell: this turn, copy the exit, landmarks
 and their position into your notes". Single games throughout; the v11 and shared-frame gains need
 replicates before they're believable.
+
+**Making meetings explicit (`experiments/v11_meeting_alert_10x10.json`).**
+- **Why:** v11's merge rule had no visible trigger.
+- **What the variant adds:** `rules.meeting_alert_enabled` adds `colocated_with` (teammates on your cell
+  now), and a rule: "When it is not empty, use this turn's note to copy from their notebooks what you lack
+  (the exit's position, landmarks, dead ends) and to record their position by their own count next to
+  yours: you are on the same cell, so the difference is the offset between your frames."
+
+| 10×10, v11 | Run | Result | Exits | Moves from the exit at the end (A / B / C) | Meetings away from the exit | Notes that used the teammate's notebook | Cost |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Haiku, no alert | `07ea04477805` | time limit | C t34, A t72 | 7 / 19 / 7 | 2 | 0 | $0.22 |
+| **Haiku, meeting alert** | `ed1ea6a5c483` | **objective met t91** | C t33, A t76, B t91 | 15 / 0 / 17 | 3 | **3 of 3 meetings** | $0.13 |
+| GLM, no alert | `c0719a8c9bc4` | time limit | B t41, A t86 | 17 / 17 / 31 | 3 | 0 | $0.15 |
+| GLM, meeting alert | `22a7d4af632d` | time limit | B t118 | 27 / 1 / 29 | **0** (alert never fired) | — | $0.16 |
+
+**Haiku used every meeting.**
+- **t25, A and B, away from the exit.** A: "at [-1,-3] with B. B's notebook says B at [5,-3] (B frame), so
+  offset is probably B = A + (6,0); unconfirmed". The first time any agent has read a teammate's position
+  out of its notebook. B noted "colocated with A".
+- **t56, A and C, on the candle.** C: "colocated with A at candle [-2,6] (my frame)… exit is 6E 1N of
+  candle".
+- **t74, B and C, on the candle.** C: "Offset: B frame = C frame + (4,-3), since B candle [2,3] = my
+  [-2,6]. Exit in B frame is [8,4], matching A." B reached the exit at t91.
+
+**What changed: the trigger, not the instruction.**
+- **The same rule did nothing without the alert.** v11's merge sentence produced no merges in the earlier
+  game.
+- **With the alert, Haiku noticed every meeting and acted on it.** It summarises rather than copying text,
+  which is why the copy test, looking for 40-character passages, reads 0. The notes plainly use the
+  teammate's notebook.
+- **A beacon habit remains:** C "Holding here as beacon" on the candle after calibrating.
+
+**GLM never met anyone.** It spread out and never shared a cell, so this game says nothing about the
+alert for GLM.
+
+**This is Haiku's third team success,** after the shared frame (t120) and now the meeting alert (t91).
+Both remove the frame problem, one by fiat and one by making calibration easy when agents meet. One game
+each; worth replicating before believing the ordering.
+
 
 
 ## Qwen3.5-9B: append/rewrite instead of splices (single games via Vessel)
