@@ -1829,6 +1829,28 @@ correctly.**
   would send a teammate to the wrong cell. That is a cost the shared-frame control (row 30) avoids
   entirely.
 
+**Do agents carry radio messages into their notes?** Yes, routinely, in paraphrase, never word for word.
+A message is heard on one turn only, so the test is whether the recipient's note that turn refers to it.
+
+| Game | Radio deliveries | Recipient wrote a note that turn | Note refers to the message | Reuses its coordinates | Copies a 30-character passage |
+| --- | --- | --- | --- | --- | --- |
+| Haiku 9×9 | 78 | 50 | 19 (38%) | 22 | 0 |
+| Haiku 11×11 | 34 | 23 | 13 (57%) | 16 | 0 |
+| Haiku 13×13 | 120 | 86 | 35 (41%) | 29 | 0 |
+| Haiku 17×17 | 134 | 89 | 43 (48%) | 37 | 0 |
+| Haiku 15×15 v11 | 240 | 147 | 32 (22%) | 51 | 0 |
+| Haiku 15×15 v12 | 436 | 342 | 63 (18%) | 70 | 0 |
+| Sonnet 10×10 | 30 | 27 | 11 (41%) | 17 | 0 |
+| Sonnet 12×12, 120 turns | 48 | 43 | 18 (42%) | 12 | 0 |
+
+- **Typical uptake:** about 40–55% of notes written as a message arrives record it, labelled with the
+  sender and the frame. For example, Haiku A on 13×13: "Got C's radio: exit is 1 north of landmark 'map' (C
+  frame). I have not seen 'map' yet; continuing N to search." Haiku matches Sonnet here.
+- **The 15×15 games record less (18–22%)** because most of their radio was search status ("covered x=4..8…")
+  with no exit to report, and much of it was repetitive.
+- **Nothing is copied verbatim.** Agents compress the message into their own shorthand. That keeps notes
+  short, but it is also where errors creep in, as with the frame offsets above.
+
 
 ## Qwen3.5-9B: append/rewrite instead of splices (single games via Vessel)
 Splices need exact code-point offsets and the current revision. Qwen got these wrong often, and the rejected
