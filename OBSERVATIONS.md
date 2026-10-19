@@ -37,6 +37,7 @@ Batches use 3 seeds, so intervals are wide.
 | 25 | Qwen can't work out from its trail which exits it has used | `used_exits_enabled`: the engine lists the current cell's directions already moved through (either way, whole game), and the check copies them (one game, the last helping hand) | **The local choice is fixed:** with an unused open exit available, it took one 66 times out of 74 (89%). Used exits at junction revisits fell to 4 of 11 (from 19 of 26). A exited at t5 | **The global search isn't.** 138 of 240 decisions (57%) were on cells where every open exit had already been used, wandering explored ground with no way to find the frontier. Coverage 0.38 (0.46), B and C ended 63 and 61 moves from the exit. This is where we stopped helping Qwen |
 | 26 | New baseline on the current code: Haiku, Sonnet 5.5, Opus 5.5 (one game each), plus two more local models for reference | v10, coordinates, no distances, rolling log, 10 landmarks, 80 turns. Local models get Qwen's best setup (check first) | **Sonnet and Opus got two of three agents out** (C at t76 and t77). Opus's B ended 2 moves from the exit. Both worked from landmark-relative exit positions and reasoned from the west edge. Coverage 0.81 and 0.87 | **Still no team success in 80 turns.** Haiku's repeat went back to camping at its start ("Start is not a landmark; I can't align frames without meeting"… "I am waiting at start"), so v10 worked in 1 of 2 games. lfm2.5 lost 192 of 240 turns to wrong tick numbers; command-r7b walked into walls on 45% of moves |
 | 27 | Is 80 turns the limit for the current setup? | The same baseline at a 120-turn horizon, Haiku and Sonnet (one game each) | **Sonnet met the team objective at t110** (A t5, C t88, B t110), $3.28: the first team success on this setup. It came entirely through the landmark relay: A gave the exit relative to the picture, C found the picture and walked there, then radioed a step-by-step route; B found the picture and followed it | **Haiku still only got A out** despite covering 94% of the maze. A radioed the exit relative to the key and drum, and C reached both (t92, t104), but too late. A also radioed a wrong frame offset ("C-frame = A-frame minus (0,4)"; truth (-4,-7)) |
+| 28 | Is the rolling-log notebook (built for Qwen) helping or hurting the hosted baseline? | The same 120-turn Sonnet game with `notebook_ops: "splice"` (one game) | Same quality of play: A t5, C t112, coverage 0.94, 0 wall moves; cost $3.45 against $3.28 | **No team success this time** (B ended 16 moves away, reaching the picture at t120), but the difference is game-to-game luck: C reached the picture at t96 here against t72. **Sonnet used splices purely as appends** (never deleted a byte), so its notebooks reached 8.0–8.1 KB at t120, just under the 8,192-byte cap. Past ~120 turns, splice notebooks would start rejecting notes; the rolling log matters for long horizons, not for Qwen alone |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -1532,6 +1533,31 @@ Same configs as the 80-turn baseline with `horizon_ticks: 120`
 
 **Horizon:** 120 turns was enough for Sonnet, with 10 to spare; 80 was not. The oracle minimum for this maze
 is 52 ticks.
+
+**The same 120-turn Sonnet game with splice notebooks (`b11823fcca61`) against the rolling log
+(`efb5bfcde844`).** Only `rules.notebook_ops` differs. The rolling log was built for Qwen and carried into
+the hosted baseline, so this checks whether it matters for Sonnet.
+
+| Sonnet 5.5, 120 turns | Result | Exits | Moves from the exit at the end (A / B / C) | Coverage | C reached the picture | Notebook at the end | Cost |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Rolling log (`efb5bfcde844`) | **objective met t110** | A t5, C t88, B t110 | 55 / 0 / 17 | 0.92 | t72 | 8 KB, oldest lines rolling off | $3.28 |
+| Splice (`b11823fcca61`) | time limit | A t5, C t112 | 67 / 16 / 1 | 0.94 | t96 | 8.0–8.1 KB, nothing deleted | $3.45 |
+
+- **No sign the notebook format changed how Sonnet played.** Both games had no wall moves, the same
+  landmark relay and similar coverage. The splice game's C simply reached the picture 24 turns later, and
+  that delay carried through to C (t112) and B (picture at t120, 16 moves short).
+- **Sonnet uses splices as appends.** Every edit was an insert at the end (e.g. `start = end = 6655`, " t101
+  (5,-3) corner: N/W open, E/S brick. came from W. going N. (3,-3) W untried."), about 70 bytes a turn,
+  with no deletions or compaction.
+- **So splice notebooks only work up to about 120 turns.** At t120 they held 8.0–8.1 KB of the 8,192-byte
+  cap; a few more turns and notes would start being rejected. The rolling log keeps the latest ~110 turns
+  instead.
+- **Verdict:**
+  - **For hosted models at 80–120 turns,** splice and rolling log are interchangeable.
+  - **For longer horizons the rolling log is the safer default,** because no model we tested ever compacts
+    its own notes.
+  - **So it isn't purely a Qwen fix,** although Qwen is why it exists.
+
 
 
 
