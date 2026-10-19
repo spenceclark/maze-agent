@@ -404,3 +404,10 @@ def test_openrouter_effort_maps_to_its_reasoning_setting():
     assert openrouter("none").settings.get("openrouter_reasoning") == {"enabled": False}
     assert openrouter("low").settings.get("openrouter_reasoning") == {"effort": "low"}
     assert openrouter("max").settings.get("openrouter_reasoning") == {"effort": "xhigh"}
+
+
+def test_v12_adds_keep_exploring_on_top_of_v11():
+    v11 = system_instruction(AGENT_RULES, "A", "maze_agent_v11")
+    v12 = system_instruction(AGENT_RULES, "A", "maze_agent_v12")
+    assert "Do not wait for information" in v12 and "Until someone has found the exit, keep exploring" in v12
+    assert "keep exploring" not in v11

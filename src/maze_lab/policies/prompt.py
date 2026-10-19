@@ -79,6 +79,14 @@ PROMPT_MEMORY_NOTES["maze_agent_v11"] = PROMPT_MEMORY_NOTES["maze_agent_v10"] + 
     " count, since you are on the same cell. Do not wait for information: if a teammate has described the"
     " exit from a landmark you have not seen, go and search for that landmark instead of staying put."
 )
+# v12 = v11 plus never giving up the search: on 15x15 (run 671b99acb82d) nobody found the exit, and one
+# agent parked on a landmark for 287 turns waiting for an exit description nobody could give.
+PROMPT_MEMORY_NOTES["maze_agent_v12"] = PROMPT_MEMORY_NOTES["maze_agent_v11"] + (
+    " Until someone has found the exit, keep exploring: never stand still waiting for news, because nobody"
+    " may have any. Split the search with your teammates: radio which part of the maze you have covered"
+    " and which way you are heading (relative to a landmark if you can), and head for ground nobody has"
+    " reported."
+)
 _LANDMARK_NOTE = (
     '\n- Some cells carry a landmark: local.landmarks lists the label (for example "clock") of any'
     " landmark on your cell. Each label is unique and fixed to one cell, and you see it only while"
