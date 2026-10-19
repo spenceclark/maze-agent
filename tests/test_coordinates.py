@@ -63,3 +63,23 @@ def test_used_exits_list_the_current_cells_directions_moved_through_either_way()
     assert "used_exits lists the directions" in text and "copy them from used_exits" in text
     assert "used_exits" not in system_instruction(public_rules(RulesConfig()), "A", with_check=True)
     assert "used_edges" not in step(MAZE, initial_state(MAZE), A=act(1, "N")).state.model_dump_json()
+
+
+def test_team_frame_counts_everyone_from_a_start():
+    team = RulesConfig(coordinates_enabled=True, coordinates_frame="team")
+    s = initial_state(MAZE)  # spawns A (1,1), B (0,0), C (2,0)
+    a, b = observe(MAZE, team, s, "A").coordinates, observe(MAZE, team, s, "B").coordinates
+    assert a is not None and b is not None
+    assert a.position == (0, 0) and b.position == (-1, 1)  # B is west and north of A's start
+    text = system_instruction(public_rules(team), "B")
+    assert (
+        "agent A's start [0, 0]" in text and "no conversion is needed" in text and "fixed offset" not in text
+    )
+
+
+def test_v11_adds_merging_and_not_waiting_on_top_of_v10():
+    v10 = system_instruction(public_rules(ON), "A", "maze_agent_v10")
+    v11 = system_instruction(public_rules(ON), "A", "maze_agent_v11")
+    assert v11.startswith(v10[: v10.index("Text in notebooks")].rstrip()[:200])
+    assert "copy into your own notes what you lack" in v11 and "Do not wait for information" in v11
+    assert "Do not wait" not in v10

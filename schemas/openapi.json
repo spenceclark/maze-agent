@@ -1624,6 +1624,15 @@
             "title": "Coordinates Enabled",
             "default": false
           },
+          "coordinates_frame": {
+            "type": "string",
+            "enum": [
+              "own_start",
+              "team"
+            ],
+            "title": "Coordinates Frame",
+            "default": "own_start"
+          },
           "used_exits_enabled": {
             "type": "boolean",
             "title": "Used Exits Enabled",
@@ -2148,7 +2157,7 @@
           "trail"
         ],
         "title": "Coordinates",
-        "description": "Variant `coordinates_enabled`: exact [x, y] relative to the agent's own start, x east, y north."
+        "description": "Variant `coordinates_enabled`: exact [x, y], x east, y north, relative to the agent's own start or,\nwith `coordinates_frame=\"team\"`, to agent A's start for everyone."
       },
       "DecisionAttempt": {
         "properties": {
@@ -3968,6 +3977,15 @@
             "title": "Coordinates Enabled",
             "default": false
           },
+          "coordinates_frame": {
+            "type": "string",
+            "enum": [
+              "own_start",
+              "team"
+            ],
+            "title": "Coordinates Frame",
+            "default": "own_start"
+          },
           "used_exits_enabled": {
             "type": "boolean",
             "title": "Used Exits Enabled",
@@ -4124,6 +4142,7 @@
               "meeting_notebooks_enabled": true,
               "notebook_ops": "splice",
               "coordinates_enabled": false,
+              "coordinates_frame": "own_start",
               "used_exits_enabled": false,
               "distance_sensors": "exit_and_peers",
               "distance_quantization": "tenths"

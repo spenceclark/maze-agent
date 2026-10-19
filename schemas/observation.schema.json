@@ -108,7 +108,7 @@
     },
     "Coordinates": {
       "additionalProperties": false,
-      "description": "Variant `coordinates_enabled`: exact [x, y] relative to the agent's own start, x east, y north.",
+      "description": "Variant `coordinates_enabled`: exact [x, y], x east, y north, relative to the agent's own start or,\nwith `coordinates_frame=\"team\"`, to agent A's start for everyone.",
       "properties": {
         "position": {
           "maxItems": 2,

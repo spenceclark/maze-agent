@@ -5,7 +5,15 @@ from typing import Annotated, Any, Literal, Self
 
 from pydantic import Field, model_validator
 
-from maze_lab.agent_contracts import AGENT_IDS, AgentId, Contract, DistanceSensors, NotebookOps, Objective
+from maze_lab.agent_contracts import (
+    AGENT_IDS,
+    AgentId,
+    Contract,
+    CoordinatesFrame,
+    DistanceSensors,
+    NotebookOps,
+    Objective,
+)
 
 BaselinePolicyName = Literal["random_open_v1", "wall_follower_v1", "dfs_bounded_v1"]
 LlmAdapter = Literal["pydantic_ai"]
@@ -128,6 +136,8 @@ class RulesConfig(Contract):
     notebook_ops: NotebookOps = "splice"
     # Variant: agents see exact coordinates relative to their own start, plus their recent trail.
     coordinates_enabled: bool = False
+    # Origin of those coordinates: each agent's own start, or agent A's start for all (shared frame).
+    coordinates_frame: CoordinatesFrame = "own_start"
     # Variant: agents see which directions of their current cell they have already moved through.
     used_exits_enabled: bool = False
     distance_sensors: DistanceSensors = "exit_and_peers"  # "none": no exit distance or peer ranges

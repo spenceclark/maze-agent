@@ -70,22 +70,45 @@ PROMPT_MEMORY_NOTES["maze_agent_v10"] = PROMPT_MEMORY_NOTES["maze_agent_v9"] + (
     " Your own start is not a landmark: only you know where it is, so a position given from it, or an offer"
     " to meet there, is useless to the others. Go to a real landmark and describe the exit from that."
 )
+# v11 = v10 plus merging on a meeting and not waiting: across ~2,200 agent-turns sharing a cell, almost
+# no agent copied anything from a teammate's notebook, and Haiku teams stalled waiting for coordinates
+# instead of searching for a landmark already described to them (run ebe880ccf91e).
+PROMPT_MEMORY_NOTES["maze_agent_v11"] = PROMPT_MEMORY_NOTES["maze_agent_v10"] + (
+    " When you share a cell with a teammate you see their notebook for that turn only: copy into your own"
+    " notes what you lack from it (the exit, landmarks, dead ends), and note where they stand by their own"
+    " count, since you are on the same cell. Do not wait for information: if a teammate has described the"
+    " exit from a landmark you have not seen, go and search for that landmark instead of staying put."
+)
 _LANDMARK_NOTE = (
     '\n- Some cells carry a landmark: local.landmarks lists the label (for example "clock") of any'
     " landmark on your cell. Each label is unique and fixed to one cell, and you see it only while"
     " standing there."
 )
-_COORDINATES_VIEW = "You never see the map size or a map; your coordinates count from your own start."
+# Coordinate text by rules.coordinates_frame: each agent's own start, or one frame for the whole team
+# (the shared-frame control, which removes the calibration problem).
+_COORDINATES_VIEW = {
+    "own_start": "You never see the map size or a map; your coordinates count from your own start.",
+    "team": "You never see the map size or a map; your coordinates are in one frame shared by the team.",
+}
 _COORDINATES_NOTE = (
-    "\n- coordinates.position is your exact cell as [x, y] counted from your own start [0, 0]: x grows east,"
+    "\n- coordinates.position is your exact cell as [x, y] counted from {origin}: x grows east,"
     " y grows north; it is always current and exact. coordinates.trail lists the cells you stood on during"
     " the previous {trail} turns, oldest first; it ends with last turn's cell, so it never includes where"
     " you are now. A repeated entry means you stayed or were blocked; a repeating pattern means you are going"
-    " in circles."
-    "\n- The other agents count from their own starts, so their coordinates differ from yours by a fixed"
-    " offset. When two of you stand on the same landmark or meet on the same cell, comparing your positions"
-    " there gives that offset, after which you can share places and routes in one frame."
+    " in circles.{frames}"
 )
+_COORDINATE_ORIGINS = {"own_start": "your own start [0, 0]", "team": "agent A's start [0, 0]"}
+_COORDINATE_FRAMES = {
+    "own_start": (
+        "\n- The other agents count from their own starts, so their coordinates differ from yours by a fixed"
+        " offset. When two of you stand on the same landmark or meet on the same cell, comparing your"
+        " positions there gives that offset, after which you can share places and routes in one frame."
+    ),
+    "team": (
+        "\n- All three agents use this same frame, so a position a teammate gives you is the same cell for"
+        " you: no conversion is needed."
+    ),
+}
 _DISTANCE_NOTES = {
     "exit_and_peers": (
         "- exit_distance_tenths and peer_ranges give straight-line (Euclidean) distances in tenths of a cell,"
@@ -206,10 +229,16 @@ def system_instruction(
         if with_check
         else "",
         used_exits_note=_USED_EXITS_NOTE if rules.used_exits_enabled else "",
-        world_view=_COORDINATES_VIEW
+        world_view=_COORDINATES_VIEW[rules.coordinates_frame]
         if rules.coordinates_enabled
         else "You never see coordinates, the map size, or a map.",
-        coordinates_note=_COORDINATES_NOTE.format(trail=TRAIL_TICKS) if rules.coordinates_enabled else "",
+        coordinates_note=_COORDINATES_NOTE.format(
+            origin=_COORDINATE_ORIGINS[rules.coordinates_frame],
+            trail=TRAIL_TICKS,
+            frames=_COORDINATE_FRAMES[rules.coordinates_frame],
+        )
+        if rules.coordinates_enabled
+        else "",
     )
 
 

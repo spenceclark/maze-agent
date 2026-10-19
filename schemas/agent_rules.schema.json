@@ -94,6 +94,15 @@
       "title": "Coordinates Enabled",
       "type": "boolean"
     },
+    "coordinates_frame": {
+      "default": "own_start",
+      "enum": [
+        "own_start",
+        "team"
+      ],
+      "title": "Coordinates Frame",
+      "type": "string"
+    },
     "used_exits_enabled": {
       "default": false,
       "title": "Used Exits Enabled",

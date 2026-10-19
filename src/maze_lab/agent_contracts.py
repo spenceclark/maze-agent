@@ -16,6 +16,7 @@ Move = Literal["N", "E", "S", "W", "STAY"]
 Edge = Literal["open", "interior_wall", "outer_brick"]
 Objective = Literal["all_reach_exit", "first_exit", "all_at_exit_simultaneously"]
 DistanceSensors = Literal["exit_and_peers", "none"]
+CoordinatesFrame = Literal["own_start", "team"]
 
 AGENT_IDS: tuple[AgentId, ...] = ("A", "B", "C")
 OPPOSITE: dict[Direction, Direction] = {"N": "S", "S": "N", "E": "W", "W": "E"}
@@ -210,7 +211,8 @@ def _absent(value: object) -> bool:
 
 
 class Coordinates(Contract):
-    """Variant `coordinates_enabled`: exact [x, y] relative to the agent's own start, x east, y north."""
+    """Variant `coordinates_enabled`: exact [x, y], x east, y north, relative to the agent's own start or,
+    with `coordinates_frame="team"`, to agent A's start for everyone."""
 
     position: tuple[int, int]
     trail: list[tuple[int, int]]  # positions at the previous ticks, oldest first; repeats mean no move
@@ -276,6 +278,7 @@ class AgentRules(Contract):
     landmarks_enabled: bool = False  # positions and labels are never public
     notebook_ops: NotebookOps = "splice"
     coordinates_enabled: bool = False
+    coordinates_frame: CoordinatesFrame = "own_start"
     used_exits_enabled: bool = False
     distance_sensors: DistanceSensors = "exit_and_peers"
 

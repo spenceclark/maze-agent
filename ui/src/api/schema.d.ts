@@ -447,6 +447,12 @@ export interface components {
              */
             coordinates_enabled: boolean;
             /**
+             * Coordinates Frame
+             * @default own_start
+             * @enum {string}
+             */
+            coordinates_frame: "own_start" | "team";
+            /**
              * Used Exits Enabled
              * @default false
              */
@@ -630,7 +636,8 @@ export interface components {
         };
         /**
          * Coordinates
-         * @description Variant `coordinates_enabled`: exact [x, y] relative to the agent's own start, x east, y north.
+         * @description Variant `coordinates_enabled`: exact [x, y], x east, y north, relative to the agent's own start or,
+         *     with `coordinates_frame="team"`, to agent A's start for everyone.
          */
         Coordinates: {
             /** Position */
@@ -1325,6 +1332,12 @@ export interface components {
              */
             coordinates_enabled: boolean;
             /**
+             * Coordinates Frame
+             * @default own_start
+             * @enum {string}
+             */
+            coordinates_frame: "own_start" | "team";
+            /**
              * Used Exits Enabled
              * @default false
              */
@@ -1409,6 +1422,7 @@ export interface components {
              *       "meeting_notebooks_enabled": true,
              *       "notebook_ops": "splice",
              *       "coordinates_enabled": false,
+             *       "coordinates_frame": "own_start",
              *       "used_exits_enabled": false,
              *       "distance_sensors": "exit_and_peers",
              *       "distance_quantization": "tenths"

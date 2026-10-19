@@ -40,6 +40,7 @@ def public_rules(rules: RulesConfig, landmarks_enabled: bool = False) -> AgentRu
         landmarks_enabled=landmarks_enabled,
         notebook_ops=rules.notebook_ops,
         coordinates_enabled=rules.coordinates_enabled,
+        coordinates_frame=rules.coordinates_frame,
         used_exits_enabled=rules.used_exits_enabled,
         distance_sensors=rules.distance_sensors,
     )
@@ -52,7 +53,7 @@ def _relative(p: Position, start: Position) -> tuple[int, int]:
 
 def observe(maze: MazeDefinition, rules: RulesConfig, state: WorldState, agent_id: AgentId) -> Observation:
     me = state.agent(agent_id)
-    start = maze.spawns[AGENT_IDS.index(agent_id)]
+    start = maze.spawns[0 if rules.coordinates_frame == "team" else AGENT_IDS.index(agent_id)]
     sensors = rules.distance_sensors == "exit_and_peers"
     cell = maze.cell(me.position)
     group = next((g for g in state.meetings if agent_id in g), [])
