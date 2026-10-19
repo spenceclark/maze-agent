@@ -38,6 +38,7 @@ Batches use 3 seeds, so intervals are wide.
 | 26 | New baseline on the current code: Haiku, Sonnet 5.5, Opus 5.5 (one game each), plus two more local models for reference | v10, coordinates, no distances, rolling log, 10 landmarks, 80 turns. Local models get Qwen's best setup (check first) | **Sonnet and Opus got two of three agents out** (C at t76 and t77). Opus's B ended 2 moves from the exit. Both worked from landmark-relative exit positions and reasoned from the west edge. Coverage 0.81 and 0.87 | **Still no team success in 80 turns.** Haiku's repeat went back to camping at its start ("Start is not a landmark; I can't align frames without meeting"… "I am waiting at start"), so v10 worked in 1 of 2 games. lfm2.5 lost 192 of 240 turns to wrong tick numbers; command-r7b walked into walls on 45% of moves |
 | 27 | Is 80 turns the limit for the current setup? | The same baseline at a 120-turn horizon, Haiku and Sonnet (one game each) | **Sonnet met the team objective at t110** (A t5, C t88, B t110), $3.28: the first team success on this setup. It came entirely through the landmark relay: A gave the exit relative to the picture, C found the picture and walked there, then radioed a step-by-step route; B found the picture and followed it | **Haiku still only got A out** despite covering 94% of the maze. A radioed the exit relative to the key and drum, and C reached both (t92, t104), but too late. A also radioed a wrong frame offset ("C-frame = A-frame minus (0,4)"; truth (-4,-7)) |
 | 28 | Is the rolling-log notebook (built for Qwen) helping or hurting the hosted baseline? | The same 120-turn Sonnet game with `notebook_ops: "splice"` (one game) | Same quality of play: A t5, C t112, coverage 0.94, 0 wall moves; cost $3.45 against $3.28 | **No team success this time** (B ended 16 moves away, reaching the picture at t120), but the difference is game-to-game luck: C reached the picture at t96 here against t72. **Sonnet used splices purely as appends** (never deleted a byte), so its notebooks reached 8.0–8.1 KB at t120, just under the 8,192-byte cap. Past ~120 turns, splice notebooks would start rejecting notes; the rolling log matters for long horizons, not for Qwen alone |
+| 29 | Does the current setup hold on a new maze, and how do other hosted models compare? | 10×10, seed 20261025 (spawns 41/24/33 moves from the exit), 10 landmarks, 120 turns, same v10 setup; Haiku, Sonnet, DeepSeek v4.1 Flash, MiMo v2.6 Pro (reasoning off), GLM 5.3 Flash (reasoning can't be disabled; `minimal`) | **Sonnet met the objective at t88** ($1.97). DeepSeek got two out (C t35, A t79; $0.36), GLM one (C t99, coverage 0.95; $0.20) | **Haiku:** C exited at t34 and radioed the exit relative to two landmarks. A and B met on the helmet and calibrated ("A = B + (-6,+1)"), then all three waited for coordinates instead of walking to the quilt (197 STAYs). **MiMo** got no one out: tool mode lost 99 turns (it answers in text); in prompted mode it echoed `"additionalProperties": false` into 37 replies, and hit walls on 20% of moves |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -1592,6 +1593,57 @@ the hosted baseline, so this checks whether it matters for Sonnet.
 
 
 
+
+
+## 10×10 baseline across five hosted models (`experiments/baseline_10x10_v10.json`)
+- **The maze:** a new 10×10 maze, seed 20261025, chosen so no agent starts near the exit: A, B and C are
+  41, 24 and 33 moves away, so the best possible team finish is t41. It has 10 landmarks.
+- **The setup:** as the 12×12 baseline (v10, coordinates, no distance sensors, rolling log), with 120 turns
+  and a 600 s decision window.
+- **Reasoning:** OpenRouter reasoning is now wired through `effort` (`none` sends `enabled: false`). MiMo
+  ran with reasoning off. GLM refused ("Reasoning is mandatory for this endpoint and cannot be disabled"),
+  so it ran at `minimal`. DeepSeek kept its default reasoning, with the 8k output cap.
+
+| Model | Run | Result | Exits | Moves from the exit at the end (A / B / C) | Coverage | Wall moves | Failed turns | Time | Cost |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| **Sonnet 5.5** | `4f929a7608cf` | **objective met t88** | C t65, A t71, B t88 | 6 / 0 / 23 | 0.83 | 0 | 0 | — | $1.97 |
+| DeepSeek v4.1 Flash (default reasoning) | `5ca4658dfed1` | time limit | C t35, A t79 | 6 / 29 / 4 | 0.76 | 1 | 37 truncated at 8k | 65 min | $0.36 |
+| GLM 5.3 Flash (`minimal`) | `eae1d236c7c7` | time limit | C t99 | 5 / 16 / 14 | **0.95** | 18 of 339 | 3 | 13 min | **$0.20** |
+| Haiku 5.5 | `ebe880ccf91e` | time limit | C t34 | 32 / 32 / 3 | 0.70 | 6 | 0 | — | $0.19 |
+| MiMo v2.6 Pro (reasoning off, prompted) | `4c4fd97f06c5` | time limit | none | 54 / 23 / 27 | 0.50 | 62 of 308 | 37 schema echo | 16 min | $0.40 |
+| MiMo v2.6 Pro (reasoning off, tool mode) | `9f52318ec017` | time limit | none | 25 / 27 / 23 | 0.37 | 34 of 255 | 100 (text, not a tool call) | — | $0.40 |
+
+**Sonnet again finished as a team,** on a maze with no easy spawn: C at t65, A at t71, B at t88, 47 turns
+after the best possible finish of t41. Two Sonnet successes on two mazes now (12×12 at t110, 10×10 at t88).
+
+**Haiku found the exit and calibrated, then everyone waited.**
+- **C reached the exit at t34** and radioed it relative to landmarks: "1 cell EAST of the quilt landmark…
+  Also 6 east and 1 north of the candle".
+- **A and B met on the helmet and worked out their offset correctly,** "A = B + (-6,+1)". That's the first
+  calibration by meeting in any Haiku game.
+- **Then all three waited for coordinates.** A and B kept asking C for its coordinates of the helmet ("I am
+  waiting…", "A holding at helmet"). C kept repeating the exit in its own frame. Nobody went to look for the
+  quilt or the candle, though either would have given the route directly. 197 STAYs across the team.
+- **The failure mode has moved again.** It's no longer finding the exit or describing it, but acting on a
+  landmark description instead of waiting for a frame conversion.
+
+**DeepSeek** got two out (C at t35, A at t79), and B was searching when time ran out. It reasoned heavily:
+603k reasoning tokens, and 37 replies cut off at the 8k cap. The game took 65 minutes, but cost only $0.36.
+
+**GLM 5.3 Flash is the value result.**
+- **Speed and cost:** about 13 minutes, $0.20.
+- **The most exploration of any game here:** coverage 0.95, with few wall moves (5%) even at minimal
+  reasoning.
+- **Its junction choices were the best of the group:** a used exit at 6 of 21 junction revisits.
+- **The outcome:** one exit (C t99), with A and B ending 5 and 16 moves away.
+
+**MiMo v2.6 Pro with reasoning off didn't work here.**
+- **Tool mode:** it answers in text, so 99 turns were lost.
+- **Prompted mode:** it sometimes copied `"additionalProperties": false` from the schema into its answer.
+  The strict parser rejects the extra key, which cost 37 turns.
+- **Between those failures it hit walls on 20% of moves,** and nobody exited.
+- **Caveat:** these are integration problems as much as ability, so judge its ability with care. A run with
+  reasoning on, or a parser that drops schema keywords, would be fairer.
 
 
 ## Qwen3.5-9B: append/rewrite instead of splices (single games via Vessel)
