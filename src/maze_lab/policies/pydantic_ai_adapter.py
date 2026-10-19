@@ -157,6 +157,12 @@ class PydanticAiPolicy:
             settings["openai_reasoning_effort"] = config.effort  # "none" turns reasoning off
         if config.provider == "openrouter":
             settings["openrouter_usage"] = {"include": True}  # report the billed cost of each call
+            if config.effort == "none":
+                settings["openrouter_reasoning"] = {"enabled": False}
+            elif config.effort is not None:  # OpenRouter's scale tops out at xhigh
+                settings["openrouter_reasoning"] = {
+                    "effort": "xhigh" if config.effort == "max" else config.effort
+                }
         self.settings = settings
 
     def request_text(self, system: str, blocks: list[str], action_model: type[_Action] = TurnAction) -> str:

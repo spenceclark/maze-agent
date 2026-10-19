@@ -97,8 +97,6 @@ class LlmAgentConfig(Contract):
     def _effort_supported(self) -> Self:
         if self.effort is None:
             return self
-        if self.provider == "openrouter":
-            raise ValueError("effort is not wired for openrouter yet")
         if self.provider == "anthropic" and self.effort in ("none", "minimal"):
             raise ValueError("Anthropic effort must be low, medium, high, xhigh or max")
         return self

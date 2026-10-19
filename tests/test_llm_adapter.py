@@ -394,3 +394,13 @@ def test_check_first_requires_an_unstored_check_before_the_note_and_move():
     assert "going S" in (attempt.response_text or "")  # but kept in the record
     assert "- check (required, written first)" in json.loads(attempt.request_text or "")["system"]
     assert "- check (required" not in system_instruction(rules, "A")
+
+
+def test_openrouter_effort_maps_to_its_reasoning_setting():
+    def openrouter(effort: str) -> PydanticAiPolicy:
+        config = llm_config(provider="openrouter", model="z-ai/glm-5.3-flash", effort=effort)
+        return PydanticAiPolicy(config, timeout_s=5, model=FunctionModel(tool_call({})))
+
+    assert openrouter("none").settings.get("openrouter_reasoning") == {"enabled": False}
+    assert openrouter("low").settings.get("openrouter_reasoning") == {"effort": "low"}
+    assert openrouter("max").settings.get("openrouter_reasoning") == {"effort": "xhigh"}
