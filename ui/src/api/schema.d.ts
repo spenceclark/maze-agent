@@ -458,6 +458,11 @@ export interface components {
              */
             used_exits_enabled: boolean;
             /**
+             * Meeting Alert Enabled
+             * @default false
+             */
+            meeting_alert_enabled: boolean;
+            /**
              * Distance Sensors
              * @default exit_and_peers
              * @enum {string}
@@ -1102,6 +1107,8 @@ export interface components {
             local: components["schemas"]["LocalCell"];
             /** Used Exits */
             used_exits?: ("N" | "E" | "S" | "W")[] | null;
+            /** Colocated With */
+            colocated_with?: ("A" | "B" | "C")[] | null;
             /** Exit Distance Tenths */
             exit_distance_tenths?: number | null;
             /** Peer Ranges */
@@ -1343,6 +1350,11 @@ export interface components {
              */
             used_exits_enabled: boolean;
             /**
+             * Meeting Alert Enabled
+             * @default false
+             */
+            meeting_alert_enabled: boolean;
+            /**
              * Distance Sensors
              * @default exit_and_peers
              * @enum {string}
@@ -1424,6 +1436,7 @@ export interface components {
              *       "coordinates_enabled": false,
              *       "coordinates_frame": "own_start",
              *       "used_exits_enabled": false,
+             *       "meeting_alert_enabled": false,
              *       "distance_sensors": "exit_and_peers",
              *       "distance_quantization": "tenths"
              *     }

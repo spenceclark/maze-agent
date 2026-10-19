@@ -354,6 +354,11 @@
           "title": "Used Exits Enabled",
           "type": "boolean"
         },
+        "meeting_alert_enabled": {
+          "default": false,
+          "title": "Meeting Alert Enabled",
+          "type": "boolean"
+        },
         "distance_sensors": {
           "default": "exit_and_peers",
           "enum": [
@@ -510,6 +515,7 @@
         "coordinates_enabled": false,
         "coordinates_frame": "own_start",
         "used_exits_enabled": false,
+        "meeting_alert_enabled": false,
         "distance_sensors": "exit_and_peers",
         "distance_quantization": "tenths"
       }

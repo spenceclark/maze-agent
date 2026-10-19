@@ -140,6 +140,8 @@ class RulesConfig(Contract):
     coordinates_frame: CoordinatesFrame = "own_start"
     # Variant: agents see which directions of their current cell they have already moved through.
     used_exits_enabled: bool = False
+    # Variant: name the teammates on the agent's cell (colocated_with) and say what to copy from them.
+    meeting_alert_enabled: bool = False
     distance_sensors: DistanceSensors = "exit_and_peers"  # "none": no exit distance or peer ranges
     distance_quantization: Literal["tenths"] = "tenths"
 

@@ -441,6 +441,26 @@
       "default": null,
       "title": "Used Exits"
     },
+    "colocated_with": {
+      "anyOf": [
+        {
+          "items": {
+            "enum": [
+              "A",
+              "B",
+              "C"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Colocated With"
+    },
     "exit_distance_tenths": {
       "anyOf": [
         {

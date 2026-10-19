@@ -42,6 +42,7 @@ def public_rules(rules: RulesConfig, landmarks_enabled: bool = False) -> AgentRu
         coordinates_enabled=rules.coordinates_enabled,
         coordinates_frame=rules.coordinates_frame,
         used_exits_enabled=rules.used_exits_enabled,
+        meeting_alert_enabled=rules.meeting_alert_enabled,
         distance_sensors=rules.distance_sensors,
     )
 
@@ -77,6 +78,7 @@ def observe(maze: MazeDefinition, rules: RulesConfig, state: WorldState, agent_i
             landmarks=maze.landmarks_at(me.position),
             checkpoints=[],
         ),
+        colocated_with=[p for p in group if p != agent_id] if rules.meeting_alert_enabled else None,
         used_exits=[d for d in DIRECTIONS if (me.position.x, me.position.y, d) in me.used_edges]
         if rules.used_exits_enabled
         else None,

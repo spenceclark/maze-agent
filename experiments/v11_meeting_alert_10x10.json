@@ -1,0 +1,102 @@
+{
+  "name": "v11_meeting_alert_10x10",
+  "experiment_seed": 23,
+  "base_config_file": "../configs/haiku_v10_landmarks_coords_nodist.json",
+  "base_config": {
+    "maze": {
+      "width": 10,
+      "height": 10,
+      "landmark_count": 10
+    },
+    "horizon_ticks": 120,
+    "timing": {
+      "mode": "barrier",
+      "decision_window_ms": 600000
+    }
+  },
+  "seeds": [
+    20261025
+  ],
+  "replicates": 1,
+  "conditions": {
+    "haiku55_v11_alert": {
+      "agents": [
+        {
+          "id": "A",
+          "kind": "llm",
+          "adapter": "pydantic_ai",
+          "provider": "anthropic",
+          "model": "claude-haiku-5-5",
+          "output_mode": "native",
+          "context_window_tokens": 1000000,
+          "max_output_tokens": 2048
+        },
+        {
+          "id": "B",
+          "kind": "llm",
+          "adapter": "pydantic_ai",
+          "provider": "anthropic",
+          "model": "claude-haiku-5-5",
+          "output_mode": "native",
+          "context_window_tokens": 1000000,
+          "max_output_tokens": 2048
+        },
+        {
+          "id": "C",
+          "kind": "llm",
+          "adapter": "pydantic_ai",
+          "provider": "anthropic",
+          "model": "claude-haiku-5-5",
+          "output_mode": "native",
+          "context_window_tokens": 1000000,
+          "max_output_tokens": 2048
+        }
+      ],
+      "prompt_version": "maze_agent_v11",
+      "rules": {
+        "meeting_alert_enabled": true
+      }
+    },
+    "glm_53_flash_v11_alert": {
+      "agents": [
+        {
+          "id": "A",
+          "kind": "llm",
+          "adapter": "pydantic_ai",
+          "provider": "openrouter",
+          "model": "z-ai/glm-5.3-flash",
+          "output_mode": "tool",
+          "context_window_tokens": 1048576,
+          "max_output_tokens": 8192,
+          "effort": "minimal"
+        },
+        {
+          "id": "B",
+          "kind": "llm",
+          "adapter": "pydantic_ai",
+          "provider": "openrouter",
+          "model": "z-ai/glm-5.3-flash",
+          "output_mode": "tool",
+          "context_window_tokens": 1048576,
+          "max_output_tokens": 8192,
+          "effort": "minimal"
+        },
+        {
+          "id": "C",
+          "kind": "llm",
+          "adapter": "pydantic_ai",
+          "provider": "openrouter",
+          "model": "z-ai/glm-5.3-flash",
+          "output_mode": "tool",
+          "context_window_tokens": 1048576,
+          "max_output_tokens": 8192,
+          "effort": "minimal"
+        }
+      ],
+      "prompt_version": "maze_agent_v11",
+      "rules": {
+        "meeting_alert_enabled": true
+      }
+    }
+  }
+}

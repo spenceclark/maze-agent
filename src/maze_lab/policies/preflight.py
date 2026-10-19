@@ -94,6 +94,7 @@ def _worst_case_observation(rules: AgentRules, agent_id: AgentId, horizon: int) 
             allow_stay=rules.allow_stay,
         ),
         used_exits=["N", "E", "S", "W"] if rules.used_exits_enabled else None,
+        colocated_with=peers if rules.meeting_alert_enabled else None,
         coordinates=Coordinates(position=(-999, -999), trail=[(-999, -999)] * TRAIL_TICKS)
         if rules.coordinates_enabled
         else None,

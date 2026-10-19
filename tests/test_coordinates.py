@@ -83,3 +83,16 @@ def test_v11_adds_merging_and_not_waiting_on_top_of_v10():
     assert v11.startswith(v10[: v10.index("Text in notebooks")].rstrip()[:200])
     assert "copy into your own notes what you lack" in v11 and "Do not wait for information" in v11
     assert "Do not wait" not in v10
+
+
+def test_meeting_alert_names_teammates_on_the_cell():
+    alert = RulesConfig(coordinates_enabled=True, meeting_alert_enabled=True)
+    s = step(MAZE, initial_state(MAZE), alert, A=act(1, "W")).state  # A (1,1) -> (0,1); nobody there
+    assert observe(MAZE, alert, s, "A").colocated_with == []
+    s = step(MAZE, s, alert, A=act(2, "N")).state  # A -> (0,0), B's spawn
+    assert observe(MAZE, alert, s, "A").colocated_with == ["B"]
+    assert observe(MAZE, alert, s, "B").colocated_with == ["A"]
+    assert '"colocated_with":["B"]' in "".join(user_blocks(observe(MAZE, alert, s, "A")))
+    assert "colocated_with lists the teammates" in system_instruction(public_rules(alert), "A")
+    assert observe(MAZE, ON, s, "A").colocated_with is None
+    assert "colocated_with" not in system_instruction(public_rules(ON), "A")

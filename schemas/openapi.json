@@ -1638,6 +1638,11 @@
             "title": "Used Exits Enabled",
             "default": false
           },
+          "meeting_alert_enabled": {
+            "type": "boolean",
+            "title": "Meeting Alert Enabled",
+            "default": false
+          },
           "distance_sensors": {
             "type": "string",
             "enum": [
@@ -3377,6 +3382,25 @@
             ],
             "title": "Used Exits"
           },
+          "colocated_with": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "A",
+                    "B",
+                    "C"
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Colocated With"
+          },
           "exit_distance_tenths": {
             "anyOf": [
               {
@@ -3991,6 +4015,11 @@
             "title": "Used Exits Enabled",
             "default": false
           },
+          "meeting_alert_enabled": {
+            "type": "boolean",
+            "title": "Meeting Alert Enabled",
+            "default": false
+          },
           "distance_sensors": {
             "type": "string",
             "enum": [
@@ -4144,6 +4173,7 @@
               "coordinates_enabled": false,
               "coordinates_frame": "own_start",
               "used_exits_enabled": false,
+              "meeting_alert_enabled": false,
               "distance_sensors": "exit_and_peers",
               "distance_quantization": "tenths"
             }

@@ -139,6 +139,14 @@ _USED_EXITS_NOTE = (
     " arriving, at any point this game. An open direction not in it leads somewhere you have not yet been"
     " from here."
 )
+# Variant `meeting_alert_enabled`: v11's merge rule never fired because a meeting was only implied by a
+# non-empty colocated_notebooks block; this names the teammates and says what to copy that turn.
+_MEETING_NOTE = (
+    "\n- colocated_with lists the teammates standing on your cell right now. When it is not empty, use this"
+    " turn's note to copy from their notebooks what you lack (the exit's position, landmarks, dead ends) and"
+    " to record their position by their own count next to yours: you are on the same cell, so the"
+    " difference is the offset between your frames."
+)
 _NOTEBOOKS = TypeAdapter(list[Notebook])
 
 _SYSTEM = """\
@@ -157,7 +165,8 @@ there).
 {used_exits_note}
 {distance_note}
 - Several agents may share a cell. Agents that end a turn on the same cell can read each other's \
-full notebooks on the next turn (colocated_notebooks). Reading copies nothing into your notebook.
+full notebooks on the next turn (colocated_notebooks). Reading copies nothing into your notebook.\
+{meeting_note}
 
 EACH TURN you submit one action. All agents act simultaneously; moves resolve together.
 {check_bullet}- move: one of N, E, S, W (north is up, east is right) or STAY{stay_note}. Moving into a wall \
@@ -229,6 +238,7 @@ def system_instruction(
         if with_check
         else "",
         used_exits_note=_USED_EXITS_NOTE if rules.used_exits_enabled else "",
+        meeting_note=_MEETING_NOTE if rules.meeting_alert_enabled else "",
         world_view=_COORDINATES_VIEW[rules.coordinates_frame]
         if rules.coordinates_enabled
         else "You never see coordinates, the map size, or a map.",
