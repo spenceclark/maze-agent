@@ -41,6 +41,7 @@ Batches use 3 seeds, so intervals are wide.
 | 29 | Does the current setup hold on a new maze, and how do other hosted models compare? | 10×10, seed 20261025 (spawns 41/24/33 moves from the exit), 10 landmarks, 120 turns, same v10 setup; Haiku, Sonnet, DeepSeek v4.1 Flash, MiMo v2.6 Pro (reasoning off), GLM 5.3 Flash (reasoning can't be disabled; `minimal`) | **Sonnet met the objective at t88** ($1.97). DeepSeek got two out (C t35, A t79; $0.36), GLM one (C t99, coverage 0.95; $0.20) | **Haiku:** C exited at t34 and radioed the exit relative to two landmarks. A and B met on the helmet and calibrated ("A = B + (-6,+1)"), then all three waited for coordinates instead of walking to the quilt (197 STAYs). **MiMo** got no one out: tool mode lost 99 turns (it answers in text); in prompted mode it echoed `"additionalProperties": false` into 37 replies, and hit walls on 20% of moves |
 | 30 | Nobody merges a teammate's notebook; Haiku teams wait instead of searching | Prompt v11 = v10 plus "copy into your own notes what you lack… Do not wait for information… go and search for that landmark"; and a **shared-frame control** (`coordinates_frame: team`, everyone counts from A's start). Haiku and GLM on the 10×10 seed, one game each | **Haiku with the shared frame met the objective at t120,** its first team success on this setup. **v11's "don't wait" worked for Haiku:** STAYs 197 → 72, coverage 0.70 → 0.95, two exits. GLM went from one exit to two under both variants | **Merging still didn't happen:** 0 copied passages across 34 post-meeting notes in the four games. At Haiku's first v11 meeting (t25, A and B on the same cell) neither note mentioned the other. The frame problem is real: with a shared frame the exit is just "[2,5]", yet B still needed until t120 to find a route |
 | 31 | v11's merge rule never fired: meetings weren't salient | `meeting_alert_enabled`: the observation names teammates on your cell (`colocated_with`), and a rule says that turn's note should copy what you lack and record their position by their own count. Haiku and GLM with v11, 10×10 seed (one game each) | **Haiku met the objective at t91** (C t33, A t76, B t91), the fastest Haiku finish on any maze, for $0.13. Every meeting was noticed and two produced a frame offset. C on the candle with B: "B frame = C frame + (4,-3)… Exit in B frame is [8,4]"; B exited 16 turns later | Agents summarise rather than copy text, so the 40-character copy test still reads 0. **GLM never met a teammate** in its game, so the alert never fired (one exit, B t118). C still camped as a "beacon" on the candle after calibrating |
+| 32 | Does the scaffolded setup scale to bigger mazes with long horizons? | Haiku, v11 + meeting alert, coordinates, no distances, rolling log, 600 turns; 9×9 to 17×17 with 10–14 landmarks, seed 20261104 (one game each) | **Team objective met on 4 of 5 mazes:** 9×9 t116, 11×11 t125, 13×13 t238, 17×17 t236, each in about 3–4× the best possible time, for $0.18–0.40 a game | **15×15 failed:** all three spawned 72–95 moves from the exit, and nobody found it in 600 turns (coverage 0.67). B gave up exploring at t313 and waited on a landmark for 287 turns (255 STAYs) for an exit description nobody could give |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -1734,6 +1735,43 @@ Both remove the frame problem, one by fiat and one by making calibration easy wh
 each; worth replicating before believing the ordering.
 
 
+
+## Haiku on bigger mazes with long horizons (`experiments/haiku_sizes_600.json`)
+- **Setup:** Haiku's best setup so far: prompt v11, `meeting_alert_enabled`, coordinates from its own
+  start, no distance sensors, rolling-log notebook.
+- **Mazes and horizon:** five sizes on seed 20261104 (different mazes at each size), with landmarks rising
+  by one per size, and a 600-turn limit.
+- **"Best possible":** the furthest spawn's path to the exit, the fastest the team could finish.
+
+| Maze | Landmarks | Spawn → exit (A / B / C) | Best possible | Result | Exits | Left at end | Coverage | STAYs | Meetings | Offset notes | Landmark-relative exit radios | Cost | Run |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 9×9 | 10 | 30 / 27 / 12 | 30 | **met t116** | C t27, B t35, A t116 | 0 / 0 / 0 | 0.91 | 146 | 7 | 6 | 29 | $0.18 | `a00d7afdbb64` |
+| 11×11 | 11 | 22 / 41 / 19 | 41 | **met t125** | B t87, C t96, A t125 | 0 / 1 / 16 | 0.99 | 51 | 0 | 0 | 12 | $0.18 | `7e5ff9219329` |
+| 13×13 | 12 | 62 / 83 / 41 | 83 | **met t238** | C t66, A t200, B t238 | 1 / 0 / 1 | 0.92 | 222 | 4 | 9 | 37 | $0.40 | `87babe464fb2` |
+| 15×15 | 13 | 84 / 72 / 95 | 95 | time limit |  | 127 / 111 / 85 | 0.67 | 261 | 7 | 16 | 8 | $1.05 | `671b99acb82d` |
+| 17×17 | 14 | 39 / 71 / 18 | 71 | **met t236** | C t42, A t184, B t236 | 15 / 0 / 15 | 0.79 | 215 | 4 | 6 | 47 | $0.37 | `1c461f2ef226` |
+
+**Four of five team successes, up to 17×17.**
+- **Time to finish scaled with the maze, not wildly:** about 3–4× the best possible (116/30, 125/41,
+  238/83, 236/71).
+- **The first exit usually came early** (C at t27, t66, t42), and the last agent much later.
+- **The slow part is the relay,** not the search: getting the exit's location to the others and walking it.
+  The landmark relay was busy: 12–47 radio messages giving the exit relative to a landmark per success.
+- **Each success cost $0.18–0.40,** cheaper than one 120-turn Sonnet game.
+
+**The 15×15 failure is a different mode: nobody found the exit.**
+- **All three spawned far away** (84, 72 and 95 moves), and the exit sat in the third of the maze nobody
+  reached (coverage 0.67).
+- **A and C kept exploring** until t534 and t401.
+- **B stopped looking at t313** and parked on the candle for the rest of the game (255 STAYs): "B holding at
+  candle… Send exit position relative to any landmark and I will go there".
+- **The "don't wait" rule didn't apply:** it covers waiting when an exit description exists, not giving up
+  the search when none does.
+- **The team also had the information to coordinate the search** and didn't. A had written "A=B+(8,4)",
+  and they could have split the maze by frame.
+- **Next lever:** "while the exit is unknown, keep exploring; split the unexplored area with teammates".
+
+**Cost:** $2.18 for all five games (600-turn limit; four ended early).
 
 ## Qwen3.5-9B: append/rewrite instead of splices (single games via Vessel)
 Splices need exact code-point offsets and the current revision. Qwen got these wrong often, and the rejected
