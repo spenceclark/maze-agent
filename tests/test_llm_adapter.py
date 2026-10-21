@@ -24,7 +24,7 @@ from pydantic_ai.messages import (
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.usage import RequestUsage
 
-from maze_lab.agent_contracts import AppendTurnAction, Observation
+from maze_lab.agent_contracts import AppendTurnAction, Observation, TurnAction
 from maze_lab.config import LlmAgentConfig, RulesConfig, RunConfig
 from maze_lab.domain.state import initial_state
 from maze_lab.observation import observe, public_rules
@@ -411,3 +411,23 @@ def test_v12_adds_keep_exploring_on_top_of_v11():
     v12 = system_instruction(AGENT_RULES, "A", "maze_agent_v12")
     assert "Do not wait for information" in v12 and "Until someone has found the exit, keep exploring" in v12
     assert "keep exploring" not in v11
+
+
+def test_restrict_moves_offers_only_open_directions_and_stay():
+    local = OBS.local
+    edges = (local.north, local.east, local.south, local.west)
+    open_dirs = [d for d, e in zip("NESW", edges, strict=True) if e == "open"]
+    seen: list[dict[str, object]] = []
+
+    def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        seen.append(info.output_tools[0].parameters_json_schema)
+        args = {**valid_args(), "move": open_dirs[0]}
+        return ModelResponse(parts=[ToolCallPart(tool_name=info.output_tools[0].name, args=args)])
+
+    policy = PydanticAiPolicy(
+        llm_config(restrict_moves_to_open=True), timeout_s=5, model=FunctionModel(respond)
+    )
+    attempt = asyncio.run(policy.decide(OBS, AGENT_RULES))
+    assert seen[0]["properties"]["move"]["enum"] == [*open_dirs, "STAY"]  # type: ignore[index]
+    assert attempt.failure is None and isinstance(attempt.action, TurnAction)
+    assert attempt.action.move == open_dirs[0]

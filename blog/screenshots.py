@@ -15,6 +15,7 @@ import tempfile
 import time
 import urllib.request
 from pathlib import Path
+from typing import Any
 
 import websockets
 
@@ -106,7 +107,7 @@ async def shoot(ws_url: str, name: str, tick: int, prep: str, target: str) -> No
                         raise RuntimeError(f"{method}: {msg['error']}")
                     return msg["result"]
 
-        async def js(expr: str) -> object:
+        async def js(expr: str) -> Any:
             res = await call("Runtime.evaluate", expression=expr, returnByValue=True, awaitPromise=True)
             if "exceptionDetails" in res:
                 raise RuntimeError(res["exceptionDetails"])

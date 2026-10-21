@@ -100,6 +100,9 @@ class LlmAgentConfig(Contract):
     # note before choosing a move ("note_first"); "check_first" also asks for a required, unstored
     # one-line check of the cell before both. append_log runs only.
     action_field_order: Literal["move_first", "note_first", "check_first"] = "move_first"
+    # Each turn, offer only this cell's open directions (plus STAY) in the requested move enum, so a model
+    # with constrained decoding cannot ask to walk into a wall.
+    restrict_moves_to_open: bool = False
 
     @model_validator(mode="after")
     def _effort_supported(self) -> Self:

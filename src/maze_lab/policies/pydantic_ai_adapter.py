@@ -10,9 +10,12 @@ Strict condition, enforced here:
 
 import json
 import os
+from functools import cache
+from typing import Literal
 
 from anthropic import AsyncAnthropic
 from openai import AsyncOpenAI
+from pydantic import create_model
 from pydantic_ai import Agent, capture_run_messages
 from pydantic_ai.exceptions import ContentFilterError, ModelAPIError, UnexpectedModelBehavior
 from pydantic_ai.messages import CachePoint, ModelMessage, ModelResponse, TextPart, ToolCallPart
@@ -68,6 +71,13 @@ def build_model(config: LlmAgentConfig) -> Model:
 
 
 type _Action = TurnAction | AppendTurnAction | AppendNoteFirstTurnAction | AppendCheckFirstTurnAction
+
+
+@cache
+def _open_moves_only(model: type[_Action], moves: tuple[str, ...]) -> type[_Action]:
+    """The action model with `move` narrowed to `moves`: only the requested schema changes, and the
+    reply is still parsed with the run's normal action model."""
+    return create_model(model.__name__, __base__=model, move=(Literal[moves], ...))  # pyright: ignore[reportCallIssue, reportArgumentType, reportReturnType]
 
 
 def _output_spec(
@@ -189,6 +199,12 @@ class PydanticAiPolicy:
             action_model = AppendNoteFirstTurnAction  # only the requested key order changes
         elif self.config.action_field_order == "check_first":
             action_model = AppendCheckFirstTurnAction
+        if self.config.restrict_moves_to_open:
+            local = observation.local
+            edges = {"N": local.north, "E": local.east, "S": local.south, "W": local.west}
+            action_model = _open_moves_only(
+                action_model, (*(d for d, e in edges.items() if e == "open"), "STAY")
+            )
         request_text = self.request_text(system, blocks, action_model)
         if (too_big := check_prompt(self.config, system, blocks)) is not None:
             # Never send a prompt a provider might truncate; this is a forced no-op, not a request.
