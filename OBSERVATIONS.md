@@ -43,6 +43,7 @@ Batches use 3 seeds, so intervals are wide.
 | 31 | v11's merge rule never fired: meetings weren't salient | `meeting_alert_enabled`: the observation names teammates on your cell (`colocated_with`), and a rule says that turn's note should copy what you lack and record their position by their own count. Haiku and GLM with v11, 10×10 seed (one game each) | **Haiku met the objective at t91** (C t33, A t76, B t91), the fastest Haiku finish on any maze, for $0.13. Every meeting was noticed and two produced a frame offset. C on the candle with B: "B frame = C frame + (4,-3)… Exit in B frame is [8,4]"; B exited 16 turns later | Agents summarise rather than copy text, so the 40-character copy test still reads 0. **GLM never met a teammate** in its game, so the alert never fired (one exit, B t118). C still camped as a "beacon" on the candle after calibrating |
 | 32 | Does the scaffolded setup scale to bigger mazes with long horizons? | Haiku, v11 + meeting alert, coordinates, no distances, rolling log, 600 turns; 9×9 to 17×17 with 10–14 landmarks, seed 20261104 (one game each) | **Team objective met on 4 of 5 mazes:** 9×9 t116, 11×11 t125, 13×13 t238, 17×17 t236, each in about 3–4× the best possible time, for $0.18–0.40 a game | **15×15 failed:** all three spawned 72–95 moves from the exit, and nobody found it in 600 turns (coverage 0.67). B gave up exploring at t313 and waited on a landmark for 287 turns (255 STAYs) for an exit description nobody could give |
 | 33 | On 15×15 nobody found the exit; one agent waited 287 turns for news | Prompt v12 = v11 plus "Until someone has found the exit, keep exploring… Split the search with your teammates: radio which part… you have covered" (same maze, 600 turns, one game) | **The waiting and the coordination changed:** B's STAYs 255 → 59; radio about coverage and splitting 12 → 65 messages ("covered x=4..8, y=-2..4 on the east side… search elsewhere"); every agent explored 135–152 cells | **Still no exit.** In both games nobody got closer than 58 moves to it. The exit's region has a single entrance, cell (10,14) on the south edge, whose north side was open. All three agents passed it twice, noting "N open" each time while "continuing W along south frontier", and never took it |
+| 34 | Is Qwen's wall-walking the problem, or a symptom? | `restrict_moves_to_open`: each turn the requested `move` enum lists only that cell's open directions plus STAY, so constrained decoding can't pick a wall (qwen3.5:9b, same 12×12 seed and v10 setup as the move-first game; one game, direct to Ollama) | Wall moves 38% → **0%**. A exited at t37 (t50 before) | **Exploration didn't change:** 38 distinct cells, the same as move-first and about half of check-first (66). The turns it used to spend on walls became back-and-forth instead: 91 reversals against 51, and 35 STAYs. The wall-walking was a symptom; it isn't keeping track of where it has been |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -1463,6 +1464,36 @@ trail (or notebook) holds the neighbouring cell that way… preferring one you h
 - **Verdict for this experiment:** Qwen3.5-9B with reasoning off can be scaffolded into reading its cell
   correctly and choosing locally well, but not into exploring a maze. With reasoning on it might, but at a
   cost in time that makes 80+ turn games impractical locally.
+
+**Follow-up: take the walls out of the choice (`fdf91d4185ad`, `restrict_moves_to_open`).**
+- **The suggestion:** limit the move enum to the current openings plus STAY. It won't tell Qwen where to
+  explore, but it separates wall-looping from failing to use its notes.
+- **How it works:** each turn the requested schema's `move` enum is that cell's open directions plus STAY,
+  and Ollama's constrained decoding enforces it.
+- **The test:** a single game, the same as the move-first game (`e8d0d98506f7`) in every other respect.
+
+| Game | Wall moves | STAYs | Distinct cells | Back-and-forth | Longest ping-pong | Used exit at junction revisits | Turns in exhausted cells | Exits | Moves left at end (A/B/C) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| move first (`e8d0d98506f7`) | 90/240 (38%) | 0 | 38 | 51 | 6 | 3 of 5 | 160 | {'A': 50} | 5 / 38 / 64 |
+| note first (`c6eb407ec363`) | 70/235 (30%) | 2 | 32 | 63 | 8 | 2 of 8 | 162 | {'A': 22} | 1 / 31 / 58 |
+| check first (`4a196f67ca00`) | 18/237 (8%) | 0 | 66 | 76 | 12 | 22 of 25 | 135 | none | 31 / 25 / 44 |
+| check + used exits (`6bfc0e35c876`) | 32/233 (14%) | 7 | 69 | 57 | 5 | 4 of 11 | 138 | {'A': 5} | 2 / 63 / 61 |
+| open moves only (`fdf91d4185ad`) | 0/202 (0%) | 35 | 38 | 91 | 8 | 3 of 6 | 147 | {'A': 37} | 1 / 37 / 45 |
+
+- **The walls disappear completely,** as expected (0 of 202 moves). A got out at t37, though it starts five
+  moves from the exit, so that says little.
+- **Exploration is exactly where it was:** 38 distinct cells, the same as move-first. The turns no longer
+  spent on walls went into back-and-forth (91 reversals, the most of any Qwen game) and 35 STAYs, mostly
+  in two-way corridors.
+- **The notes describe the cells correctly and plan in local terms,** e.g. "Junction at (-2,0)… Will go South
+  to avoid re-entering West trap". Moves still wander over the same ground: 147 turns on cells where every
+  exit had already been used.
+- **So the wall-walking was masking the real limit.** Remove it by construction and the underlying failure,
+  no memory-driven search, is unchanged.
+- **Comparison:** the check line (`check_first`) beat the restricted enum on exploration (66 cells against
+  38) even though it walked into walls 8% of the time. Writing about the cell before moving helped Qwen think
+  as well as avoid walls.
+
 
 ## New baseline on the current code (one game each), and two more local models
 **API models** use the latest Haiku setup:
