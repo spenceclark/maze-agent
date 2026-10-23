@@ -1,0 +1,74 @@
+{
+  "schema_version": "1.0",
+  "root_seed": 20261025,
+  "condition": "baseline_10x10_v10/kimi_k31_pro",
+  "maze": {
+    "width": 10,
+    "height": 10,
+    "generator": "dfs_v1",
+    "extra_open_edges": 0,
+    "exit_policy": "uniform_perimeter_cell",
+    "spawn_policy": "uniform_distinct_non_exit",
+    "landmark_count": 10,
+    "checkpoint_count": 0
+  },
+  "agents": [
+    {
+      "id": "A",
+      "kind": "llm",
+      "adapter": "pydantic_ai",
+      "provider": "openrouter",
+      "model": "moonshotai/kimi-k3.1-pro",
+      "output_mode": "tool",
+      "context_window_tokens": 1048576,
+      "max_output_tokens": 2048,
+      "effort": "none"
+    },
+    {
+      "id": "B",
+      "kind": "llm",
+      "adapter": "pydantic_ai",
+      "provider": "openrouter",
+      "model": "moonshotai/kimi-k3.1-pro",
+      "output_mode": "tool",
+      "context_window_tokens": 1048576,
+      "max_output_tokens": 2048,
+      "effort": "none"
+    },
+    {
+      "id": "C",
+      "kind": "llm",
+      "adapter": "pydantic_ai",
+      "provider": "openrouter",
+      "model": "moonshotai/kimi-k3.1-pro",
+      "output_mode": "tool",
+      "context_window_tokens": 1048576,
+      "max_output_tokens": 2048,
+      "effort": "none"
+    }
+  ],
+  "rules": {
+    "version": "rules_v1",
+    "objective": "all_reach_exit",
+    "allow_stay": true,
+    "notebook_enabled": true,
+    "notebook_cap_bytes": 8192,
+    "notebook_insert_bytes": 1024,
+    "radio_enabled": true,
+    "radio_message_bytes": 280,
+    "radio_cooldown_ticks": 5,
+    "meeting_notebooks_enabled": true,
+    "distance_sensors": "none",
+    "distance_quantization": "tenths",
+    "notebook_ops": "append_log",
+    "coordinates_enabled": true
+  },
+  "timing": {
+    "mode": "barrier",
+    "decision_window_ms": 600000
+  },
+  "horizon_ticks": 120,
+  "prompt_version": "maze_agent_v10",
+  "max_provider_requests_per_turn": 1,
+  "snapshot_interval_ticks": 25
+}
