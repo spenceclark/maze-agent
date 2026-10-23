@@ -44,6 +44,7 @@ Batches use 3 seeds, so intervals are wide.
 | 32 | Does the scaffolded setup scale to bigger mazes with long horizons? | Haiku, v11 + meeting alert, coordinates, no distances, rolling log, 600 turns; 9×9 to 17×17 with 10–14 landmarks, seed 20261104 (one game each) | **Team objective met on 4 of 5 mazes:** 9×9 t116, 11×11 t125, 13×13 t238, 17×17 t236, each in about 3–4× the best possible time, for $0.18–0.40 a game | **15×15 failed:** all three spawned 72–95 moves from the exit, and nobody found it in 600 turns (coverage 0.67). B gave up exploring at t313 and waited on a landmark for 287 turns (255 STAYs) for an exit description nobody could give |
 | 33 | On 15×15 nobody found the exit; one agent waited 287 turns for news | Prompt v12 = v11 plus "Until someone has found the exit, keep exploring… Split the search with your teammates: radio which part… you have covered" (same maze, 600 turns, one game) | **The waiting and the coordination changed:** B's STAYs 255 → 59; radio about coverage and splitting 12 → 65 messages ("covered x=4..8, y=-2..4 on the east side… search elsewhere"); every agent explored 135–152 cells | **Still no exit.** In both games nobody got closer than 58 moves to it. The exit's region has a single entrance, cell (10,14) on the south edge, whose north side was open. All three agents passed it twice, noting "N open" each time while "continuing W along south frontier", and never took it |
 | 34 | Is Qwen's wall-walking the problem, or a symptom? | `restrict_moves_to_open`: each turn the requested `move` enum lists only that cell's open directions plus STAY, so constrained decoding can't pick a wall (qwen3.5:9b, same 12×12 seed and v10 setup as the move-first game; one game, direct to Ollama) | Wall moves 38% → **0%**. A exited at t37 (t50 before) | **Exploration didn't change:** 38 distinct cells, the same as move-first and about half of check-first (66). The turns it used to spend on walls became back-and-forth instead: 91 reversals against 51, and 35 STAYs. The wall-walking was a symptom; it isn't keeping track of where it has been |
+| 35 | How does Kimi K3.1 Pro compare on the 10×10 baseline? | Same maze, setup and 120 turns as the five-model baseline; OpenRouter, reasoning off (accepted), tool mode, 2k output cap (one game, with a watchdog to abort on runaway failures or spend) | **The most exploration of any model on this maze** (183 distinct cells, coverage 0.82), and the best junction choices (a used exit at 1 of 14 revisits). Two exits (A t103, B t107); C ended 38 moves away. $2.83 | **9% of moves hit walls** (30 of 336), and in 10 of them that turn's note named the wall it then walked into ("N wall… heading N"): plan inertia, as with Qwen. 15 failed turns (4%): 12 cut off at the 2k cap, 3 output errors. No team success, against Sonnet's at t88 for $1.97 |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -1679,6 +1680,30 @@ after the best possible finish of t41. Two Sonnet successes on two mazes now (12
 - **Between those failures it hit walls on 20% of moves,** and nobody exited.
 - **Caveat:** these are integration problems as much as ability, so judge its ability with care. A run with
   reasoning on, or a parser that drops schema keywords, would be fairer.
+
+**Kimi K3.1 Pro (`8b03f9a17a3b`, `configs/kimi31pro_10x10_v10.json`), added later on the same 10×10
+baseline.**
+- **Settings:** OpenRouter with reasoning off, which it accepted (0 reasoning tokens). Tool mode works, and
+  OpenRouter's prompt cache hit from the second call.
+- **The watchdog:** set to abort on failures above 10% or spend above $8. It never fired.
+
+| Model, 10×10, 120 turns | Result | Exits | Moves from the exit at the end (A / B / C) | Coverage | Distinct cells | Wall moves | Used exit at junction revisits | Failed turns | Cost |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Sonnet 5.5 | **objective met t88** | C t65, A t71, B t88 | 6 / 0 / 23 | 0.83 | 164 | 0 | 5 of 8 | 0 | $1.97 |
+| **Kimi K3.1 Pro** | time limit | A t103, B t107 | 6 / 6 / 38 | 0.82 | **183** | 30 of 336 (9%) | **1 of 14** | 15 (12 cut off at 2k, 3 output errors) | $2.83 |
+| DeepSeek v4.1 Flash | time limit | C t35, A t79 | 6 / 29 / 4 | 0.76 | 133 | 1 | 5 of 8 | 37 cut off at 8k | $0.36 |
+| GLM 5.3 Flash | time limit | C t99 | 5 / 16 / 14 | 0.95 | 160 | 18 | 6 of 21 | 3 | $0.20 |
+
+- **Kimi is the best explorer on this maze.** It reached the most distinct cells and almost never re-entered
+  an explored branch at a junction.
+- **It walked into walls on 9% of moves,** the most of any hosted model. In 10 of those 30, the note written
+  that turn named the wall it then walked into. For example A at t15: "(-7,-3): W brick, N wall, E/S open.
+  Arrived S; heading N." That's the same plan inertia Qwen showed, in a far bigger model with reasoning off.
+- **The 2k output cap cut off 12 replies.** It writes long notes even without reasoning (about 435 output
+  tokens per decision against Sonnet's 200).
+- **Verdict:** a strong explorer, but slower to get everyone out than Sonnet, and about 40% dearer per game.
+  `check_first` or `restrict_moves_to_open` would probably remove its wall moves cheaply.
+
 
 
 ## Prompt v11 and a shared-frame control (10×10, Haiku and GLM; `experiments/v11_and_team_frame_10x10.json`)
