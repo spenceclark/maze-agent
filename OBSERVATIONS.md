@@ -46,6 +46,7 @@ Batches use 3 seeds, so intervals are wide.
 | 34 | Is Qwen's wall-walking the problem, or a symptom? | `restrict_moves_to_open`: each turn the requested `move` enum lists only that cell's open directions plus STAY, so constrained decoding can't pick a wall (qwen3.5:9b, same 12×12 seed and v10 setup as the move-first game; one game, direct to Ollama) | Wall moves 38% → **0%**. A exited at t37 (t50 before) | **Exploration didn't change:** 38 distinct cells, the same as move-first and about half of check-first (66). The turns it used to spend on walls became back-and-forth instead: 91 reversals against 51, and 35 STAYs. The wall-walking was a symptom; it isn't keeping track of where it has been |
 | 35 | How does Kimi K3.1 Pro compare on the 10×10 baseline? | Same maze, setup and 120 turns as the five-model baseline; OpenRouter, reasoning off (accepted), tool mode, 2k output cap (one game, with a watchdog to abort on runaway failures or spend) | **The most exploration of any model on this maze** (183 distinct cells, coverage 0.82), and the best junction choices (a used exit at 1 of 14 revisits). Two exits (A t103, B t107); C ended 38 moves away. $2.83 | **9% of moves hit walls** (30 of 336), and in 10 of them that turn's note named the wall it then walked into ("N wall… heading N"): plan inertia, as with Qwen. 15 failed turns (4%): 12 cut off at the 2k cap, 3 output errors. No team success, against Sonnet's at t88 for $1.97 |
 | 36 | Does another small local model do better than Qwen with every helping hand? | Nemotron 3.5 Bolt e4b (Gemma 4 based, 7.5B, Q4_K_M) on Ollama, on Qwen's 12×12 maze and v10 setup, with the check line, used exits and open-moves-only all on, **thinking on** (one game, 80 turns) | Ran cleanly: 0 failed turns, and thinking fitted the 8k context (median 950 output tokens). 0 wall moves (by construction) | **No better than Qwen:** 44 distinct cells (Qwen 38–69), the longest ping-pong of any local game (19 turns), 198 turns in fully explored cells, 77 STAYs. Only A exited (it starts 5 moves away). 25 of 35 radio messages were the string "null". 77 minutes for one game |
+| 37 | Nemotron against Qwen like for like, and thinking on against off | Both models with all three helping hands (`check_first`, `used_exits_enabled`, `restrict_moves_to_open`) and thinking off, on the same 12×12 maze, plus Nemotron with thinking on (one game each) | **Qwen with all three hands is its best game yet:** 74 distinct cells, 0 wall moves, 87% unused-exit choices, 125 notes. Nemotron with thinking on reads its cell best (99% of edges right, 93% of moves follow its own stated plan) | **Nemotron with thinking off is the weakest local result:** 30 distinct cells, 149 back-and-forth moves, no exits even for A (5 moves from the exit), terse check lines, 15 notes in 240 turns, every radio message "null". With thinking on it reads better but still explores little (44 cells): **it barely keeps notes** (26), so beyond the 30-turn trail it has no memory to search with |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -1525,6 +1526,59 @@ trail (or notebook) holds the neighbouring cell that way… preferring one you h
 - **Verdict:** a second small local model hits the same limit as Qwen. With perception and the local choice
   handled by scaffolding, neither can plan a route back to unexplored ground. Thinking at this model's level
   doesn't change that.
+
+**Nemotron against Qwen like for like (thinking off, all three helping hands, same maze), and Nemotron with
+thinking on.** In all three games the move enum held only open directions, so there were no wall moves by
+construction. The check line still restates all four edges, walls included.
+
+Movement:
+
+| Game | Wall moves | STAYs | Distinct cells | Back-and-forth | Longest ping-pong | Used exit at junction revisits | Turns in exhausted cells | Exits | Moves left at end (A/B/C) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Qwen, all hands, think off (`3d8aba6db5d6`) | 0/228 (0%) | 12 | 74 | 80 | 11 | 2 of 8 | 138 | {'A': 5} | 1 / 49 / 35 |
+| Nemotron, all hands, think off (`1ea1ec3de993`) | 0/231 (0%) | 9 | 30 | 149 | 13 | 0 of 2 | 195 | none | 15 / 32 / 59 |
+| Nemotron, all hands, think on (`1c0808fe7dc9`) | 0/163 (0%) | 77 | 44 | 77 | 19 | 0 of 5 | 198 | {'A': 5} | 2 / 36 / 64 |
+| Qwen check+used, think off (`6bfc0e35c876`) | 32/233 (14%) | 7 | 69 | 57 | 5 | 4 of 11 | 138 | {'A': 5} | 2 / 63 / 61 |
+| Qwen move first, no hands (`e8d0d98506f7`) | 90/240 (38%) | 0 | 38 | 51 | 6 | 3 of 5 | 160 | {'A': 50} | 5 / 38 / 64 |
+
+Perception, bookkeeping and plan-following, read from each reply's `check` line and the observation it
+answered:
+
+| Measure | Qwen, think off (`3d8aba6db5d6`) | Nemotron, think off (`1ea1ec3de993`) | Nemotron, think on (`1c0808fe7dc9`) |
+| --- | --- | --- | --- |
+| Check lines with all four edges right | 178/240 (74%) | 31/240 (13%) | 208/240 (87%) |
+| Edges stated correctly (open vs closed) | 839/863 (97%) | 236/260 (91%) | 841/846 (99%) |
+| Used exits copied exactly (when listed) | 58/59 (98%) | 145/148 (98%) | 164/165 (99%) |
+| Move matched the check's stated plan | 80/104 (77%) | 75/87 (86%) | 139/150 (93%) |
+| Took an unused exit when one was open | 71/82 (87%) | 27/45 (60%) | 41/42 (98%) |
+| Notes written / avg length | 125 / 294 chars | 15 / 77 chars | 26 / 126 chars |
+| Notes echoing notebook markers | 0 | 0 | 0 |
+| Radio messages / of which "null" | 18 / 10 | 32 / 32 | 35 / 25 |
+| Output tokens per decision (median) | 142 | 66 | 947 |
+| Game time | 31 min | 23 min | 77 min |
+
+- **Qwen with all three hands is its best game so far:** 74 distinct cells (69 and 66 in the earlier
+  helping-hand games).
+  - It writes a note most turns (125, ~300 characters each) and restates its cell well: 97% of edges right.
+  - It took an unexplored exit 87% of the time when one was available.
+  - It still got only A out. B and C ended 49 and 35 moves away, after 138 turns on fully explored ground.
+- **Nemotron with thinking off is the weakest local result in the project:** 30 distinct cells, 149
+  back-and-forth moves, and no exits.
+  - That includes A, which starts five moves from the exit.
+  - Its check lines are terse ("open, W; arrived from N; used_exits: [N,W]") and then move W anyway, into
+    an exit it has just listed as used. When an unexplored exit was open it took one only 60% of the time.
+  - It wrote 15 notes in 240 turns.
+  - All 32 of its radio messages were the string "null".
+- **Thinking helps Nemotron read and follow through, but not explore.**
+  - **With thinking on:** 99% of stated edges right, 93% of moves matching its own plan, and 98% unexplored
+    exits when one was open.
+  - **But:** 44 distinct cells and 198 turns on fully explored ground. Like the thinking-off game, it keeps
+    almost no notes (26).
+  - **So once the 30-turn trail scrolls past,** it has nothing to remember the maze by, and no thinking budget
+    fixes that. It also cost 3× the time (77 minutes against 23) for about 7× the output tokens.
+- **The difference between the two models:** Qwen keeps a notebook but doesn't plan from it; Nemotron
+  doesn't keep one. Both fail at the same step, getting back to unexplored ground, for different reasons.
+
 
 
 
