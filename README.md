@@ -90,7 +90,7 @@ Always on (not switchable):
 ## Fine-tuning a local model (Qwen3.5-4B)
 
 Qwen3.5-9B reads its cell correctly once scaffolded but cannot search from memory. The plan is supervised
-fine-tuning of **Qwen3.5-4B** (fits QLoRA on an 8 GB card) on expert demonstrations. No LLM calls and no
+fine-tuning of **Qwen3.5-4B** on expert demonstrations. No LLM calls and no
 human labels go into the dataset.
 
 ```bash
@@ -125,58 +125,42 @@ decision: 66% take an untried exit, 25% walk a corridor back, 6% leave a dead en
 from the notebook**. That 3% is the skill Qwen lacks, so oversample those rows: their reply contains
 `notebook says junction`.
 
-### Training with Unsloth QLoRA (instructions only)
+### Training Qwen3.5-4B with Unsloth (QLoRA, 8 GB card)
 
-On a CUDA machine with `pip install unsloth`, roughly:
+Training runs in its own CUDA environment, separate from the project's Python 3.14 one:
 
-```python
-from datasets import load_dataset, concatenate_datasets
-from unsloth import FastLanguageModel
-from unsloth.chat_templates import train_on_responses_only
-from trl import SFTConfig, SFTTrainer
-
-model, tokenizer = FastLanguageModel.from_pretrained("Qwen/Qwen3.5-4B", max_seq_length=2560, load_in_4bit=True)
-model = FastLanguageModel.get_peft_model(
-    model, r=16, lora_alpha=16, lora_dropout=0, use_gradient_checkpointing="unsloth",
-    target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
-)
-
-def load(path, n):
-    rows = load_dataset("json", data_files=path, split="train").remove_columns("meta").shuffle(seed=0)
-    lookups = rows.filter(lambda r: "notebook says junction" in r["messages"][-1]["content"])
-    mixed = concatenate_datasets([rows.select(range(n)), lookups, lookups]).shuffle(seed=0)  # 3x the rare case
-    # Render exactly as Ollama will with thinking off; inspect one row before training.
-    return mixed.map(lambda r: {"text": tokenizer.apply_chat_template(r["messages"], tokenize=False)})
-
-trainer = SFTTrainer(
-    model=model, processing_class=tokenizer,
-    train_dataset=load("data/train.jsonl", 3000), eval_dataset=load("data/eval.jsonl", 300),
-    args=SFTConfig(dataset_text_field="text", max_seq_length=2560, per_device_train_batch_size=1,
-                   gradient_accumulation_steps=8, num_train_epochs=1, learning_rate=2e-4,
-                   warmup_steps=20, logging_steps=10, eval_strategy="steps", eval_steps=200,
-                   optim="adamw_8bit", output_dir="outputs"),
-)
-trainer = train_on_responses_only(  # loss on the assistant JSON only
-    trainer, instruction_part="<|im_start|>user\n", response_part="<|im_start|>assistant\n"
-)
-trainer.train()
-model.save_pretrained_gguf("maze-qwen4b", tokenizer, quantization_method="q4_k_m")
+```bash
+uv venv --python 3.12 ../unsloth-env
+uv pip install --python ../unsloth-env/Scripts/python.exe torch torchvision --index-url https://download.pytorch.org/whl/cu128
+uv pip install --python ../unsloth-env/Scripts/python.exe unsloth
+../unsloth-env/Scripts/python.exe training/train_qwen.py --out outputs/maze-qwen4b     # ~2.5 h on an RTX 3070
+../unsloth-env/Scripts/python.exe training/export_ollama.py outputs/maze-qwen4b --name maze-qwen4b
 ```
 
-Notes:
-- **Thinking off:** the live runs use `effort: "none"`. Print one rendered `text` and check that the assistant
-  turn starts the way Ollama renders a Qwen3.5 reply with thinking off (an empty think block, if the template
-  emits one). If not, pass the template's thinking switch (e.g. `enable_thinking=False`) to
-  `apply_chat_template`.
-- **Same rendering as Ollama:** each example has three consecutive `user` messages. Compare one rendered `text`
-  with `ollama show qwen3.5:4b --template` and check that both give three `<|im_start|>user ... <|im_end|>` blocks.
-- **Size:** about 3K examples (~6M tokens) is a reasonable first run on an 8 GB card. If it runs out of memory, drop
-  `max_seq_length` to 2304 (the longest example is ~2.1K tokens) before touching anything else.
-- **Into Ollama:** `ollama show qwen3.5:4b --modelfile > Modelfile`, change its `FROM` line to the `.gguf` file
-  Unsloth wrote, then `ollama create maze-qwen4b -f Modelfile`. This keeps Ollama's chat template and stop tokens.
-- **Evaluate live:** copy `configs/qwen35_9b_v10_helping_hands_nothink.json`, set `"model": "maze-qwen4b"` for all
-  three agents, and run it on the held-out seeds (41-48, sizes as listed in `data/train.report.md`) and on the usual
-  seed 202611017. Compare with the 9B base on the share of turns spent on fully explored cells.
+- **`training/train_qwen.py`:** 4-bit QLoRA, r=16, on the full-attention, linear-attention (gated delta net) and
+  MLP projections. It uses 3,000 random examples plus two extra copies of every junction-lookup example, one
+  epoch, and loss on the reply only. It prints how many tokens of example 0 carry loss, so a broken mask shows up
+  at once. Afterwards it generates replies to 40 held-out prompts and reports valid JSON, agreement with the
+  expert's move, and agreement on junction lookups.
+- **Rendering:** Ollama formats `qwen3.5` with a built-in renderer, not a template. With thinking off it emits
+  `<|im_start|>role
+...<|im_end|>` for the system message and for each user message (consecutive user messages
+  stay separate), then `<|im_start|>assistant
+<think>
+
+</think>
+
+`. The script builds exactly that text,
+  so no HF chat template is involved.
+- **QLoRA caveat:** Unsloth advises against 4-bit training for Qwen3.5 (larger-than-usual quantization error).
+  bf16 LoRA on the 4B needs about 10 GB, so on 8 GB it is QLoRA, the 2B in bf16, or a rented GPU. We chose
+  QLoRA and judge it by the live eval.
+- **`training/export_ollama.py`:** merges the LoRA into 16-bit weights, converts and quantizes to Q4_K_M with
+  llama.cpp (Unsloth Studio's prebuilt copy in `~/.unsloth/llama.cpp`), and runs `ollama create` with the
+  `qwen3.5` renderer and parser and the same sampling parameters as `qwen3.5:4b`.
+- **Evaluate live:** copy `configs/qwen35_9b_v10_helping_hands_nothink.json` and set `"model": "maze-qwen4b"`.
+  Run it on the held-out seeds (41-48, sizes as listed in `data/train.report.md`) and on the usual seed 202611017.
+  Compare with the 9B base on the share of turns spent on fully explored cells.
 
 ## Spectator API
 
@@ -209,4 +193,5 @@ cd ui && npm run dev                     # dev server on :5173, proxies the API 
 - `src/maze_lab/service.py`, `src/maze_lab/api/` – run ownership, commands, REST + SSE/WebSocket
 - `src/maze_lab/batch.py`, `analysis.py` – paired experiment batches and bootstrap reports
 - `src/maze_lab/finetune/` – expert demonstrations for fine-tuning (`maze-lab dataset`)
+- `training/` – Unsloth QLoRA training and Ollama export (own CUDA environment)
 - `ui/` – React + TypeScript spectator viewer

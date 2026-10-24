@@ -40,3 +40,7 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["tests"]
+
+[tool.pyright]
+# defaults, plus what Unsloth training writes into the working directory
+exclude = ["**/node_modules", "**/__pycache__", "**/.*", "unsloth_compiled_cache", "outputs"]

@@ -36,3 +36,6 @@ transcripts/
 
 # Generated fine-tuning data
 data/
+outputs/
+outputs-*.log
+unsloth_compiled_cache/
