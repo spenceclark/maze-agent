@@ -75,6 +75,34 @@ def _write_schemas(out: Path) -> None:
         print(f"wrote {out / name}", file=sys.stderr)
 
 
+def _dataset(args: argparse.Namespace) -> int:
+    """Expert games -> chat JSONL for fine-tuning, replayed through the engine before reporting."""
+    from maze_lab.finetune.dataset import DatasetError, read_rows, report, schedule, verify, write_games
+
+    base = RunConfig.model_validate_json(args.config.read_text(encoding="utf-8"))
+    sizes = [int(s) for s in args.sizes.split(",")]
+    train = schedule(args.seed, args.games, sizes)
+    held_out = schedule(args.seed + args.games, args.eval_games, sizes)  # seeds right after training's
+    eval_out = args.eval_out or args.out.with_name("eval.jsonl")
+    sections = [f"# Fine-tuning dataset\n\nTarget setup: `{args.config.as_posix()}`, sizes {args.sizes}."]
+    try:
+        for name, games, out in (("train", train, args.out), ("eval (held-out seeds)", held_out, eval_out)):
+            if not games:
+                continue
+            stats = write_games(base, games, out)
+            replayed = verify(base, read_rows(out))
+            sections.append(
+                report(name, stats, games) + f"\n- verified: {replayed} games replayed from {out.as_posix()}"
+            )
+    except DatasetError as e:
+        print(f"dataset failed: {e}", file=sys.stderr)
+        return 1
+    text = "\n\n".join(sections) + "\n"
+    args.out.with_suffix(".report.md").write_text(text, encoding="utf-8")
+    print(text)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="maze-lab", description=__doc__)
     parser.add_argument("--db", default="runs.db", help="SQLite run database (default: runs.db)")
@@ -119,6 +147,21 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("list", help="list runs")
     schema = sub.add_parser("schema", help="write OpenAPI and agent-contract JSON Schemas")
     schema.add_argument("--out", type=Path, default=Path("schemas"))
+    dataset = sub.add_parser("dataset", help="fine-tuning examples from expert games (no LLM calls)")
+    dataset.add_argument("--games", type=int, default=40, help="training games (default 40)")
+    dataset.add_argument("--eval-games", type=int, default=8, help="held-out games (default 8)")
+    dataset.add_argument(
+        "--sizes", default="8,10,12,15", help="maze sizes, used in turn (default 8,10,12,15)"
+    )
+    dataset.add_argument("--seed", type=int, default=1, help="first training seed; seeds are consecutive")
+    dataset.add_argument("--out", type=Path, default=Path("data/train.jsonl"))
+    dataset.add_argument("--eval-out", type=Path, help="default: eval.jsonl next to --out")
+    dataset.add_argument(
+        "--config",
+        type=Path,
+        default=Path("configs/qwen35_9b_v10_helping_hands_nothink.json"),
+        help="RunConfig whose rules, prompt version and landmarks the prompts copy",
+    )
     serve = sub.add_parser("serve", help="run the spectator API (single process; owns all coordinators)")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8000)
@@ -127,6 +170,8 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
     os.environ.setdefault("PYDANTIC_AI_NO_BANNER", "1")
     load_dotenv(find_dotenv(usecwd=True))  # provider keys stay server-side, referenced by env var name
+    if args.command == "dataset":
+        return _dataset(args)  # needs no run database
     store = RunStore(args.db)
     try:
         match args.command:

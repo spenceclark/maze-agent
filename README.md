@@ -87,6 +87,95 @@ Always on (not switchable):
   coordinates, no distances, `append_log`.
 - **Local Qwen3.5-9B:** the same plus `action_field_order: "check_first"` and `effort: "none"`.
 
+## Fine-tuning a local model (Qwen3.5-4B)
+
+Qwen3.5-9B reads its cell correctly once scaffolded but cannot search from memory. The plan is supervised
+fine-tuning of **Qwen3.5-4B** (fits QLoRA on an 8 GB card) on expert demonstrations. No LLM calls and no
+human labels go into the dataset.
+
+```bash
+uv run maze-lab dataset --games 40 --sizes 8,10,12,15 --out data/train.jsonl   # + data/eval.jsonl, data/train.report.md
+```
+
+- **Expert** (`src/maze_lab/finetune/expert.py`): depth-first search that sees only the agent's observation and
+  its own notebook, never the maze. In a perfect maze an open exit missing from `used_exits` always leads somewhere
+  new. So the rule is: take an untried exit (N, E, S, W order). If there is none, go back: at a dead end, out the one
+  exit; in a corridor, out the exit you did not arrive by; at a junction, the way written in the notebook. That last
+  case is the only thing that needs memory. On first arrival at each junction the expert appends
+  `junction [3,-2] back W`, plus `landmark piano at [3,-2]` for landmarks. Each reply's `check` spells out
+  the derivation (edges, arrival, used, untried, and the rule or notebook line that decides).
+- **Notebook format:** the target keeps `notebook_ops: append_log`. Junction lines never change, so nothing has to
+  be rewritten. A 15x15 maze needs under 1 KB of the 8 KB cap (largest seen: 875 bytes), so the rolling log never
+  drops a line, and the generator fails if it ever does. A splice or rewrite format would only add offsets for
+  the model to get wrong.
+- **Prompts** come from the target config (`--config`, default `configs/qwen35_9b_v10_helping_hands_nothink.json`:
+  v10, coordinates, no distance sensors, `check_first`, `used_exits`, 10 landmarks). Each example is `system` plus
+  three `user` messages, one per observation block, because Ollama splits the adapter's content parts that way.
+  `tests/test_finetune.py` checks this against the live adapter's wire request. Each line also has
+  `meta` (seed, size, agent, tick).
+- **Verification:** every game is replayed from the written file through the engine. The replay checks that each
+  prompt is identical, no move hits a wall, no notebook line is dropped, and every agent reaches the exit.
+  Held-out games use the seeds right after the training seeds (`--eval-games`, default 8).
+- **Not taught:** radio, merging teammates' notebooks, and what to do after reaching the exit (those turns are not
+  recorded), and mazes with loops (`extra_open_edges` must be 0).
+
+Default run (40 games, seeds 1-40): 12,612 examples, expert success 40/40. Tokens per example are about 1.9K
+(min 1,739, p99 2,020, max 2,080; estimated at 3.5 bytes per token, as measured on qwen3.5:9b in Ollama). By
+decision: 66% take an untried exit, 25% walk a corridor back, 6% leave a dead end, and **3% read a junction line
+from the notebook**. That 3% is the skill Qwen lacks, so oversample those rows: their reply contains
+`notebook says junction`.
+
+### Training with Unsloth QLoRA (instructions only)
+
+On a CUDA machine with `pip install unsloth`, roughly:
+
+```python
+from datasets import load_dataset, concatenate_datasets
+from unsloth import FastLanguageModel
+from unsloth.chat_templates import train_on_responses_only
+from trl import SFTConfig, SFTTrainer
+
+model, tokenizer = FastLanguageModel.from_pretrained("Qwen/Qwen3.5-4B", max_seq_length=2560, load_in_4bit=True)
+model = FastLanguageModel.get_peft_model(
+    model, r=16, lora_alpha=16, lora_dropout=0, use_gradient_checkpointing="unsloth",
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+)
+
+def load(path, n):
+    rows = load_dataset("json", data_files=path, split="train").remove_columns("meta").shuffle(seed=0)
+    lookups = rows.filter(lambda r: "notebook says junction" in r["messages"][-1]["content"])
+    mixed = concatenate_datasets([rows.select(range(n)), lookups, lookups]).shuffle(seed=0)  # 3x the rare case
+    # Render exactly as Ollama will with thinking off; inspect one row before training.
+    return mixed.map(lambda r: {"text": tokenizer.apply_chat_template(r["messages"], tokenize=False)})
+
+trainer = SFTTrainer(
+    model=model, tokenizer=tokenizer,
+    train_dataset=load("data/train.jsonl", 3000), eval_dataset=load("data/eval.jsonl", 300),
+    args=SFTConfig(dataset_text_field="text", max_seq_length=2560, per_device_train_batch_size=1,
+                   gradient_accumulation_steps=8, num_train_epochs=1, learning_rate=2e-4,
+                   warmup_steps=20, logging_steps=10, eval_strategy="steps", eval_steps=200,
+                   optim="adamw_8bit", output_dir="outputs"),
+)
+trainer = train_on_responses_only(  # loss on the assistant JSON only
+    trainer, instruction_part="<|im_start|>user\n", response_part="<|im_start|>assistant\n"
+)
+trainer.train()
+model.save_pretrained_gguf("maze-qwen4b", tokenizer, quantization_method="q4_k_m")
+```
+
+Notes:
+- **Thinking off:** the live runs use `effort: "none"`. Print one rendered `text` and check that the assistant
+  turn starts the way Ollama renders a Qwen3.5 reply with thinking off (an empty think block, if the template
+  emits one). If not, pass the template's thinking switch (e.g. `enable_thinking=False`) to
+  `apply_chat_template`.
+- **Size:** about 3K examples (~6M tokens) is a reasonable first run on an 8 GB card. If it runs out of memory, drop
+  `max_seq_length` to 2304 (the longest example is ~2.1K tokens) before touching anything else.
+- **Into Ollama:** `ollama show qwen3.5:4b --modelfile > Modelfile`, change its `FROM` line to the `.gguf` file
+  Unsloth wrote, then `ollama create maze-qwen4b -f Modelfile`. This keeps Ollama's chat template and stop tokens.
+- **Evaluate live:** copy `configs/qwen35_9b_v10_helping_hands_nothink.json`, set `"model": "maze-qwen4b"` for all
+  three agents, and run it on the held-out seeds (41-48, sizes as listed in `data/train.report.md`) and on the usual
+  seed 202611017. Compare with the 9B base on the share of turns spent on fully explored cells.
+
 ## Spectator API
 
 ```bash
@@ -117,4 +206,5 @@ cd ui && npm run dev                     # dev server on :5173, proxies the API 
 - `src/maze_lab/replay.py`, `export.py`, `transcript.py`, `runs.py`, `cli.py` – replay, export, per-agent transcripts, run creation, CLI
 - `src/maze_lab/service.py`, `src/maze_lab/api/` – run ownership, commands, REST + SSE/WebSocket
 - `src/maze_lab/batch.py`, `analysis.py` – paired experiment batches and bootstrap reports
+- `src/maze_lab/finetune/` – expert demonstrations for fine-tuning (`maze-lab dataset`)
 - `ui/` – React + TypeScript spectator viewer

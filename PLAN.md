@@ -98,5 +98,12 @@ operator pause/step/resume). 11 vitest tests cover live follow, seek, duplicate 
 - [ ] "Keep exploring and split the unexplored area" nudge for games where nobody finds the exit
 - [ ] Remaining ablation variants (checkpoints)
 
+## Fine-tuning a local model
+- [x] Expert: depth-first search from observation + notebook only (`junction [x,y] back D` lines, append_log kept)
+- [x] `maze-lab dataset`: expert games through the real reducer, chat JSONL with live-adapter prompts, held-out
+  seeds, replay verification, token/success report (40 games: 12,612 examples, 40/40 won)
+- [ ] Train Qwen3.5-4B with Unsloth QLoRA, export GGUF to Ollama (README has the steps)
+- [ ] Live evaluation on held-out seeds vs the 9B base
+
 ## Next (not started)
 - Phase 7: PostgreSQL / separate coordinator, retention jobs, remote auth hardening.

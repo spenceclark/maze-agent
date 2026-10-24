@@ -33,3 +33,6 @@ diagnostics/
 *.db-shm
 .claude/worktrees/
 transcripts/
+
+# Generated fine-tuning data
+data/
