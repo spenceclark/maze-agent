@@ -149,7 +149,7 @@ def load(path, n):
     return mixed.map(lambda r: {"text": tokenizer.apply_chat_template(r["messages"], tokenize=False)})
 
 trainer = SFTTrainer(
-    model=model, tokenizer=tokenizer,
+    model=model, processing_class=tokenizer,
     train_dataset=load("data/train.jsonl", 3000), eval_dataset=load("data/eval.jsonl", 300),
     args=SFTConfig(dataset_text_field="text", max_seq_length=2560, per_device_train_batch_size=1,
                    gradient_accumulation_steps=8, num_train_epochs=1, learning_rate=2e-4,
@@ -168,6 +168,8 @@ Notes:
   turn starts the way Ollama renders a Qwen3.5 reply with thinking off (an empty think block, if the template
   emits one). If not, pass the template's thinking switch (e.g. `enable_thinking=False`) to
   `apply_chat_template`.
+- **Same rendering as Ollama:** each example has three consecutive `user` messages. Compare one rendered `text`
+  with `ollama show qwen3.5:4b --template` and check that both give three `<|im_start|>user ... <|im_end|>` blocks.
 - **Size:** about 3K examples (~6M tokens) is a reasonable first run on an 8 GB card. If it runs out of memory, drop
   `max_seq_length` to 2304 (the longest example is ~2.1K tokens) before touching anything else.
 - **Into Ollama:** `ollama show qwen3.5:4b --modelfile > Modelfile`, change its `FROM` line to the `.gguf` file
