@@ -134,7 +134,7 @@ uv venv --python 3.12 ../unsloth-env
 uv pip install --python ../unsloth-env/Scripts/python.exe torch torchvision --index-url https://download.pytorch.org/whl/cu128
 uv pip install --python ../unsloth-env/Scripts/python.exe unsloth
 ../unsloth-env/Scripts/python.exe training/train_qwen.py --out outputs/maze-qwen4b     # ~2.5 h on an RTX 3070
-../unsloth-env/Scripts/python.exe training/export_ollama.py outputs/maze-qwen4b --name maze-qwen4b
+../unsloth-env/Scripts/python.exe training/export_ollama.py outputs/maze-qwen4b/checkpoint-150 --name maze-qwen4b
 ```
 
 - **`training/train_qwen.py`:** 4-bit QLoRA, r=16, on the full-attention, linear-attention (gated delta net) and
@@ -155,6 +155,13 @@ uv pip install --python ../unsloth-env/Scripts/python.exe unsloth
 - **QLoRA caveat:** Unsloth advises against 4-bit training for Qwen3.5 (larger-than-usual quantization error).
   bf16 LoRA on the 4B needs about 10 GB, so on 8 GB it is QLoRA, the 2B in bf16, or a rented GPU. We chose
   QLoRA and judge it by the live eval.
+- **First result (OBSERVATIONS row 38):** checkpoint-150 learned the local rules (124 of 125 searching moves
+  match the expert; 173 distinct cells against 74 for the 9B) but **not to write junction notes**. The " new"
+  in "new junction" costs 3.3–3.8 nats, so it can't backtrack through junctions. Check note writing, not only
+  moves (`--adapter ... --notes-only`), before exporting. Trust the eval loss over the logged training loss,
+  which read ~3e-5 while held-out was 0.0029.
+- **8 GB pitfalls:** in-loop eval is off by default (after one eval, steps slowed 18x as VRAM spilled into
+  system memory), and Ollama models must be unloaded (`ollama stop`) before training or checking on the GPU.
 - **`training/export_ollama.py`:** merges the LoRA into 16-bit weights, converts and quantizes to Q4_K_M with
   llama.cpp (Unsloth Studio's prebuilt copy in `~/.unsloth/llama.cpp`), and runs `ollama create` with the
   `qwen3.5` renderer and parser and the same sampling parameters as `qwen3.5:4b`.

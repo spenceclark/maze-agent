@@ -4,7 +4,7 @@
 Runs in the training environment. Uses llama.cpp's converter and `llama-quantize` (Unsloth Studio
 installs a prebuilt copy in ~/.unsloth/llama.cpp):
 
-    python training/export_ollama.py outputs/maze-qwen4b --name maze-qwen4b
+    python training/export_ollama.py outputs/maze-qwen4b/checkpoint-150 --name maze-qwen4b
 
 The Modelfile keeps Ollama's built-in `qwen3.5` renderer and parser, so prompts render exactly as for
 `qwen3.5:4b`, and copies its sampling parameters so the two compare like for like.
@@ -36,21 +36,22 @@ def run(*cmd: str | Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("run_dir", type=Path, help="training --out directory (holds lora/)")
+    parser.add_argument("adapter", type=Path, help="saved LoRA: a training checkpoint or --out/lora")
     parser.add_argument("--name", default="maze-qwen4b", help="Ollama model name")
     parser.add_argument("--quant", default="Q4_K_M")
     args = parser.parse_args()
 
-    merged, f16 = args.run_dir / "merged", args.run_dir / "model-bf16.gguf"
-    quantized = args.run_dir / f"model-{args.quant.lower()}.gguf"
+    work = args.adapter.parent / f"export-{args.adapter.name}"
+    merged, f16 = work / "merged", work / "model-bf16.gguf"
+    quantized = work / f"model-{args.quant.lower()}.gguf"
     if not merged.exists():
-        model, tokenizer = FastLanguageModel.from_pretrained(str(args.run_dir / "lora"), load_in_4bit=True)
+        model, tokenizer = FastLanguageModel.from_pretrained(str(args.adapter), load_in_4bit=True)
         model.save_pretrained_merged(str(merged), tokenizer, save_method="merged_16bit")
     if not f16.exists():
         run(sys.executable, LLAMA_CPP / "convert_hf_to_gguf.py", merged, "--outtype", "bf16", "--outfile", f16)
     if not quantized.exists():
         run(LLAMA_CPP / "build" / "bin" / "Release" / "llama-quantize.exe", f16, quantized, args.quant)
-    modelfile = args.run_dir / "Modelfile"
+    modelfile = work / "Modelfile"
     modelfile.write_text(MODELFILE.format(gguf=quantized.resolve()), encoding="utf-8")
     run("ollama", "create", args.name, "-f", modelfile)
 

@@ -47,6 +47,7 @@ Batches use 3 seeds, so intervals are wide.
 | 35 | How does Kimi K3.1 Pro compare on the 10×10 baseline? | Same maze, setup and 120 turns as the five-model baseline; OpenRouter, reasoning off (accepted), tool mode, 2k output cap (one game, with a watchdog to abort on runaway failures or spend) | **The most exploration of any model on this maze** (183 distinct cells, coverage 0.82), and the best junction choices (a used exit at 1 of 14 revisits). Two exits (A t103, B t107); C ended 38 moves away. $2.83 | **9% of moves hit walls** (30 of 336), and in 10 of them that turn's note named the wall it then walked into ("N wall… heading N"): plan inertia, as with Qwen. 15 failed turns (4%): 12 cut off at the 2k cap, 3 output errors. No team success, against Sonnet's at t88 for $1.97 |
 | 36 | Does another small local model do better than Qwen with every helping hand? | Nemotron 3.5 Bolt e4b (Gemma 4 based, 7.5B, Q4_K_M) on Ollama, on Qwen's 12×12 maze and v10 setup, with the check line, used exits and open-moves-only all on, **thinking on** (one game, 80 turns) | Ran cleanly: 0 failed turns, and thinking fitted the 8k context (median 950 output tokens). 0 wall moves (by construction) | **No better than Qwen:** 44 distinct cells (Qwen 38–69), the longest ping-pong of any local game (19 turns), 198 turns in fully explored cells, 77 STAYs. Only A exited (it starts 5 moves away). 25 of 35 radio messages were the string "null". 77 minutes for one game |
 | 37 | Nemotron against Qwen like for like, and thinking on against off | Both models with all three helping hands (`check_first`, `used_exits_enabled`, `restrict_moves_to_open`) and thinking off, on the same 12×12 maze, plus Nemotron with thinking on (one game each) | **Qwen with all three hands is its best game yet:** 74 distinct cells, 0 wall moves, 87% unused-exit choices, 125 notes. Nemotron with thinking on reads its cell best (99% of edges right, 93% of moves follow its own stated plan) | **Nemotron with thinking off is the weakest local result:** 30 distinct cells, 149 back-and-forth moves, no exits even for A (5 moves from the exit), terse check lines, 15 notes in 240 turns, every radio message "null". With thinking on it reads better but still explores little (44 cells): **it barely keeps notes** (26), so beyond the 30-turn trail it has no memory to search with |
+| 38 | Qwen can't search from memory however it's prompted: can it be taught? | Supervised fine-tuning of Qwen3.5-4B on 12,612 decisions from a depth-first expert that keeps its only memory in the notebook (`maze-lab dataset`), 4-bit QLoRA on the RTX 3070, stopped at step 150 of 474; same 12×12 maze and setup as row 37, against base `qwen3.5:4b` (one game each, 80 turns, plus one 300-turn game) | **Local search learned:** 173 distinct cells against 74 (9B) and 49 (base 4B), coverage 0.65 against 0.36 and 0.31, and B out at t40, the first local agent other than A to exit. Moves matched the expert 124 of 125 times while searching; 13 back-and-forth moves against 87 | **It never learned to write the junction notes** (1 of 13 due, 0 of 30 in the 300-turn game), so it can't backtrack through a junction. Over 300 turns the team covered 99% of the maze but only A got out, with 70% of searching turns on explored ground. The fault was in training, not export: the checkpoint puts 3.3–3.8 nats on the one token that triggers the note |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -1578,6 +1579,54 @@ answered:
     fixes that. It also cost 3× the time (77 minutes against 23) for about 7× the output tokens.
 - **The difference between the two models:** Qwen keeps a notebook but doesn't plan from it; Nemotron
   doesn't keep one. Both fail at the same step, getting back to unexplored ground, for different reasons.
+
+## Fine-tuned Qwen3.5-4B on expert demonstrations (row 38)
+
+**Data:** `maze-lab dataset --games 40` (seeds 1-40, 8x8 to 15x15). A depth-first expert plays from the
+observation plus its own notebook. It writes `junction [x,y] back D` on first arrival at each junction and
+reads it back when the junction is exhausted. Each decision is one chat example, in the exact prompt the live
+adapter sends. 12,612 examples; 3% are junction lookups.
+
+**Training:** Unsloth 4-bit QLoRA (r=16, attention, gated-delta-net and MLP projections) on an RTX 3070
+(8 GB), 3,000 random examples plus two extra copies of each lookup, loss on the reply only. At 14 s per step
+it was on course for about 2 hours, but after the step-150 eval it slowed to 260 s per step (VRAM full, and
+Windows spills to system memory). Stopped at step 150 (about 1,200 examples). Exported via llama.cpp to
+Q4_K_M as `maze-qwen4b`, with Ollama's `qwen3.5` renderer and the base model's sampling parameters.
+
+Same 12x12 maze (seed 202611017), v10, coordinates, no distances, all three helping hands, thinking off.
+"Explored-cell turns" counts decisions, before the agent's first exit, on a cell whose open exits are all in
+`used_exits`.
+
+| Model | Run | Turns | Exits | Coverage | Distinct cells | Explored-cell turns | Back-and-forth | STAYs | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| qwen3.5:9b (row 37) | `3d8aba6db5d6` | 80 | A t5 | 0.36 | 74 | 86/165 (52%) | 87 | 12 | 129 |
+| qwen3.5:4b, base | `5789686912c1` | 80 | A t11 | 0.31 | 49 | 102/171 (60%) | 98 | 21 | 193 |
+| **maze-qwen4b**, fine-tuned | `793853064997` | 80 | **A t5, B t40** | **0.65** | **173** | **19/125 (15%)** | **13** | 0 | 14 |
+| maze-qwen4b, fine-tuned | `2d91ca3d54b7` | 300 | A t5 | 0.99 | 317 | 423/605 (70%) | 62 | 5 | 27 |
+
+Runs are in `finetune.db` in the worktree, apart from the 9B game in `pilot.db`.
+
+- **The local rules transferred.** Scored against the expert on the model's own observations: in the
+  80-turn game it took an untried exit 105/106 times, walked corridors back 15/15, and left dead ends 4/4.
+  In the 300-turn game the same scores were 181/182, 324/333 and 33/34. The held-out offline check (greedy,
+  HF checkpoint) matched 100/100 moves.
+- **The memory rule didn't.** The model wrote 1 of 13 junction notes due in the 80-turn game, in the wrong
+  form, and 0 of 30 in the 300-turn game. It does write landmark notes. Without junction lines, 56 turns of
+  the 300-turn game stood on an exhausted junction with nothing to say which way was back. It covered 99% of
+  the maze, yet B and C never found the exit 28 and 52 moves from their starts.
+- **Not sampling, decoding or export:** with temperature 0 and no presence penalty, with and without the JSON
+  schema, the Q4_K_M and the bf16 GGUF each wrote 0 of 10-25 due notes. The HF checkpoint itself wrote none
+  on training examples either.
+- **Teacher-forced loss pins it to one token.** On note-due training examples every reply token costs under
+  0.25 nats except " new" in "new junction, noting back W", which costs 3.3–3.8. The trigger needs two facts
+  the check line never states: three or more open edges, and only the arrival exit used. It appears in about
+  7% of examples, so roughly 85 were seen by step 150.
+- **The logged training loss was misleading.** It read about 3e-5 from step 110, while the held-out eval
+  loss was 0.0029, which this single missed token accounts for. Unsloth warned it could not count loss
+  tokens across gradient accumulation. Trust the eval loss and the generation checks.
+- **Next:** make the trigger explicit in the check ("3 open: junction; first visit") and oversample note-due
+  examples, as the lookups already are. Train with in-loop eval off to avoid the slowdown, then check note
+  writing as well as moves before exporting.
 
 
 

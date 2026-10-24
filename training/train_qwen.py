@@ -5,6 +5,7 @@ Runs in its own CUDA environment (Python 3.12 + unsloth), not the project's:
 
     python training/train_qwen.py --out outputs/maze-qwen4b            # full run
     python training/train_qwen.py --out outputs/smoke --max-steps 5    # smoke test
+    python training/train_qwen.py --adapter outputs/maze-qwen4b/checkpoint-150 --check 100   # check only
 
 Examples are rendered exactly as Ollama's built-in `qwen3.5` renderer does with thinking off (system,
 one block per user message, then an empty think block), so no HF chat template is involved. Loss covers
@@ -45,7 +46,7 @@ def load(path: Path, n: int, lookup_copies: int, seed: int = 0) -> list[dict[str
 def check(model, tokenizer, examples: list[dict[str, str]]) -> None:
     """Greedy replies to held-out prompts: valid JSON rate and exact-move agreement with the expert."""
     FastLanguageModel.for_inference(model)
-    valid = same = lookups = lookups_same = 0
+    valid = same = lookups = lookups_same = notes_due = notes_same = 0
     for ex in examples:
         inputs = tokenizer(text=ex["prompt"], return_tensors="pt").to("cuda")
         out = model.generate(**inputs, max_new_tokens=160, do_sample=False)
@@ -55,15 +56,25 @@ def check(model, tokenizer, examples: list[dict[str, str]]) -> None:
         expected = json.loads(ex["completion"].removesuffix(END))
         is_lookup = LOOKUP in expected["check"]
         lookups += is_lookup
+        notes_due += expected["notebook_append"] is not None
         try:
-            move = json.loads(text.strip())["move"]
+            reply = json.loads(text.strip())
+            move = reply["move"]
             valid += 1
         except (ValueError, KeyError, TypeError):
             continue
+        if expected["notebook_append"] is not None:
+            if reply.get("notebook_append") == expected["notebook_append"]:
+                notes_same += 1
+            else:
+                print(f"note miss: want {expected['notebook_append']!r}, got {reply.get('notebook_append')!r}")
         same += move == expected["move"]
         lookups_same += is_lookup and move == expected["move"]
     n = len(examples)
-    print(f"check: valid JSON {valid}/{n}, move matches expert {same}/{n}, junction lookups {lookups_same}/{lookups}")
+    print(
+        f"check: valid JSON {valid}/{n}, move matches expert {same}/{n}, junction lookups {lookups_same}/{lookups},"
+        f" notes written exactly {notes_same}/{notes_due}"
+    )
 
 
 def main() -> None:
@@ -71,15 +82,29 @@ def main() -> None:
     parser.add_argument("--model", default="Qwen/Qwen3.5-4B")
     parser.add_argument("--train", type=Path, default=Path("data/train.jsonl"))
     parser.add_argument("--eval", type=Path, default=Path("data/eval.jsonl"))
-    parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--out", type=Path, help="training output directory")
+    parser.add_argument("--adapter", type=Path, help="skip training: check this saved LoRA (e.g. a checkpoint)")
     parser.add_argument("--examples", type=int, default=3000, help="random training examples")
     parser.add_argument("--lookup-copies", type=int, default=2, help="extra copies of each junction lookup")
     parser.add_argument("--max-seq", type=int, default=2304)  # longest example is ~2.1K tokens
     parser.add_argument("--max-steps", type=int, default=-1, help="stop early (smoke test)")
     parser.add_argument("--check", type=int, default=40, help="held-out prompts to generate after training")
-    parser.add_argument("--eval-steps", type=int, default=150)
+    # In-loop eval is off by default: on an 8 GB card the first eval left VRAM full and steps went 18x slower.
+    parser.add_argument("--eval-steps", type=int, default=0, help="eval every N steps (0: never)")
+    parser.add_argument("--notes-only", action="store_true", help="check only held-out turns where a note is due")
     args = parser.parse_args()
 
+    if args.adapter:
+        model, tokenizer = FastLanguageModel.from_pretrained(
+            str(args.adapter), max_seq_length=args.max_seq, load_in_4bit=True
+        )
+        held_out = load(args.eval, 10_000, 0)[100:]
+        if args.notes_only:
+            held_out = [ex for ex in held_out if '"notebook_append":null' not in ex["completion"]]
+        check(model, tokenizer, held_out[: args.check])
+        return
+    if args.out is None:
+        parser.error("--out is required when training")
     model, tokenizer = FastLanguageModel.from_pretrained(
         args.model, max_seq_length=args.max_seq, load_in_4bit=True
     )
@@ -117,9 +142,9 @@ def main() -> None:
             optim="adamw_8bit",
             bf16=True,
             logging_steps=1 if args.max_steps > 0 else 10,
-            eval_strategy="steps",
-            eval_steps=args.eval_steps,
-            save_steps=args.eval_steps,
+            eval_strategy="steps" if args.eval_steps else "no",
+            eval_steps=args.eval_steps or None,
+            save_steps=150,
             save_total_limit=2,
             dataset_num_proc=1,
             report_to="none",

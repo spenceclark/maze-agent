@@ -102,8 +102,11 @@ operator pause/step/resume). 11 vitest tests cover live follow, seek, duplicate 
 - [x] Expert: depth-first search from observation + notebook only (`junction [x,y] back D` lines, append_log kept)
 - [x] `maze-lab dataset`: expert games through the real reducer, chat JSONL with live-adapter prompts, held-out
   seeds, replay verification, token/success report (40 games: 12,612 examples, 40/40 won)
-- [ ] Train Qwen3.5-4B with Unsloth QLoRA, export GGUF to Ollama (README has the steps)
-- [ ] Live evaluation on held-out seeds vs the 9B base
+- [x] Train Qwen3.5-4B with Unsloth QLoRA on the RTX 3070 (stopped at step 150 of 474), export Q4_K_M to Ollama
+- [x] Live evaluation on the row-37 maze vs base 4B and the 9B (OBSERVATIONS row 38): local rules learned,
+  junction notes not
+- [ ] Retrain with an explicit junction trigger in the check line and oversampled note-due examples
+- [ ] Live evaluation on the held-out seeds
 
 ## Next (not started)
 - Phase 7: PostgreSQL / separate coordinator, retention jobs, remote auth hardening.
