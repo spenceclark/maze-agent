@@ -45,6 +45,7 @@ Batches use 3 seeds, so intervals are wide.
 | 33 | On 15×15 nobody found the exit; one agent waited 287 turns for news | Prompt v12 = v11 plus "Until someone has found the exit, keep exploring… Split the search with your teammates: radio which part… you have covered" (same maze, 600 turns, one game) | **The waiting and the coordination changed:** B's STAYs 255 → 59; radio about coverage and splitting 12 → 65 messages ("covered x=4..8, y=-2..4 on the east side… search elsewhere"); every agent explored 135–152 cells | **Still no exit.** In both games nobody got closer than 58 moves to it. The exit's region has a single entrance, cell (10,14) on the south edge, whose north side was open. All three agents passed it twice, noting "N open" each time while "continuing W along south frontier", and never took it |
 | 34 | Is Qwen's wall-walking the problem, or a symptom? | `restrict_moves_to_open`: each turn the requested `move` enum lists only that cell's open directions plus STAY, so constrained decoding can't pick a wall (qwen3.5:9b, same 12×12 seed and v10 setup as the move-first game; one game, direct to Ollama) | Wall moves 38% → **0%**. A exited at t37 (t50 before) | **Exploration didn't change:** 38 distinct cells, the same as move-first and about half of check-first (66). The turns it used to spend on walls became back-and-forth instead: 91 reversals against 51, and 35 STAYs. The wall-walking was a symptom; it isn't keeping track of where it has been |
 | 35 | How does Kimi K3.1 Pro compare on the 10×10 baseline? | Same maze, setup and 120 turns as the five-model baseline; OpenRouter, reasoning off (accepted), tool mode, 2k output cap (one game, with a watchdog to abort on runaway failures or spend) | **The most exploration of any model on this maze** (183 distinct cells, coverage 0.82), and the best junction choices (a used exit at 1 of 14 revisits). Two exits (A t103, B t107); C ended 38 moves away. $2.83 | **9% of moves hit walls** (30 of 336), and in 10 of them that turn's note named the wall it then walked into ("N wall… heading N"): plan inertia, as with Qwen. 15 failed turns (4%): 12 cut off at the 2k cap, 3 output errors. No team success, against Sonnet's at t88 for $1.97 |
+| 36 | Does another small local model do better than Qwen with every helping hand? | Nemotron 3.5 Bolt e4b (Gemma 4 based, 7.5B, Q4_K_M) on Ollama, on Qwen's 12×12 maze and v10 setup, with the check line, used exits and open-moves-only all on, **thinking on** (one game, 80 turns) | Ran cleanly: 0 failed turns, and thinking fitted the 8k context (median 950 output tokens). 0 wall moves (by construction) | **No better than Qwen:** 44 distinct cells (Qwen 38–69), the longest ping-pong of any local game (19 turns), 198 turns in fully explored cells, 77 STAYs. Only A exited (it starts 5 moves away). 25 of 35 radio messages were the string "null". 77 minutes for one game |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -1494,6 +1495,37 @@ trail (or notebook) holds the neighbouring cell that way… preferring one you h
 - **Comparison:** the check line (`check_first`) beat the restricted enum on exploration (66 cells against
   38) even though it walked into walls 8% of the time. Writing about the cell before moving helped Qwen think
   as well as avoid walls.
+
+**Nemotron 3.5 Bolt e4b with every helping hand and thinking on (`1c0808fe7dc9`,
+`configs/nemotron35bolt_v10_helping_hands_think.json`).**
+- **The model:** a Gemma 4 based 7.5B model on Ollama.
+- **Setup:** the same maze and v10 setup as the Qwen games, plus `check_first`, `used_exits_enabled` and
+  `restrict_moves_to_open`.
+- **Thinking:** on (`effort: low`; Ollama exposes it only as on or off). Output was capped at 1,700 tokens
+  so the worst-case prompt still fits the 8k context.
+
+| Game | Wall moves | STAYs | Distinct cells | Back-and-forth | Longest ping-pong | Used exit at junction revisits | Turns in exhausted cells | Exits | Moves left at end (A/B/C) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Qwen move first (`e8d0d98506f7`) | 90/240 (38%) | 0 | 38 | 51 | 6 | 3 of 5 | 160 | {'A': 50} | 5 / 38 / 64 |
+| Qwen check first (`4a196f67ca00`) | 18/237 (8%) | 0 | 66 | 76 | 12 | 22 of 25 | 135 | none | 31 / 25 / 44 |
+| Qwen check + used exits (`6bfc0e35c876`) | 32/233 (14%) | 7 | 69 | 57 | 5 | 4 of 11 | 138 | {'A': 5} | 2 / 63 / 61 |
+| Qwen open moves only (`fdf91d4185ad`) | 0/202 (0%) | 35 | 38 | 91 | 8 | 3 of 6 | 147 | {'A': 37} | 1 / 37 / 45 |
+| Nemotron, all helping hands, thinking (`1c0808fe7dc9`) | 0/163 (0%) | 77 | 44 | 77 | 19 | 0 of 5 | 198 | {'A': 5} | 2 / 36 / 64 |
+
+- **Thinking fitted.** No turn failed, the median decision used about 950 output tokens, and none hit the
+  cap. A thinking-off fallback config is ready but wasn't needed.
+- **The extra help didn't add up to exploration:**
+  - 44 distinct cells, within Qwen's range;
+  - 198 of 240 decisions on cells where every exit had already been used, the most of any game;
+  - a 19-turn ping-pong, the longest of any local game.
+- **It knows what it's doing and still doesn't progress.** Notes like "Left trapped cell [-4, 2] using E
+  exit. Continuing search for Globe landmark" are coherent, but the moves circle explored ground.
+- **The "null" quirk again:** 25 of 35 radio messages were the literal string "null".
+- **Cost in time:** 77 minutes for one 80-turn game, about 50 seconds a turn with thinking.
+- **Verdict:** a second small local model hits the same limit as Qwen. With perception and the local choice
+  handled by scaffolding, neither can plan a route back to unexplored ground. Thinking at this model's level
+  doesn't change that.
+
 
 
 ## New baseline on the current code (one game each), and two more local models
