@@ -1659,6 +1659,16 @@ Held-out check (greedy, HF checkpoint): notes 20/20 exact on note-due turns, mov
 - **v2's 80-turn game got fewer exits than v1's (A only, against A and B).** With temperature 1, the first
   untried exit at the start sometimes differs, and DFS order decides who gets lucky in 80 turns. The
   300-turn game is the fair test of search.
+**Held-out 8x8 mazes (seeds 41 and 45, never in training; 150-turn horizon).**
+
+| Seed | Run | Team objective | Exits (A / B / C) | Expert alone | Moves matching the expert | Lookups | Junction notes due / right |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 41 | `61e9d2ab5434` | **t92** | 89 / 62 / 92 | t92 (89 / 62 / 92) | 234/234 | 9/9 | 12 / 12 |
+| 45 | `b0887dd56d57` | **t73** | 14 / 73 / 54 | t73 (14 / 73 / 54) | 137/137 | 4/4 | 12 / 12 |
+
+- **Both unseen mazes solved, on exactly the expert's ticks,** with every searching decision matching the
+  expert, 13 of 13 junction lookups and 24 of 24 junction notes. No walls, no STAYs, no extra notes.
+
 - **What's left:** DFS is complete but slow (B needed 250 moves to an exit 28 away), and the expert ignores
   teammates, radio and landmarks, so the fine-tune does too. Next would be held-out seeds, a smarter expert
   (heading for the unexplored side, or using a teammate's exit report), and the 2B or 9B with the same data.
