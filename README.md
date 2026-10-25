@@ -160,7 +160,8 @@ uv pip install --python ../unsloth-env/Scripts/python.exe unsloth
 - **QLoRA caveat:** Unsloth advises against 4-bit training for Qwen3.5 (larger-than-usual quantization error).
   bf16 LoRA on the 4B needs about 10 GB, so on 8 GB it is QLoRA, the 2B in bf16, or a rented GPU. We chose
   QLoRA and judge it by the live eval.
-- **First result (OBSERVATIONS row 38):** checkpoint-150 learned the local rules (124 of 125 searching moves
+- **Result (OBSERVATIONS row 39):** with the explicit trigger in the check line, `maze-qwen4b-v2` (checkpoint-300) writes every junction note and reads them back. On the row-37 maze it met the team objective at t250, tick for tick the same game as the expert.
+- **First attempt (row 38):** checkpoint-150 learned the local rules (124 of 125 searching moves
   match the expert; 173 distinct cells against 74 for the 9B) but **not to write junction notes**. The " new"
   in "new junction" costs 3.3–3.8 nats, so it can't backtrack through junctions. Check note writing, not only
   moves (`--adapter ... --notes-only`), before exporting. Trust the eval loss over the logged training loss,

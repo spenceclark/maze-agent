@@ -48,6 +48,7 @@ Batches use 3 seeds, so intervals are wide.
 | 36 | Does another small local model do better than Qwen with every helping hand? | Nemotron 3.5 Bolt e4b (Gemma 4 based, 7.5B, Q4_K_M) on Ollama, on Qwen's 12×12 maze and v10 setup, with the check line, used exits and open-moves-only all on, **thinking on** (one game, 80 turns) | Ran cleanly: 0 failed turns, and thinking fitted the 8k context (median 950 output tokens). 0 wall moves (by construction) | **No better than Qwen:** 44 distinct cells (Qwen 38–69), the longest ping-pong of any local game (19 turns), 198 turns in fully explored cells, 77 STAYs. Only A exited (it starts 5 moves away). 25 of 35 radio messages were the string "null". 77 minutes for one game |
 | 37 | Nemotron against Qwen like for like, and thinking on against off | Both models with all three helping hands (`check_first`, `used_exits_enabled`, `restrict_moves_to_open`) and thinking off, on the same 12×12 maze, plus Nemotron with thinking on (one game each) | **Qwen with all three hands is its best game yet:** 74 distinct cells, 0 wall moves, 87% unused-exit choices, 125 notes. Nemotron with thinking on reads its cell best (99% of edges right, 93% of moves follow its own stated plan) | **Nemotron with thinking off is the weakest local result:** 30 distinct cells, 149 back-and-forth moves, no exits even for A (5 moves from the exit), terse check lines, 15 notes in 240 turns, every radio message "null". With thinking on it reads better but still explores little (44 cells): **it barely keeps notes** (26), so beyond the 30-turn trail it has no memory to search with |
 | 38 | Qwen can't search from memory however it's prompted: can it be taught? | Supervised fine-tuning of Qwen3.5-4B on 12,612 decisions from a depth-first expert that keeps its only memory in the notebook (`maze-lab dataset`), 4-bit QLoRA on the RTX 3070, stopped at step 150 of 474; same 12×12 maze and setup as row 37, against base `qwen3.5:4b` (one game each, 80 turns, plus one 300-turn game) | **Local search learned:** 173 distinct cells against 74 (9B) and 49 (base 4B), coverage 0.65 against 0.36 and 0.31, and B out at t40, the first local agent other than A to exit. Moves matched the expert 124 of 125 times while searching; 13 back-and-forth moves against 87 | **It never learned to write the junction notes** (1 of 13 due, 0 of 30 in the 300-turn game), so it can't backtrack through a junction. Over 300 turns the team covered 99% of the maze but only A got out, with 70% of searching turns on explored ground. The fault was in training, not export: the checkpoint puts 3.3–3.8 nats on the one token that triggers the note |
+| 39 | The fine-tuned 4B never learned to write junction notes | The check line states each step of the note decision ("3 open: junction; … notebook: no junction [x,y], noting back E"), note-writing and lookup examples are oversampled, and in-loop eval is off; retrained, stopped at step 300 of 403 when steps slowed again (same maze, one 80-turn and one 300-turn game) | **Team objective met at t250 (A t5, C t212, B t250), the first local team success.** It matched the depth-first expert tick for tick: the expert alone exits at exactly those ticks. Junction notes 34 of 34 due, all correct; moves 615 of 616 against the expert, 16 of 17 lookups as scored (the 17th followed the right line of two) | It is exactly as good as plain DFS: B took 250 moves to an exit 28 away. One extra junction note on a revisit gave a junction two lines, and the model followed the right one. One maze, two games; held-out seeds not yet played. Search order, not memory, is now the limit, and the agents still ignore each other |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -1627,6 +1628,40 @@ Runs are in `finetune.db` in the worktree, apart from the 9B game in `pilot.db`.
 - **Next:** make the trigger explicit in the check ("3 open: junction; first visit") and oversample note-due
   examples, as the lookups already are. Train with in-loop eval off to avoid the slowdown, then check note
   writing as well as moves before exporting.
+
+### Retrained with an explicit trigger (row 39)
+
+The check line now classifies the cell and quotes the notebook, so the note decision is a short series of
+steps, each of which can be read off the prompt:
+`… 3 open: junction; arrived from E; used E; untried S,W; notebook: no junction [-1,0], noting back E; go S, untried`.
+At a junction whose line exists the check quotes it (`notebook: junction [-2,0] back W`). When everything
+has been tried it ends `junction explored, go back W`. Training used 2,000 random examples plus one extra
+copy of every note-writing and lookup example (about 3,200 in total), with in-loop eval off. It ran at
+13.5 s per step to step 368, then slowed to about 220 s per step with VRAM full, with no eval this time.
+Stopped and used checkpoint-300 (75% of the epoch).
+
+Held-out check (greedy, HF checkpoint): notes 20/20 exact on note-due turns, moves 60/60. Exported as
+`maze-qwen4b-v2` (Q4_K_M, same Modelfile parameters as before).
+
+| Model | Run | Turns | Exits | Coverage | Distinct cells | Explored-cell turns | Back-and-forth | Junction notes due / written right | Moves matching the expert |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| maze-qwen4b (v1) | `793853064997` | 80 | A t5, B t40 | 0.65 | 173 | 19/125 (15%) | 13 | 13 / 0 | 124/125 |
+| **maze-qwen4b-v2** | `e4b131bf347c` | 80 | A t5 | 0.70 | 178 | 49/165 (30%) | 11 | 9 / 9 | 165/165 |
+| maze-qwen4b (v1) | `2d91ca3d54b7` | 300 | A t5 | 0.99 | 317 | 423/605 (70%) | 62 | 30 / 0 | 538/549 |
+| **maze-qwen4b-v2** | `85c6e502ffd3` | 250 | **all three: A t5, C t212, B t250** | 1.00 | 399 | 191/467 (41%) | 42 | 25 / 25 | 466/467 |
+
+- **The memory works now.** Every note due was written with the right direction, and 16 of the 17
+  exhausted-junction decisions were read back as scored. In the 17th, B's notebook held two lines for
+  [-4,6] (`back S`, then `back E` written on a revisit, the one extra note in 467 decisions). B followed
+  the first, correct one; the scorer reads the last.
+- **It is the expert, played by a 4B model.** The expert alone on this maze exits at A t5, C t212, B t250,
+  the same ticks. The explored-cell share (41%) is now just DFS backtracking, which the expert does too.
+- **v2's 80-turn game got fewer exits than v1's (A only, against A and B).** With temperature 1, the first
+  untried exit at the start sometimes differs, and DFS order decides who gets lucky in 80 turns. The
+  300-turn game is the fair test of search.
+- **What's left:** DFS is complete but slow (B needed 250 moves to an exit 28 away), and the expert ignores
+  teammates, radio and landmarks, so the fine-tune does too. Next would be held-out seeds, a smarter expert
+  (heading for the unexplored side, or using a teammate's exit report), and the 2B or 9B with the same data.
 
 
 

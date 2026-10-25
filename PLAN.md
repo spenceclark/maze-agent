@@ -105,7 +105,8 @@ operator pause/step/resume). 11 vitest tests cover live follow, seek, duplicate 
 - [x] Train Qwen3.5-4B with Unsloth QLoRA on the RTX 3070 (stopped at step 150 of 474), export Q4_K_M to Ollama
 - [x] Live evaluation on the row-37 maze vs base 4B and the 9B (OBSERVATIONS row 38): local rules learned,
   junction notes not
-- [ ] Retrain with an explicit junction trigger in the check line and oversampled note-due examples
+- [x] Retrain with an explicit junction trigger in the check line and oversampled note-due examples: team success
+  at t250 on the row-37 maze, matching the expert tick for tick (OBSERVATIONS row 39)
 - [ ] Live evaluation on the held-out seeds
 
 ## Next (not started)
