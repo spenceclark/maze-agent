@@ -62,7 +62,7 @@ def check(model, tokenizer, examples: list[dict[str, str]]) -> None:
             reply = json.loads(text.strip())
             move = reply["move"]
             valid += 1
-        except ValueError, KeyError, TypeError:
+        except (ValueError, KeyError, TypeError):
             continue
         if expected["notebook_append"] is not None:
             if reply.get("notebook_append") == expected["notebook_append"]:

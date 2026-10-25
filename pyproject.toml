@@ -34,6 +34,9 @@ dev = [
 target-version = "py314"
 line-length = 110
 
+[tool.ruff.per-file-target-version]
+"training/*.py" = "py312"  # runs in the separate Unsloth environment (Python 3.12)
+
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
 
