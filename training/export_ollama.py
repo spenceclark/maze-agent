@@ -48,7 +48,9 @@ def main() -> None:
         model, tokenizer = FastLanguageModel.from_pretrained(str(args.adapter), load_in_4bit=True)
         model.save_pretrained_merged(str(merged), tokenizer, save_method="merged_16bit")
     if not f16.exists():
-        run(sys.executable, LLAMA_CPP / "convert_hf_to_gguf.py", merged, "--outtype", "bf16", "--outfile", f16)
+        run(
+            sys.executable, LLAMA_CPP / "convert_hf_to_gguf.py", merged, "--outtype", "bf16", "--outfile", f16
+        )
     if not quantized.exists():
         run(LLAMA_CPP / "build" / "bin" / "Release" / "llama-quantize.exe", f16, quantized, args.quant)
     modelfile = work / "Modelfile"

@@ -120,10 +120,15 @@ uv run maze-lab dataset --games 40 --sizes 8,10,12,15 --out data/train.jsonl   #
   recorded), and mazes with loops (`extra_open_edges` must be 0).
 
 Default run (40 games, seeds 1-40): 12,612 examples, expert success 40/40. Tokens per example are about 1.9K
-(min 1,739, p99 2,020, max 2,080; estimated at 3.5 bytes per token, as measured on qwen3.5:9b in Ollama). By
-decision: 66% take an untried exit, 25% walk a corridor back, 6% leave a dead end, and **3% read a junction line
-from the notebook**. That 3% is the skill Qwen lacks, so oversample those rows: their reply contains
-`notebook says junction`.
+by a 3.5 bytes-per-token estimate (min 1,745, p99 2,023, max 2,086); the real tokeniser gives about 15% fewer.
+By decision: 59% take an untried exit, 31% walk back out of a corridor or dead end, **6.6% write a junction note
+and 3.1% read one back**. Those two are the memory skill Qwen lacks, so training oversamples them.
+
+The check line spells out each step of the note decision, because a first model trained without them never
+learned to write the note (OBSERVATIONS row 38):
+`at [-1,0]; N brick, E open, S open, W open; 3 open: junction; arrived from E; used E; untried S,W;
+notebook: no junction [-1,0], noting back E; go S, untried`. When the line exists, the check quotes it
+(`notebook: junction [-2,0] back W`), and once the junction is exhausted it ends `junction explored, go back W`.
 
 ### Training Qwen3.5-4B with Unsloth (QLoRA, 8 GB card)
 
@@ -138,8 +143,8 @@ uv pip install --python ../unsloth-env/Scripts/python.exe unsloth
 ```
 
 - **`training/train_qwen.py`:** 4-bit QLoRA, r=16, on the full-attention, linear-attention (gated delta net) and
-  MLP projections. It uses 3,000 random examples plus two extra copies of every junction-lookup example, one
-  epoch, and loss on the reply only. It prints how many tokens of example 0 carry loss, so a broken mask shows up
+  MLP projections. It uses 2,000 random examples plus extra copies (`--rare-copies`) of every example that writes
+  or reads a junction note, one epoch, and loss on the reply only. It prints how many tokens of example 0 carry loss, so a broken mask shows up
   at once. Afterwards it generates replies to 40 held-out prompts and reports valid JSON, agreement with the
   expert's move, and agreement on junction lookups.
 - **Rendering:** Ollama formats `qwen3.5` with a built-in renderer, not a template. With thinking off it emits

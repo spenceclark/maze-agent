@@ -62,7 +62,7 @@ def test_each_decision_is_derivable_from_the_prompt_alone(game: list[Row]):
 
 
 def test_backtracking_through_a_junction_comes_from_the_notebook(game: list[Row]):
-    rows = [r for r in game if "notebook says junction" in r["messages"][-1]["content"]]
+    rows = [r for r in game if "junction explored" in r["messages"][-1]["content"]]
     assert rows, "this game should backtrack through at least one junction"
     for row in rows:
         obs = observation_from_prompt(row)

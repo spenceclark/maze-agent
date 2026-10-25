@@ -12,7 +12,7 @@ one block per user message, then an empty think block), so no HF chat template i
 only the assistant reply.
 """
 
-import argparse
+import argparse  # noqa: I001 (unsloth must be imported before datasets and trl)
 import json
 import random
 from pathlib import Path
@@ -24,7 +24,8 @@ from trl import SFTConfig, SFTTrainer
 
 ASSISTANT_THINK_OFF = "<|im_start|>assistant\n<think>\n\n</think>\n\n"
 END = "<|im_end|>"
-LOOKUP = "notebook says junction"  # the 3% of decisions that read the notebook: oversampled
+LOOKUP = "junction explored"  # the 3% of decisions that read a junction line back from the notebook
+NOTE = '"notebook_append":"junction'  # the ~7% that write one; both are rare, so both are oversampled
 
 
 def render(messages: list[dict[str, str]]) -> dict[str, str]:
@@ -33,12 +34,12 @@ def render(messages: list[dict[str, str]]) -> dict[str, str]:
     return {"prompt": text + ASSISTANT_THINK_OFF, "completion": reply["content"] + END}
 
 
-def load(path: Path, n: int, lookup_copies: int, seed: int = 0) -> list[dict[str, str]]:
+def load(path: Path, n: int, rare_copies: int, seed: int = 0) -> list[dict[str, str]]:
     with path.open(encoding="utf-8") as f:
         rows = [json.loads(line)["messages"] for line in f]
     random.Random(seed).shuffle(rows)
-    lookups = [r for r in rows if LOOKUP in r[-1]["content"]]
-    picked = rows[:n] + lookups * lookup_copies
+    rare = [r for r in rows if LOOKUP in r[-1]["content"] or NOTE in r[-1]["content"]]
+    picked = rows[:n] + rare * rare_copies
     random.Random(seed + 1).shuffle(picked)
     return [render(r) for r in picked]
 
@@ -61,19 +62,21 @@ def check(model, tokenizer, examples: list[dict[str, str]]) -> None:
             reply = json.loads(text.strip())
             move = reply["move"]
             valid += 1
-        except (ValueError, KeyError, TypeError):
+        except ValueError, KeyError, TypeError:
             continue
         if expected["notebook_append"] is not None:
             if reply.get("notebook_append") == expected["notebook_append"]:
                 notes_same += 1
             else:
-                print(f"note miss: want {expected['notebook_append']!r}, got {reply.get('notebook_append')!r}")
+                print(
+                    f"note miss: want {expected['notebook_append']!r}, got {reply.get('notebook_append')!r}"
+                )
         same += move == expected["move"]
         lookups_same += is_lookup and move == expected["move"]
     n = len(examples)
     print(
-        f"check: valid JSON {valid}/{n}, move matches expert {same}/{n}, junction lookups {lookups_same}/{lookups},"
-        f" notes written exactly {notes_same}/{notes_due}"
+        f"check: valid JSON {valid}/{n}, move matches expert {same}/{n},"
+        f" junction lookups {lookups_same}/{lookups}, notes written exactly {notes_same}/{notes_due}"
     )
 
 
@@ -83,15 +86,21 @@ def main() -> None:
     parser.add_argument("--train", type=Path, default=Path("data/train.jsonl"))
     parser.add_argument("--eval", type=Path, default=Path("data/eval.jsonl"))
     parser.add_argument("--out", type=Path, help="training output directory")
-    parser.add_argument("--adapter", type=Path, help="skip training: check this saved LoRA (e.g. a checkpoint)")
-    parser.add_argument("--examples", type=int, default=3000, help="random training examples")
-    parser.add_argument("--lookup-copies", type=int, default=2, help="extra copies of each junction lookup")
+    parser.add_argument(
+        "--adapter", type=Path, help="skip training: check this saved LoRA (e.g. a checkpoint)"
+    )
+    parser.add_argument("--examples", type=int, default=2000, help="random training examples")
+    parser.add_argument(
+        "--rare-copies", type=int, default=2, help="extra copies of each junction note and lookup"
+    )
     parser.add_argument("--max-seq", type=int, default=2304)  # longest example is ~2.1K tokens
     parser.add_argument("--max-steps", type=int, default=-1, help="stop early (smoke test)")
     parser.add_argument("--check", type=int, default=40, help="held-out prompts to generate after training")
     # In-loop eval is off by default: on an 8 GB card the first eval left VRAM full and steps went 18x slower.
     parser.add_argument("--eval-steps", type=int, default=0, help="eval every N steps (0: never)")
-    parser.add_argument("--notes-only", action="store_true", help="check only held-out turns where a note is due")
+    parser.add_argument(
+        "--notes-only", action="store_true", help="check only held-out turns where a note is due"
+    )
     args = parser.parse_args()
 
     if args.adapter:
@@ -116,12 +125,19 @@ def main() -> None:
         use_gradient_checkpointing="unsloth",
         # full-attention layers, gated-delta-net (linear attention) layers, and every MLP
         target_modules=[
-            "q_proj", "k_proj", "v_proj", "o_proj",
-            "in_proj_qkv", "in_proj_z", "out_proj",
-            "gate_proj", "up_proj", "down_proj",
-        ],  # fmt: skip
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "in_proj_qkv",
+            "in_proj_z",
+            "out_proj",
+            "gate_proj",
+            "up_proj",
+            "down_proj",
+        ],
     )
-    train = Dataset.from_list(load(args.train, args.examples, args.lookup_copies))
+    train = Dataset.from_list(load(args.train, args.examples, args.rare_copies))
     held_out = load(args.eval, 300, 0)
     trainer = SFTTrainer(
         model=model,

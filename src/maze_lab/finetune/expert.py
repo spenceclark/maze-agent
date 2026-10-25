@@ -63,18 +63,26 @@ def decide(obs: Observation) -> Decision:
     notebook = obs.notebook.text
     backs = junction_backs(notebook)
 
+    junction = len(open_dirs) >= 3
+    kind = "junction" if junction else "corridor" if len(open_dirs) == 2 else "dead end"
     notes: list[str] = []
+    # The check states each step of the note decision: the cell's kind, then (at a junction) whether the
+    # notebook already has its line. A first model never learned the note when it had to infer both.
     facts = [
         f"at [{x},{y}]",
         ", ".join(f"{d} {_EDGE_WORDS[edges[d]]}" for d in COMPASS),
+        f"{len(open_dirs)} open: {kind}",
         f"arrived from {arrived or 'nowhere (start)'}",
         f"used {','.join(used) or 'none'}",
         f"untried {','.join(untried) or 'none'}",
     ]
-    # The start ([0, 0] in the own-start frame) has no way back; every other junction gets one line.
-    if len(open_dirs) >= 3 and arrived is not None and (x, y) != (0, 0) and (x, y) not in backs:
+    if junction and (x, y) in backs:
+        facts.append(f"notebook: {junction_line(x, y, backs[(x, y)])}")
+    elif junction and arrived is not None and (x, y) != (0, 0):
         notes.append(junction_line(x, y, arrived))
-        facts.append(f"new junction, noting back {arrived}")
+        facts.append(f"notebook: no junction [{x},{y}], noting back {arrived}")
+    elif junction:
+        facts.append("my start, no way back to note")  # the own-start frame puts the start at [0,0]
     for label in local.landmarks:
         if f"landmark {label} at" not in notebook:
             notes.append(f"landmark {label} at [{x},{y}]")
@@ -82,14 +90,13 @@ def decide(obs: Observation) -> Decision:
     move: Direction
     if untried:
         move, why = untried[0], f"go {untried[0]}, untried"
-    elif len(open_dirs) == 1:
-        move, why = open_dirs[0], f"dead end, go back {open_dirs[0]}"
-    elif len(open_dirs) == 2:
-        move = next(d for d in open_dirs if d != arrived)
-        why = f"corridor explored, go {move}, the way I did not arrive by"
+    elif not junction:
+        onward: list[Direction] = [d for d in open_dirs if d != arrived]
+        move = onward[0] if onward else open_dirs[0]
+        why = f"go back {move}" if kind == "dead end" else f"explored, go {move}, the way I did not arrive by"
     elif (x, y) in backs:
         move = backs[(x, y)]
-        why = f"junction explored, notebook says {junction_line(x, y, move)}, go {move}"
+        why = f"junction explored, go back {move}"
     else:
         raise MissingMemory(f"no 'junction [{x},{y}] back' line in the notebook")
     return Decision(check="; ".join([*facts, why]), note="; ".join(notes) or None, move=move)
