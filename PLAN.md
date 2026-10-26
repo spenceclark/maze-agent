@@ -107,7 +107,8 @@ operator pause/step/resume). 11 vitest tests cover live follow, seek, duplicate 
   junction notes not
 - [x] Retrain with an explicit junction trigger in the check line and oversampled note-due examples: team success
   at t250 on the row-37 maze, matching the expert tick for tick (OBSERVATIONS row 39)
-- [ ] Live evaluation on the held-out seeds
+- [x] Live evaluation on the held-out seeds: team objective on 7 of 8 (OBSERVATIONS row 40)
+- [ ] Recovery data (expert labels on the model's own states), junction and landmark notes on separate lines
 
 ## Next (not started)
 - Phase 7: PostgreSQL / separate coordinator, retention jobs, remote auth hardening.

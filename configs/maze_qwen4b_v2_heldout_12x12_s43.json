@@ -1,0 +1,108 @@
+{
+  "schema_version": "1.0",
+  "root_seed": 43,
+  "condition": "maze_qwen4b_v2_heldout_12x12_s43",
+  "maze": {
+    "width": 12,
+    "height": 12,
+    "generator": "dfs_v1",
+    "extra_open_edges": 0,
+    "exit_policy": "uniform_perimeter_cell",
+    "spawn_policy": "uniform_distinct_non_exit",
+    "landmark_count": 10,
+    "checkpoint_count": 0
+  },
+  "agents": [
+    {
+      "id": "A",
+      "kind": "llm",
+      "policy": null,
+      "adapter": "pydantic_ai",
+      "provider": "ollama",
+      "model": "maze-qwen4b-v2",
+      "base_url": "http://localhost:11434/v1",
+      "api_key_env": null,
+      "output_mode": "native",
+      "context_window_tokens": 8192,
+      "context_bytes_per_token": 3.0,
+      "sampling": {
+        "temperature": null,
+        "top_p": null,
+        "seed": null
+      },
+      "max_output_tokens": 1024,
+      "effort": "none",
+      "action_field_order": "check_first",
+      "restrict_moves_to_open": true
+    },
+    {
+      "id": "B",
+      "kind": "llm",
+      "policy": null,
+      "adapter": "pydantic_ai",
+      "provider": "ollama",
+      "model": "maze-qwen4b-v2",
+      "base_url": "http://localhost:11434/v1",
+      "api_key_env": null,
+      "output_mode": "native",
+      "context_window_tokens": 8192,
+      "context_bytes_per_token": 3.0,
+      "sampling": {
+        "temperature": null,
+        "top_p": null,
+        "seed": null
+      },
+      "max_output_tokens": 1024,
+      "effort": "none",
+      "action_field_order": "check_first",
+      "restrict_moves_to_open": true
+    },
+    {
+      "id": "C",
+      "kind": "llm",
+      "policy": null,
+      "adapter": "pydantic_ai",
+      "provider": "ollama",
+      "model": "maze-qwen4b-v2",
+      "base_url": "http://localhost:11434/v1",
+      "api_key_env": null,
+      "output_mode": "native",
+      "context_window_tokens": 8192,
+      "context_bytes_per_token": 3.0,
+      "sampling": {
+        "temperature": null,
+        "top_p": null,
+        "seed": null
+      },
+      "max_output_tokens": 1024,
+      "effort": "none",
+      "action_field_order": "check_first",
+      "restrict_moves_to_open": true
+    }
+  ],
+  "rules": {
+    "version": "rules_v1",
+    "objective": "all_reach_exit",
+    "allow_stay": true,
+    "notebook_enabled": true,
+    "notebook_cap_bytes": 8192,
+    "notebook_insert_bytes": 1024,
+    "radio_enabled": true,
+    "radio_message_bytes": 280,
+    "radio_cooldown_ticks": 5,
+    "meeting_notebooks_enabled": false,
+    "distance_sensors": "none",
+    "distance_quantization": "tenths",
+    "notebook_ops": "append_log",
+    "coordinates_enabled": true,
+    "used_exits_enabled": true
+  },
+  "timing": {
+    "mode": "barrier",
+    "decision_window_ms": 180000
+  },
+  "horizon_ticks": 288,
+  "prompt_version": "maze_agent_v10",
+  "max_provider_requests_per_turn": 1,
+  "snapshot_interval_ticks": 25
+}

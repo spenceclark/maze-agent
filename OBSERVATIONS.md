@@ -49,6 +49,7 @@ Batches use 3 seeds, so intervals are wide.
 | 37 | Nemotron against Qwen like for like, and thinking on against off | Both models with all three helping hands (`check_first`, `used_exits_enabled`, `restrict_moves_to_open`) and thinking off, on the same 12×12 maze, plus Nemotron with thinking on (one game each) | **Qwen with all three hands is its best game yet:** 74 distinct cells, 0 wall moves, 87% unused-exit choices, 125 notes. Nemotron with thinking on reads its cell best (99% of edges right, 93% of moves follow its own stated plan) | **Nemotron with thinking off is the weakest local result:** 30 distinct cells, 149 back-and-forth moves, no exits even for A (5 moves from the exit), terse check lines, 15 notes in 240 turns, every radio message "null". With thinking on it reads better but still explores little (44 cells): **it barely keeps notes** (26), so beyond the 30-turn trail it has no memory to search with |
 | 38 | Qwen can't search from memory however it's prompted: can it be taught? | Supervised fine-tuning of Qwen3.5-4B on 12,612 decisions from a depth-first expert that keeps its only memory in the notebook (`maze-lab dataset`), 4-bit QLoRA on the RTX 3070, stopped at step 150 of 474; same 12×12 maze and setup as row 37, against base `qwen3.5:4b` (one game each, 80 turns, plus one 300-turn game) | **Local search learned:** 173 distinct cells against 74 (9B) and 49 (base 4B), coverage 0.65 against 0.36 and 0.31, and B out at t40, the first local agent other than A to exit. Moves matched the expert 124 of 125 times while searching; 13 back-and-forth moves against 87 | **It never learned to write the junction notes** (1 of 13 due, 0 of 30 in the 300-turn game), so it can't backtrack through a junction. Over 300 turns the team covered 99% of the maze but only A got out, with 70% of searching turns on explored ground. The fault was in training, not export: the checkpoint puts 3.3–3.8 nats on the one token that triggers the note |
 | 39 | The fine-tuned 4B never learned to write junction notes | The check line states each step of the note decision ("3 open: junction; … notebook: no junction [x,y], noting back E"), note-writing and lookup examples are oversampled, and in-loop eval is off; retrained, stopped at step 300 of 403 when steps slowed again (same maze, one 80-turn and one 300-turn game) | **Team objective met at t250 (A t5, C t212, B t250), the first local team success.** It matched the depth-first expert tick for tick: the expert alone exits at exactly those ticks. Junction notes 34 of 34 due, all correct; moves 631 of 632 against the expert, 16 of 17 lookups as scored (the 17th followed the right line of two) | It is exactly as good as plain DFS: B took 250 moves to an exit 28 away. One extra junction note on a revisit gave a junction two lines, and the model followed the right one. One maze, two games; held-out seeds not yet played. Search order, not memory, is now the limit, and the agents still ignore each other |
+| 40 | Does the fine-tuned 4B generalise beyond one maze? | `maze-qwen4b-v2` on all eight held-out mazes (seeds 41-48, never in training, 8x8 to 15x15), horizon 2 × cells (one game each) | **Team objective met on 7 of 8,** including both 15x15s (t275, t244). Three matched the expert tick for tick, three finished within a few ticks of it, all with 0 walls and 0 STAYs. Over the six larger mazes: 136 of 136 junction notes right, 2,388 of 2,391 untried-exit and walk-back moves matching the expert | **One failure (seed 46, 10x10): compounding error.** B missed a junction line that shared a line with a landmark, wrote a malformed one, then entered an exhausted junction from its parent side, a state the expert never shows. There it copied `used E` instead of `E,S,W` and re-searched the same branch five times. Pure imitation has no recovery data |
 | 7c | Was the output cap hiding the gain? | High effort with an 8,192-token cap | Truncations essentially gone (≤0.5 forced STAYs per run); coordinate accuracy 46% with v5 | **No team successes in 12 runs; exits and progress unchanged.** The 7b wins look like seed luck. Room to think didn't close the gap |
 
 **What Haiku did well unprompted:**
@@ -1668,6 +1669,33 @@ Held-out check (greedy, HF checkpoint): notes 20/20 exact on note-due turns, mov
 
 - **Both unseen mazes solved, on exactly the expert's ticks,** with every searching decision matching the
   expert, 13 of 13 junction lookups and 24 of 24 junction notes. No walls, no STAYs, no extra notes.
+
+**The other six held-out mazes (seeds 42-44 and 46-48; horizon 2 × cells, run overnight).**
+
+| Seed | Size | Run | Team objective | Exits (A / B / C) | Expert alone (A / B / C) | Coverage | Untried / walk-back / lookup moves matching the expert | Junction notes right |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 42 | 10x10 | `2fa15bb2244a` | **t189** | 157 / 189 / 184 | 157 / 183 / 184 | 1.00 | 287/287, 229/230, 12/13 | 18/18 |
+| 46 | 10x10 | `2c9caaab9f10` | no (t200 limit) | 8 / — / 17 | 8 / 123 / 17 | 1.00 | 67/67, 118/118, 32/40 | 11/11 |
+| 43 | 12x12 | `d6a3ce68a4f3` | **t169** | 169 / 130 / 81 | 169 / 130 / 81 | 1.00 | 244/244, 122/122, 12/14 | 26/26 |
+| 47 | 12x12 | `1b1ad1af0120` | **t229** | 229 / 18 / 80 | 229 / 18 / 80 | 1.00 | 201/201, 116/116, 10/10 | 22/22 |
+| 44 | 15x15 | `982522eef6a5` | **t275** | 2 / 196 / 275 | 2 / 222 / 274 | 0.91 | 308/309, 154/154, 10/10 | 29/29 |
+| 48 | 15x15 | `b16d307f329d` | **t244** | 244 / 87 / 223 | 244 / 87 / 237 | 0.97 | 359/360, 183/183, 11/11 | 30/30 |
+
+- **With the two 8x8s, 7 of 8 held-out mazes were solved,** and so was the row-37 maze. Seeds 43 and 47 match
+  the expert tick for tick. In 42, 44 and 48 one sampled choice differed and the game drifted to within a few
+  ticks of the expert, sometimes faster. The 15x15 games ran to 275 turns, with notebooks up to 30 junction
+  lines, and stayed clean.
+- **The lookup score undercounts.** The scorer reads the last line for a cell. When the model writes a second
+  line for a junction, a correct move can be scored as a miss (seed 43: 12/14, yet the same game as the expert).
+- **Seed 46 shows the limit of imitation.** At t59, junction [7,7] also held a landmark, and its line was
+  `junction [7,7] back S; landmark helmet at [7,7]`. B's check said "no junction entry for [7,7]" and it wrote a
+  malformed second line (`back N,S`). Later B entered the exhausted junction [6,8] from its parent side, a state
+  the expert never produces. There it copied `used E` where the observation said `E,S,W`, and took S into a
+  branch it had finished, five times (t63-t147). One slip led to a state with no training data, and the model
+  fell back on its most common pattern.
+- **Fixes to try:** write junction and landmark notes on separate lines; add recovery data by running the expert
+  on the states the model actually reaches (DAgger-style), so states off the expert's path are labelled too;
+  and run at temperature 0 to cut the sampled divergences.
 
 - **What's left:** DFS is complete but slow (B needed 250 moves to an exit 28 away), and the expert ignores
   teammates, radio and landmarks, so the fine-tune does too. Next would be held-out seeds, a smarter expert
