@@ -1621,8 +1621,8 @@ Runs are in `finetune.db` in the worktree, apart from the 9B game in `pilot.db`.
   on training examples either.
 - **Teacher-forced loss pins it to one token.** On note-due training examples every reply token costs under
   0.25 nats except " new" in "new junction, noting back W", which costs 3.3–3.8. The trigger needs two facts
-  the check line never states: three or more open edges, and only the arrival exit used. It appears in about
-  7% of examples, so roughly 85 were seen by step 150.
+  the check line never states: three or more open edges, and only the arrival exit used. Pass 1's mix
+  oversampled lookups but not notes, so notes were about 5% of it: roughly 60 seen by step 150.
 - **The logged training loss was misleading.** It read about 3e-5 from step 110, while the held-out eval
   loss was 0.0029, which this single missed token accounts for. Unsloth warned it could not count loss
   tokens across gradient accumulation. Trust the eval loss and the generation checks.
